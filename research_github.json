@@ -1,0 +1,47 @@
+[
+  {
+    "url": "https://github.com/GargantuaX/gemini-watermark-remover",
+    "name": "GargantuaX/gemini-watermark-remover",
+    "snippet": "Built with pure JavaScript, the engine uses a mathematically exact Reverse Alpha Blending algorithm instead of unpredictable AI inpainting. Looking for the ... Read more\nAn open-source tool to remove Gemini watermarks from AI-generated images with high-fidelity, reproducible results on supported outputs. Built with pure JavaScript, the engine uses a mathematically exact Reverse Alpha Blending algorithm instead of unpredictable AI inpainting.",
+    "host_name": "github.com",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com/dearabhin/gemini-watermark-remover",
+    "name": "dearabhin/gemini-watermark-remover",
+    "snippet": "Gemini adds watermarks using a standard Alpha Compositing (blending) technique . This tool simply reverses that math. 1. The Watermark Formula. When Gemini ... Read more",
+    "host_name": "github.com",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com/topics/gemini-video-watermark-remover",
+    "name": "gemini-video-watermark-remover",
+    "snippet": "A high-performance, 100% client-side tool for removing Gemini AI image & video watermarks. Built with pure JavaScript using mathematically precise Reverse ... Read more",
+    "host_name": "github.com",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://antigravityide.org/blog/removing-gemini-ai-watermarks-reverse-alpha-blending",
+    "name": "Removing Gemini AI Watermarks: A Deep Dive into Reverse",
+    "snippet": "Dec 21, 2025 — A powerful open-source tool to remove Gemini AI watermarks using Reverse Alpha Blending . Instant, lossless, and privacy-focused.",
+    "host_name": "antigravityide.org",
+    "rank": 3,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com/topics/gemini-watermark-remover?o=desc&s=forks",
+    "name": "gemini-watermark-remover",
+    "snippet": "Built with Vue 3 + Vite + Tailwind CSS, it uses a mathematically precise Reverse Alpha Blending algorithm to restore pixels with zero quality loss. watermark - ... Read more",
+    "host_name": "github.com",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  }
+]

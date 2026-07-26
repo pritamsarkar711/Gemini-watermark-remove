@@ -1,0 +1,92 @@
+[
+  {
+    "url": "https://help.mergado.com/en/feed-image-editor/interface/canvas/effects-and-background-settings/ai-tools/inpainting",
+    "name": "Inpainting | Mergado Knowledge Base",
+    "snippet": "Inpainting is a Feed Image Editor feature for removing recurring elements from product images in bulk , such as logos, labels, or watermarks.",
+    "host_name": "help.mergado.com",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://ai.stackexchange.com/questions/42584/watermark-removal-without-inpainting",
+    "name": "Watermark removal without inpainting",
+    "snippet": "Oct 29, 2023 — I want to use the known watermark image to pollute other images and then use the original and polluted pairs to train an image -translation ...",
+    "host_name": "ai.stackexchange.com",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com/zuruoke/watermark-removal",
+    "name": "zuruoke/watermark-removal",
+    "snippet": "An open source project that uses a machine learning based image inpainting methodology to remove watermark from images\nAn open source project that uses a machine learning based image inpainting methodology to remove watermark from images which is totally indistinguishable from the ground truth version of the image.",
+    "host_name": "github.com",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.reddit.com/r/StableDiffusion/comments/14rzvgn/utilising_stable_diffusion_to_remove_watermarks",
+    "name": "Utilising Stable Diffusion to remove watermarks",
+    "snippet": "Yes, it can be done with inpainting . It helps to use inpaint sketch and fill in the watermark with similar surrounding colors.",
+    "host_name": "www.reddit.com",
+    "rank": 3,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.semanticscholar.org/paper/An-automatic-visible-watermark-removal-technique-Xu-Lu/e9a4d9462753cd79457e375901f19e76f023c685",
+    "name": "An automatic visible watermark removal technique using",
+    "snippet": "A technique to remove visible watermark automatically using image inpainting algorithms through investigating the sparsity of natural image patches",
+    "host_name": "www.semanticscholar.org",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://fauxlens.com/remove-watermark",
+    "name": "Free Watermark Remover - Clean Images",
+    "snippet": "An AI watermark remover is a tool that uses AI inpainting to erase watermarks, overlaid text, timestamps, and unwanted objects from photographs,",
+    "host_name": "fauxlens.com",
+    "rank": 5,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://stackoverflow.com/questions/55811122/remove-logo-watermark-given-locations-from-an-image-using-python-opencv-deep-lea",
+    "name": "Remove logo/watermark given locations from an image",
+    "snippet": "I am very new to opencv and deep learning using python. I am trying to remove watermark/logo from an image. I am able to find location of watermark by ...",
+    "host_name": "stackoverflow.com",
+    "rank": 6,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://tontan2545.medium.com/study-on-applications-of-image-inpainting-on-watermark-removal-569e0b35c214",
+    "name": "Study on Applications of Image Inpainting on Watermark",
+    "snippet": "The process of watermark removal aims to be semi-automated. Where the system will automatically perform OCR to detect all of the texts inside ...",
+    "host_name": "tontan2545.medium.com",
+    "rank": 7,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://dev.to/pixivo-ai/how-i-built-a-free-browser-based-watermark-remover-using-canvas-api-1if3",
+    "name": "How I built a free browser-based watermark remover using",
+    "snippet": "## The core idea Most watermark removers send your image to a server. CleanMark does everything locally using the browser's Canvas API — your image never leaves your device. ## How Canvas inpainting works The technique is called inpainting — filling in a selected region based on surrounding pixels. Here's the basic flow:",
+    "host_name": "dev.to",
+    "rank": 8,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://dev.to/pixivo-ai/how-i-built-a-browser-based-ai-watermark-remover-with-nextjs-and-canvas-api-g22",
+    "name": "How I built a browser-based AI watermark remover with Next.js",
+    "snippet": "How I built a browser-based AI watermark remover with Next.js and Canvas API # webdev # javascript # opensource # nextjs",
+    "host_name": "dev.to",
+    "rank": 9,
+    "date": "",
+    "favicon": ""
+  }
+]
