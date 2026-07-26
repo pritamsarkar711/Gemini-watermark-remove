@@ -224,7 +224,7 @@ export default function ComparisonSlider() {
     >
       <div
         ref={containerRef}
-        className="comparison-slider group relative w-full overflow-hidden rounded-xl border bg-muted/20 shadow-sm transition-shadow duration-300 hover:shadow-md hover:ring-1 hover:ring-inset hover:ring-primary/20"
+        className="comparison-slider group relative w-full overflow-hidden rounded-xl border bg-muted/20 shadow-sm transition-all duration-300 hover:shadow-lg hover:ring-1 hover:ring-inset hover:ring-primary/20 hover:border-primary/30"
         style={{ minHeight: '240px', maxHeight: '55vh' }}
         onMouseDown={handleMouseDown}
         onTouchStart={handleTouchStart}
@@ -252,7 +252,7 @@ export default function ComparisonSlider() {
 
         {/* Compare badge - top center */}
         <div className="pointer-events-none absolute top-2.5 left-1/2 z-20 -translate-x-1/2">
-          <span className="inline-flex items-center gap-1 rounded-full border border-white/20 bg-black/60 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm shadow-sm">
+          <span className="pulse-subtle inline-flex items-center gap-1 rounded-full border border-white/20 bg-black/60 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm shadow-sm">
             <Maximize2 className="size-2.5" />
             Compare
           </span>
@@ -348,7 +348,7 @@ export default function ComparisonSlider() {
       </div>
 
       {/* Bottom info */}
-      <div className="flex items-center justify-between px-1.5">
+      <div className="flex items-center justify-between px-1.5 py-1 rounded-lg bg-gradient-to-r from-muted/30 via-transparent to-muted/30">
         <span className="text-[10px] font-medium text-muted-foreground/80">Original</span>
         <div className="flex items-center gap-1 text-[10px] text-muted-foreground/70">
           <span>Drag slider or use arrow keys</span>

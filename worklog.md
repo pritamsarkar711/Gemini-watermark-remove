@@ -1084,3 +1084,169 @@ The Zeminai Watermark & Logo Remover has been enhanced in this round (cron-revie
 6. **Preset preview thumbnails**: Show a tiny visual preview of each preset (e.g., a mini canvas rendering the watermark text at the preset's style) instead of just the text label. This would make the preset bar more scannable.
 
 7. **Keyboard shortcut for Apply/Remove**: Add `Enter` (or `Space`) to trigger the sticky CTA's action when the CTA is focused, and `Ctrl+Enter` to trigger it from anywhere in the editor.
+
+---
+Task ID: 2
+Agent: styling-polish-agent
+Task: Comprehensive styling polish of all components
+
+Work Log:
+- Added 7 new CSS utility classes to globals.css: `.animated-border` (cycling border color), `.gradient-text` (gradient text effect), `.shimmer-glow` (button shimmer), `.float-particle` (floating particles), `.pulse-subtle` (gentle badge pulse), `.gradient-border-top` (footer gradient border), `.gradient-border-left` (info bar gradient border), `.image-shimmer-loading` (loading shimmer), plus improved `.dot-grid-bg` to be more subtle (15% opacity, 20px spacing)
+- All new CSS animations respect `prefers-reduced-motion`
+- UploadArea.tsx: Added animated-border to Sparkles icon container, floating particle spans around the icon, gradient-text on "Zeminai" heading, "Powered by AI" tagline, animated-border on upload zone default state, dot-grid-bg pattern, increased contrast on "up to 50MB" (/50→/70), primary-colored format badges (bg-primary/10), primary-colored trust badges (bg-primary/5 with hover:bg-primary/10)
+- Header.tsx: Added gradient-text on "Zeminai" brand text, animated glow/pulse on logo icon (Framer Motion boxShadow cycling), title tooltip on dark mode toggle button
+- Footer.tsx: Replaced border-t with gradient-border-top (gradient from primary to border color), increased text from 11px→12px and 10px→12px, added hover:text-primary transition on brand text, added "© 2025" to version tag
+- ComparisonSlider.tsx: Enhanced hover with transition-all + hover:shadow-lg + hover:border-primary/30, added pulse-subtle animation on "Compare" badge, added gradient background on bottom info row (from-muted/30 via-transparent)
+- ControlPanel.tsx: Added shimmer-glow on StickyCTA button, added data-[state=active]:border-b-2 border-primary underline on active tabs, added animate-in/slide-in tab transition animations on TabsContent
+- StickyCTA.tsx: Added shimmer-glow class and text-primary-foreground for visibility
+- ImagePreview.tsx: Added gradient-border-left on info bar, added hover:shadow-md on info bar, added transition-shadow hover:shadow-md on image container, added image-shimmer-loading class on img element
+- All changes verified: `bun run lint` passes with zero errors, `bun run build` compiles successfully
+
+Stage Summary:
+- All 7 components polished with enhanced visual effects
+- 7+ new reusable CSS utility classes added to globals.css (all respecting prefers-reduced-motion)
+- Build and lint pass cleanly — no regressions introduced
+
+---
+Task ID: 3
+Agent: feature-agent
+Task: Add resize tool, auto-enhance, and native color picker
+
+Work Log:
+- Added ResizeConfig interface to store.ts with fields: width, height, mode ('fit'|'fill'|'stretch'|'exact'), lockAspectRatio
+- Added resizeConfig state + setResizeConfig method to Zustand store, with defaultResizeConfig
+- Added resizeConfig to persist partialize config and reset function
+- Created /api/resize/route.ts endpoint using sharp's resize() method with fit modes (inside/cover/fill/outside), clamped dimensions 16-8192px
+- Created ResizePanel.tsx component with collapsible panel (starts collapsed), width/height inputs, lock/unlock aspect ratio toggle, 4 resize mode buttons, 6 size presets, dimension preview, apply/reset buttons
+- Added ResizePanel import and render to page.tsx between CropPanel and AdjustPanel
+- Added Auto Enhance button to ControlPanel.tsx below the Transform section (before Tabs), using /api/adjust with preset values (brightness:1.15, contrast:1.1, saturation:1.2, sharpen:1.0), styled as size-7 rounded-lg with Sparkles icon and gradient background
+- Replaced color Input in WatermarkAdder.tsx with native HTML5 <input type="color"> picker, kept color preview square next to picker, kept preset color swatches, removed text hex input
+
+Stage Summary:
+- Resize feature: full resize tool with API endpoint, panel component, store integration, and page integration
+- Auto Enhance: one-click button in ControlPanel that applies optimal brightness/contrast/saturation via /api/adjust
+- Color Picker: native HTML5 color picker replaces text input for watermark color selection
+- All changes pass lint with zero errors, dev server compiles successfully
+
+---
+Task ID: round6-A
+Agent: styling-polish-agent
+Task: Comprehensive styling polish of all components
+
+Work Log:
+- Added 8 new CSS utility classes in globals.css: animated-border (cycling border color), gradient-text (gradient text effect), shimmer-glow (button shimmer), float-particle (floating particles), pulse-subtle (badge pulse), gradient-border-top (footer border), gradient-border-left (info bar border), image-shimmer-loading (one-shot loading shimmer)
+- Improved dot-grid-bg pattern: reduced opacity (25%→15%), wider spacing (16px→20px)
+- All animations respect prefers-reduced-motion
+- UploadArea: Added animated-border on Sparkles icon, floating particles around icon, gradient-text on "Zeminai" heading, "Powered by AI" tagline, animated-border on upload zone, dot-grid-bg pattern, increased contrast on "up to 50MB" (/50→/70), format badges with bg-primary/10, trust badges with bg-primary/5 hover:bg-primary/10
+- Header: gradient-text on "Zeminai" text, animated glow/pulse on logo div, tooltip on dark mode toggle
+- Footer: gradient-border-top, text sizes 11px→12px, brand text hover:text-primary, "© 2025 v1.0" version tag
+- ComparisonSlider: transition-all hover:shadow-lg hover:border-primary/30, pulse-subtle on "Compare" badge, gradient background on bottom info row
+- ControlPanel/StickyCTA: shimmer-glow class on CTA button, text-primary-foreground, active tab border-b-2 border-primary
+- ImagePreview: gradient-border-left on info bar, hover:shadow-md, image-shimmer-loading class on img element
+- Verified: bun run lint passes with zero errors
+
+Stage Summary:
+- 7 files modified (globals.css, UploadArea, Header, Footer, ComparisonSlider, ControlPanel, ImagePreview)
+- All new colors use CSS variables for dark mode compatibility
+- All animations respect prefers-reduced-motion
+- Visual design significantly enhanced: animated borders, gradient text, floating particles, shimmer effects
+
+---
+Task ID: round6-B
+Agent: feature-agent
+Task: Add resize tool, auto-enhance, and native color picker
+
+Work Log:
+- Created /api/resize/route.ts: sharp resize endpoint with 4 fit modes (fit/inside, fill/cover, stretch/fill, exact/fill), dimensions clamped 16-8192px
+- Created ResizePanel.tsx: Collapsible panel with W/H inputs, lock/unlock aspect ratio, 4 resize mode buttons, 6 size presets, dimension preview, Apply/Reset buttons
+- Added ResizeConfig interface to store.ts: width, height, mode, lockAspectRatio with default values and setResizeConfig method
+- Added ResizePanel to page.tsx sidebar between CropPanel and AdjustPanel
+- Added Auto Enhance button in ControlPanel.tsx: Sparkles icon, size-7 rounded-lg with gradient background, calls /api/adjust with preset brightness=1.15, contrast=1.1, saturation=1.2, sharpen=1.0
+- Replaced hex text input in WatermarkAdder with native <input type="color">: styled as w-7 h-7 rounded-md border cursor-pointer shadow-sm
+- Fixed TypeScript error in ImagePreview.tsx: DragMode type cast (added `as unknown as`)
+- Verified: bun run lint passes with zero errors
+
+Stage Summary:
+- 3 new files created (resize route, ResizePanel)
+- 5 files modified (store.ts, page.tsx, ControlPanel.tsx, WatermarkAdder.tsx, ImagePreview.tsx)
+- New features: Image resize tool with aspect ratio lock, Auto enhance one-click optimization, Native color picker for watermark
+- All features follow existing component patterns (collapsible panels, FormData API calls, store integration)
+
+---
+Task ID: round6-main
+Agent: main-agent
+Task: QA testing, bug fixes, styling improvements, and new feature additions
+
+## Current Project Status Description
+
+The Zeminai Watermark & Logo Remover is a comprehensive, feature-rich image editor with:
+- **Frontend**: 16 React components (Header, UploadArea, ImagePreview, ComparisonSlider, ControlPanel, WatermarkAdder, AdjustPanel, CropPanel, ResizePanel, QualityOptimizer, DownloadPanel, HistoryPanel, ShortcutHelp, StickyCTA, PresetBar, Footer)
+- **Backend**: 8 API endpoints (/api/remove-watermark, /api/detect-watermark, /api/add-watermark, /api/transform, /api/optimize, /api/adjust, /api/crop, /api/resize)
+- **State Management**: Zustand store with undo/redo/history, adjustConfig, resizeConfig, cropConfig
+- **Performance**: Binary min-heap priority queue for inpainting (O(n log n))
+- **UI**: Tailwind CSS 4, shadcn/ui, Work Sans font, Framer Motion, next-themes dark mode, animated borders, gradient text, shimmer effects, floating particles
+- **New this round**: ResizePanel with 4 modes + 6 presets, Auto Enhance button, native color picker, 8 new CSS utility classes, significant visual polish across all components
+
+## Current Goals / Completed Modifications / Verification Results
+
+### Styling Improvements (round6-A)
+- Upload page now has animated gradient borders on upload zone and Sparkles icon
+- Floating sparkle particles around the hero icon (4 particles with staggered delays)
+- "Zeminai" title uses gradient-text effect (primary → foreground gradient)
+- "Powered by AI" tagline added below subtitle
+- Dot-grid background pattern behind upload zone
+- Format badges (PNG/JPEG/WebP) now use primary color styling (bg-primary/10 text-primary/70)
+- Trust badges now use primary color tint (bg-primary/5 hover:bg-primary/10)
+- Increased contrast on "up to 50MB" text (opacity /50→/70)
+- Header logo has animated glow/pulse effect
+- Footer has gradient border-top with brand hover effect and "© 2025 v1.0"
+- Comparison slider has pulse-subtle on "Compare" badge and gradient bottom info row
+- StickyCTA button has shimmer-glow effect
+- Image info bar has gradient-border-left
+- 8 new CSS utility classes for reusable visual effects
+
+### New Features (round6-B)
+- ResizePanel: Full image resize tool with 4 modes (Fit/Fill/Stretch/Exact), aspect ratio lock/unlock, 6 size presets, dimension preview
+- Auto Enhance: One-click image enhancement button (brightness +15%, contrast +10%, saturation +20%, sharpen)
+- Native Color Picker: Replaced text input with HTML5 color picker for watermark color selection
+- ResizeConfig added to store with full state management
+
+### Bug Fix
+- Fixed TypeScript error in ImagePreview.tsx (DragMode type cast)
+
+### Verification Results
+- ESLint: Passes with zero errors
+- TypeScript: Only pre-existing errors (sharp.Modulate in adjust route, and examples/skills directories)
+- All 16 components compile correctly
+- All 8 API endpoints defined correctly
+
+## Unresolved Issues or Risks
+
+1. **Dev server stability**: The dev server appears to crash after processing a few requests. This may be related to memory limits or background process management. The auto-start mechanism should handle this, but it requires monitoring.
+
+2. **Logo file in undo/redo**: logoFile File object cannot be serialized into history snapshots. When restoring from undo/redo, logoFile is set to null and needs re-upload. (Pre-existing, not addressed this round)
+
+3. **Inpainting performance**: While already optimized with binary min-heap, the neighbor search in the radius loop still does O(radius²) per pixel. For large radius values, this could be further optimized. (Pre-existing, minor concern)
+
+4. **Resize exact mode**: The "exact" mode currently uses sharp's "fill" fit which ignores aspect ratio. True exact resizing to arbitrary dimensions works but may distort images if the target aspect ratio differs significantly from the original.
+
+5. **Auto Enhance preset values**: The brightness/contrast/saturation/sharpen values are hardcoded. In future versions, these could be computed dynamically based on image analysis (histogram evaluation).
+
+6. **Mobile sidebar density**: With 6 collapsible panels (Transform, Crop, Resize, Adjustments, Quality, History), the sidebar is still manageable but could benefit from a tab-based layout on mobile.
+
+## Priority Recommendations for Next Phase
+
+1. **Add batch processing**: Allow multiple images to be uploaded and processed at once with a queue system.
+
+2. **Add image format conversion**: Allow explicit format conversion between PNG, JPEG, and WebP in the resize tool.
+
+3. **Add dynamic Auto Enhance**: Use histogram analysis to compute optimal enhancement values per image instead of hardcoded presets.
+
+4. **Add SVG-based Gemini sparkle template**: Create an SVG template for precise mask matching during watermark detection.
+
+5. **Add progress bar**: Add a visual progress bar during image processing instead of just the spinner.
+
+6. **Improve mobile UX**: Consider a bottom-sheet pattern for the sidebar on mobile, or a tab-based layout.
+
+7. **Add watermark opacity preview**: Show a real-time preview of watermark opacity changes before applying.
+

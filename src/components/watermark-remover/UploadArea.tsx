@@ -112,7 +112,7 @@ export default function UploadArea() {
         className="flex flex-col items-center gap-3"
       >
         <div className="relative">
-          <div className="flex size-16 items-center justify-center rounded-2xl bg-primary/10 ring-1 ring-primary/20">
+          <div className="flex size-16 items-center justify-center rounded-2xl bg-primary/10 ring-1 ring-primary/20 animated-border">
             <Sparkles className="size-8 text-primary" />
           </div>
           <motion.div
@@ -120,10 +120,24 @@ export default function UploadArea() {
             transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
             className="absolute inset-0 rounded-2xl bg-primary/5"
           />
+          {/* Magic sparkle floating particles */}
+          {[0, 1, 2, 3].map((i) => (
+            <motion.span
+              key={i}
+              className={`float-particle absolute size-1.5 rounded-full bg-primary/60 ${[
+                'left-0 top-0',
+                'right-0 top-0',
+                'left-0 bottom-0',
+                'right-0 bottom-0',
+              ][i]}`}
+              style={{ animationDelay: `${i * 0.6}s` }}
+            />
+          ))}
         </div>
         <div className="flex flex-col items-center gap-0.5">
-          <h1 className="text-3xl font-bold tracking-tight">Zeminai</h1>
-          <p className="text-sm text-muted-foreground/60">Watermark remover</p>
+          <h1 className="gradient-text text-3xl font-bold tracking-tight">Zeminai</h1>
+          <p className="text-sm text-muted-foreground/70">Watermark remover</p>
+          <span className="text-[10px] font-medium text-primary/50">Powered by AI</span>
         </div>
       </motion.div>
 
@@ -144,7 +158,7 @@ export default function UploadArea() {
             w-full aspect-[4/3]
             ${isDragging
               ? 'border-primary bg-primary/5 scale-[1.02] upload-area-active shadow-lg shadow-primary/10'
-              : 'border-border hover:border-primary/40 hover:bg-muted/30 hover:shadow-sm'
+              : 'animated-border hover:bg-muted/30 hover:shadow-sm'
             }
             ${isReading ? 'pointer-events-none' : ''}
           `}
@@ -157,8 +171,10 @@ export default function UploadArea() {
             className="hidden"
           />
 
-          {/* Subtle gradient background */}
-          <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-primary/[0.02] via-transparent to-primary/[0.03] opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+          {/* Subtle background gradient pattern */}
+          <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-primary/[0.03] via-transparent to-primary/[0.04] opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+          {/* Dot grid pattern behind the upload zone */}
+          <div className="absolute inset-0 rounded-2xl dot-grid-bg opacity-30" />
 
           <AnimatePresence mode="wait">
             {isReading ? (
@@ -208,10 +224,10 @@ export default function UploadArea() {
                     </span>
                   )}
                   <div className="mt-1 flex flex-wrap items-center justify-center gap-1.5">
-                    <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground/80">PNG</span>
-                    <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground/80">JPEG</span>
-                    <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground/80">WebP</span>
-                    <span className="text-[10px] text-muted-foreground/50">up to 50MB</span>
+                    <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary/70">PNG</span>
+                    <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary/70">JPEG</span>
+                    <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary/70">WebP</span>
+                    <span className="text-[10px] text-muted-foreground/70">up to 50MB</span>
                   </div>
                 </div>
               </motion.div>
@@ -233,10 +249,10 @@ export default function UploadArea() {
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.3, delay: 0.5 + i * 0.1 }}
-            className="flex items-center justify-center gap-1.5 rounded-full border bg-card/80 px-2.5 py-1.5 shadow-sm"
+            className="flex items-center justify-center gap-1.5 rounded-full border bg-primary/5 px-2.5 py-1.5 shadow-sm hover:bg-primary/10 transition-colors"
           >
-            <item.icon className="size-3 text-primary/70" />
-            <span className="text-[11px] font-medium text-muted-foreground/70">{item.label}</span>
+            <item.icon className="size-3 text-primary/80" />
+            <span className="text-[11px] font-semibold text-muted-foreground/80">{item.label}</span>
           </motion.div>
         ))}
       </motion.div>

@@ -306,24 +306,9 @@
 
 /* ─── Empty-state dot grid pattern ────────────────────────────────────────── */
 /* Subtle radial-dot pattern used on empty canvas / drop zones for a more
-   polished "placeholder" feel than a plain muted background. */
-.dot-grid-bg {
-  background-image: radial-gradient(
-    circle,
-    color-mix(in oklch, var(--muted-foreground) 25%, transparent) 1px,
-    transparent 1px
-  );
-  background-size: 16px 16px;
-  background-position: 0 0;
-}
-.dot-grid-bg-dense {
-  background-image: radial-gradient(
-    circle,
-    color-mix(in oklch, var(--muted-foreground) 20%, transparent) 1px,
-    transparent 1px
-  );
-  background-size: 12px 12px;
-}
+   polished "placeholder" feel than a plain muted background.
+   (Improved definitions with lower opacity and wider spacing are at the
+   bottom of this file to override these defaults for better subtlety.) */
 
 /* ─── Sticky CTA polish ───────────────────────────────────────────────────── */
 /* The sticky primary action button at the sidebar bottom. Uses a subtle
@@ -340,4 +325,153 @@
   );
   padding-top: 12px;
   margin-top: auto;
+}
+
+/* ─── Animated border — cycling border color animation ────────────────────── */
+@keyframes animated-border-cycle {
+  0%, 100% { border-color: color-mix(in oklch, var(--primary) 40%, transparent); }
+  25% { border-color: color-mix(in oklch, var(--primary) 70%, transparent); }
+  50% { border-color: color-mix(in oklch, var(--primary) 90%, transparent); }
+  75% { border-color: color-mix(in oklch, var(--primary) 60%, transparent); }
+}
+.animated-border {
+  animation: animated-border-cycle 4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animated-border { animation: none; }
+}
+
+/* ─── Gradient text effect ────────────────────────────────────────────────── */
+.gradient-text {
+  background: linear-gradient(
+    135deg,
+    var(--primary) 0%,
+    color-mix(in oklch, var(--primary) 60%, var(--foreground)) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ─── Shimmer glow — subtle shimmer/glow on buttons ──────────────────────── */
+@keyframes shimmer-glow-slide {
+  0% { left: -100%; }
+  100% { left: 200%; }
+}
+.shimmer-glow {
+  position: relative;
+  overflow: hidden;
+}
+.shimmer-glow::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in oklch, var(--primary-foreground) 15%, transparent) 50%,
+    transparent 100%
+  );
+  animation: shimmer-glow-slide 3s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .shimmer-glow::after { animation: none; display: none; }
+}
+
+/* ─── Float particle — floating particle animation ────────────────────────── */
+@keyframes float-up {
+  0% { transform: translateY(0) scale(1); opacity: 0.6; }
+  50% { transform: translateY(-8px) scale(1.2); opacity: 0.9; }
+  100% { transform: translateY(-16px) scale(0.8); opacity: 0; }
+}
+.float-particle {
+  animation: float-up 2.5s ease-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .float-particle { animation: none; opacity: 0; }
+}
+
+/* ─── Pulse subtle — gentle pulse for badges ──────────────────────────────── */
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.75; }
+}
+.pulse-subtle {
+  animation: pulse-subtle 2s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pulse-subtle { animation: none; }
+}
+
+/* ─── Gradient border top — for footer ────────────────────────────────────── */
+.gradient-border-top {
+  border-top: none;
+  position: relative;
+}
+.gradient-border-top::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in oklch, var(--primary) 30%, var(--border)) 20%,
+    color-mix(in oklch, var(--primary) 50%, var(--border)) 50%,
+    color-mix(in oklch, var(--primary) 30%, var(--border)) 80%,
+    transparent 100%
+  );
+}
+
+/* ─── Gradient left border — for info bars ─────────────────────────────────── */
+.gradient-border-left {
+  border-left: 2px solid transparent;
+  border-image: linear-gradient(
+    to bottom,
+    var(--primary),
+    color-mix(in oklch, var(--primary) 40%, transparent)
+  ) 1;
+}
+
+/* ─── Image shimmer loading ───────────────────────────────────────────────── */
+@keyframes image-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.image-shimmer-loading {
+  background: linear-gradient(
+    90deg,
+    color-mix(in oklch, var(--muted) 60%, transparent) 25%,
+    color-mix(in oklch, var(--muted) 90%, var(--card)) 50%,
+    color-mix(in oklch, var(--muted) 60%, transparent) 75%
+  );
+  background-size: 200% 100%;
+  animation: image-shimmer 1.5s ease-in-out 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .image-shimmer-loading { animation: none; background: var(--card); }
+}
+
+/* ─── Improve dot-grid-bg to be more subtle ───────────────────────────────── */
+.dot-grid-bg {
+  background-image: radial-gradient(
+    circle,
+    color-mix(in oklch, var(--muted-foreground) 15%, transparent) 1px,
+    transparent 1px
+  );
+  background-size: 20px 20px;
+  background-position: 0 0;
+}
+.dot-grid-bg-dense {
+  background-image: radial-gradient(
+    circle,
+    color-mix(in oklch, var(--muted-foreground) 12%, transparent) 1px,
+    transparent 1px
+  );
+  background-size: 16px 16px;
 }

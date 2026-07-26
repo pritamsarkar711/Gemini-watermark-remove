@@ -2,7 +2,7 @@
 
 import { useCallback, useRef, useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Eraser, Stamp, Scan, Paintbrush, Loader2, RotateCw, FlipHorizontal, FlipVertical, ChevronDown } from 'lucide-react'
+import { Eraser, Stamp, Scan, Paintbrush, Loader2, RotateCw, FlipHorizontal, FlipVertical, ChevronDown, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
@@ -33,6 +33,7 @@ export default function ControlPanel() {
   const [brushSize, setBrushSize] = useState(20)
   const [isTransforming, setIsTransforming] = useState(false)
   const [isTransformOpen, setIsTransformOpen] = useState(false)
+  const [isAutoEnhancing, setIsAutoEnhancing] = useState(false)
 
   const handleProcess = useCallback(async () => {
     if (!originalImage) return
@@ -327,23 +328,87 @@ export default function ControlPanel() {
         </AnimatePresence>
       </div>
 
+      {/* Auto Enhance button */}
+      <button
+        type="button"
+        onClick={async () => {
+          if (!originalImage || isAutoEnhancing) return
+          setIsAutoEnhancing(true)
+          setIsProcessing(true)
+          try {
+            const formData = new FormData()
+            formData.append('image', originalImage.file)
+            formData.append('brightness', '1.15')
+            formData.append('contrast', '1.1')
+            formData.append('saturation', '1.2')
+            formData.append('sharpen', '1')
+            formData.append('blur', '0')
+            formData.append('hue', '0')
+            formData.append('grayscale', 'false')
+            formData.append('sepia', 'false')
+            formData.append('invert', 'false')
+
+            const res = await fetch('/api/adjust', {
+              method: 'POST',
+              body: formData,
+            })
+            const data = await res.json()
+
+            if (data.success) {
+              const resultDataUrl = data.result.dataUrl
+              const resultBlob = await fetch(resultDataUrl).then((r) => r.blob())
+              const resultFile = new File([resultBlob], originalImage.name, { type: 'image/png' })
+
+              const newImageInfo = {
+                ...originalImage,
+                file: resultFile,
+                width: data.result.width,
+                height: data.result.height,
+                size: data.result.size,
+                dataUrl: resultDataUrl,
+              }
+              setOriginalImage(newImageInfo, 'transform')
+            }
+          } catch (err) {
+            console.error('Auto enhance failed:', err)
+          } finally {
+            setIsAutoEnhancing(false)
+            setIsProcessing(false)
+          }
+        }}
+        disabled={!originalImage || isAutoEnhancing}
+        className={`size-7 rounded-lg border flex items-center justify-center transition-all shadow-sm ${
+          !originalImage || isAutoEnhancing
+            ? 'opacity-40 cursor-not-allowed'
+            : 'cursor-pointer bg-gradient-to-br from-primary/10 to-primary/5 hover:from-primary/20 hover:to-primary/10 hover:shadow-md hover:-translate-y-0.5 border-primary/30'
+        }`}
+        title="Auto enhance image"
+        aria-label="Auto enhance image"
+      >
+        {isAutoEnhancing ? (
+          <Loader2 className="size-3 animate-spin text-primary" />
+        ) : (
+          <Sparkles className="size-3 text-primary" />
+        )}
+      </button>
+
       <Tabs
         value={mode}
         onValueChange={(v) => setMode(v as 'remove' | 'add')}
         className="w-full"
       >
         <TabsList className="w-full h-8 rounded-lg">
-          <TabsTrigger value="remove" className="flex-1 gap-1 h-7 text-xs rounded-md transition-colors hover:bg-accent/60 data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:shadow-sm data-[state=active]:hover:bg-primary/15">
+          <TabsTrigger value="remove" className="flex-1 gap-1 h-7 text-xs rounded-md transition-all hover:bg-accent/60 data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:shadow-sm data-[state=active]:hover:bg-primary/15 data-[state=active]:border-b-2 data-[state=active]:border-primary">
             <Eraser className="size-3" />
             Remove
           </TabsTrigger>
-          <TabsTrigger value="add" className="flex-1 gap-1 h-7 text-xs rounded-md transition-colors hover:bg-accent/60 data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:shadow-sm data-[state=active]:hover:bg-primary/15">
+          <TabsTrigger value="add" className="flex-1 gap-1 h-7 text-xs rounded-md transition-all hover:bg-accent/60 data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:shadow-sm data-[state=active]:hover:bg-primary/15 data-[state=active]:border-b-2 data-[state=active]:border-primary">
             <Stamp className="size-3" />
             Add
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="remove" className="mt-3 flex flex-col gap-3">
+        <TabsContent value="remove" className="mt-3 flex flex-col gap-3 data-[state=active]:animate-in data-[state=active]:fade-in data-[state=active]:slide-in-from-left-1 data-[state=inactive]:animate-out data-[state=inactive]:fade-out">
           <div className="sidebar-panel flex items-center justify-between rounded-lg p-2.5 shadow-sm">
             <div className="flex items-center gap-2">
               <Scan className="size-3.5 text-muted-foreground/60" />
@@ -400,7 +465,7 @@ export default function ControlPanel() {
           )}
         </TabsContent>
 
-        <TabsContent value="add" className="mt-3">
+        <TabsContent value="add" className="mt-3 data-[state=active]:animate-in data-[state=active]:fade-in data-[state=active]:slide-in-from-right-1 data-[state=inactive]:animate-out data-[state=inactive]:fade-out">
           <WatermarkAdder />
         </TabsContent>
       </Tabs>

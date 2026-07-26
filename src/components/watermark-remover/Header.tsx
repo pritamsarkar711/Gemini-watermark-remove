@@ -32,11 +32,15 @@ export default function Header() {
       <div className="relative mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6">
         {/* Left: Logo + Title */}
         <div className="flex items-center gap-2.5">
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary shadow-sm">
+          <motion.div
+            animate={{ boxShadow: ['0 0 0px var(--primary)', '0 0 8px color-mix(in oklch, var(--primary) 30%, transparent)', '0 0 0px var(--primary)'] }}
+            transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+            className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary shadow-sm"
+          >
             <Eraser className="size-4 text-primary-foreground" />
-          </div>
+          </motion.div>
           <div className="flex items-center gap-1.5 leading-none">
-            <span className="text-base font-semibold tracking-tight">Zeminai</span>
+            <span className="gradient-text text-base font-semibold tracking-tight">Zeminai</span>
             {step !== 'upload' && (
               <motion.span
                 initial={{ scale: 0, opacity: 0 }}
@@ -82,6 +86,7 @@ export default function Header() {
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
               className="size-8 text-muted-foreground hover:text-foreground"
               aria-label="Toggle dark mode"
+              title="Toggle dark mode"
             >
               <AnimatePresence mode="wait" initial={false}>
                 {theme === 'dark' ? (

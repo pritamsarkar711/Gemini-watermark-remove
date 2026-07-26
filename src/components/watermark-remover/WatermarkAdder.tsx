@@ -307,15 +307,16 @@ export default function WatermarkAdder() {
               style={{ backgroundColor: color }}
             />
           ))}
-          <div className="flex items-center gap-1 ml-1">
+          <div className="flex items-center gap-1.5 ml-1">
             <div
-              className="size-4 rounded-md border cursor-pointer shadow-sm"
+              className="size-4 rounded-md border shadow-sm"
               style={{ backgroundColor: watermarkConfig.color }}
             />
-            <Input
+            <input
+              type="color"
               value={watermarkConfig.color}
               onChange={(e) => setWatermarkConfig({ color: e.target.value })}
-              className="w-[4rem] h-5 text-[9px] px-1 rounded-md"
+              className="w-7 h-7 rounded-md border cursor-pointer shadow-sm"
             />
           </div>
         </div>

@@ -112,6 +112,13 @@ export interface AdjustConfig {
   invert: boolean;
 }
 
+export interface ResizeConfig {
+  width: number;
+  height: number;
+  mode: 'fit' | 'fill' | 'stretch' | 'exact';
+  lockAspectRatio: boolean;
+}
+
 /**
  * A reusable watermark preset. When applied, the preset's config values
  * override the corresponding fields in `watermarkConfig`.
@@ -265,6 +272,13 @@ const defaultAdjustConfig: AdjustConfig = {
   invert: false,
 };
 
+const defaultResizeConfig: ResizeConfig = {
+  width: 0,
+  height: 0,
+  mode: 'fit',
+  lockAspectRatio: true,
+};
+
 /**
  * Built-in watermark preset templates. Users can click a preset chip in the
  * WatermarkAdder to apply a pre-configured text watermark (text + size +
@@ -381,6 +395,9 @@ interface AppState {
 
   adjustConfig: AdjustConfig;
   setAdjustConfig: (config: Partial<AdjustConfig>) => void;
+
+  resizeConfig: ResizeConfig;
+  setResizeConfig: (config: Partial<ResizeConfig>) => void;
 
   outputFileName: string;
   setOutputFileName: (name: string) => void;
@@ -554,6 +571,12 @@ export const useAppStore = create<AppState>()(
       adjustConfig: { ...state.adjustConfig, ...config },
     })),
 
+  resizeConfig: defaultResizeConfig,
+  setResizeConfig: (config) =>
+    set((state) => ({
+      resizeConfig: { ...state.resizeConfig, ...config },
+    })),
+
   outputFileName: "",
   setOutputFileName: (name) => set({ outputFileName: name }),
 
@@ -724,6 +747,7 @@ export const useAppStore = create<AppState>()(
       qualityConfig: defaultQualityConfig,
       transformConfig: defaultTransformConfig,
       adjustConfig: defaultAdjustConfig,
+      resizeConfig: defaultResizeConfig,
       outputFileName: "",
       isProcessing: false,
       sliderPosition: 50,
@@ -754,6 +778,7 @@ export const useAppStore = create<AppState>()(
           logoFile: null,
         },
         adjustConfig: state.adjustConfig,
+        resizeConfig: state.resizeConfig,
         customPresets: state.customPresets,
         autoDetect: state.autoDetect,
         mode: state.mode,

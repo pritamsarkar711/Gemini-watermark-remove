@@ -439,7 +439,7 @@ export default function ImagePreview() {
       className="flex w-full flex-col gap-2"
     >
       {/* Image info bar */}
-      <div className="flex items-center gap-2 rounded-lg border bg-card/80 px-3 py-1.5 shadow-sm transition-colors duration-200 hover:bg-card">
+      <div className="gradient-border-left flex items-center gap-2 rounded-lg border bg-card/80 px-3 py-1.5 shadow-sm transition-all duration-200 hover:bg-card hover:shadow-md">
         <ImageIcon className="size-3.5 text-primary/70" />
         <span className="text-xs font-semibold">{originalImage.name}</span>
         <div className="flex items-center gap-2 ml-auto text-[11px] text-muted-foreground/60">
@@ -451,7 +451,7 @@ export default function ImagePreview() {
 
       {/* Image container */}
       <div
-        className="relative overflow-hidden rounded-xl border bg-muted/20 shadow-sm"
+        className="relative overflow-hidden rounded-xl border bg-muted/20 shadow-sm transition-shadow duration-300 hover:shadow-md"
         onWheel={handleWheel}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
@@ -467,7 +467,8 @@ export default function ImagePreview() {
             ref={imgRef}
             src={originalImage.dataUrl}
             alt="Preview"
-            className="max-h-[55vh] w-auto object-contain transition-transform duration-100 select-none"
+            onLoad={() => {/* shimmer fades naturally after load */}}
+            className="image-shimmer-loading max-h-[55vh] w-auto object-contain transition-transform duration-100 select-none"
             style={{
               transform: `scale(${zoom}) translate(${offset.x / zoom}px, ${offset.y / zoom}px)`,
             }}
@@ -528,7 +529,7 @@ export default function ImagePreview() {
                 </div>
 
                 {/* 8 resize handles */}
-                {(['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'] as DragMode[]).map(
+                {(['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'] as unknown as DragMode[]).map(
                   (h) => {
                     // Position each handle at its corner / edge midpoint
                     const posCls: Record<string, string> = {
