@@ -27,10 +27,10 @@ export async function POST(req: NextRequest) {
         // Check bottom-right area with a larger scan
         const imageInfo = await getImageInfo(imageBuffer);
         const fallbackRegions = [{
-          x: Math.floor(imageInfo.width * 0.85),
-          y: Math.floor(imageInfo.height * 0.85),
-          width: Math.floor(imageInfo.width * 0.15),
-          height: Math.floor(imageInfo.height * 0.15),
+          x: Math.floor(imageInfo.width * 0.78),
+          y: Math.floor(imageInfo.height * 0.78),
+          width: Math.floor(imageInfo.width * 0.22),
+          height: Math.floor(imageInfo.height * 0.22),
           confidence: 0.5,
         }];
         maskBuffer = await generateDetectionMask(imageBuffer, fallbackRegions);
@@ -43,8 +43,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No mask provided and auto-detect is disabled" }, { status: 400 });
     }
 
-    // Inpaint the watermark
-    const inpaintingRadius = 10;
+    // Inpaint the watermark with larger radius for better reconstruction
+    const inpaintingRadius = 12;
     const resultBuffer = await inpaintImage(imageBuffer, maskBuffer, inpaintingRadius);
 
     const dataUrl = bufferToDataUrl(resultBuffer);

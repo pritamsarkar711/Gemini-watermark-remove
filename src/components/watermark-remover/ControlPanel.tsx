@@ -2,7 +2,7 @@
 
 import { useCallback, useRef, useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Eraser, Stamp, Scan, Paintbrush, Loader2 } from 'lucide-react'
+import { Eraser, Stamp, Scan, Paintbrush, Loader2, RotateCw, FlipHorizontal, FlipVertical } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
@@ -23,11 +23,15 @@ export default function ControlPanel() {
     setProcessedImage,
     setShowComparison,
     watermarkConfig,
+    transformConfig,
+    setTransformConfig,
+    setOriginalImage,
   } = useAppStore()
 
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [isDrawing, setIsDrawing] = useState(false)
   const [brushSize, setBrushSize] = useState(20)
+  const [isTransforming, setIsTransforming] = useState(false)
 
   const handleProcess = useCallback(async () => {
     if (!originalImage) return
@@ -61,6 +65,9 @@ export default function ControlPanel() {
         formData.append('color', watermarkConfig.color)
         formData.append('opacity', String(watermarkConfig.opacity))
         formData.append('position', watermarkConfig.position)
+        formData.append('rotation', String(watermarkConfig.rotation))
+        formData.append('shadow', String(watermarkConfig.shadow))
+        formData.append('repeat', String(watermarkConfig.repeat))
 
         if (watermarkConfig.logoFile) {
           formData.append('logo', watermarkConfig.logoFile)
@@ -86,6 +93,47 @@ export default function ControlPanel() {
       setIsProcessing(false)
     }
   }, [originalImage, mode, autoDetect, maskData, watermarkConfig, setIsProcessing, setProcessedImage, setShowComparison])
+
+  // Handle image transformation
+  const handleTransform = useCallback(async () => {
+    if (!originalImage) return
+
+    setIsTransforming(true)
+    try {
+      const formData = new FormData()
+      formData.append('image', originalImage.file)
+      formData.append('rotation', String(transformConfig.rotation))
+      formData.append('flipH', String(transformConfig.flipH))
+      formData.append('flipV', String(transformConfig.flipV))
+
+      const res = await fetch('/api/transform', {
+        method: 'POST',
+        body: formData,
+      })
+      const data = await res.json()
+
+      if (data.success) {
+        // Update the original image with transformed version
+        const resultDataUrl = data.result.dataUrl
+        const resultBlob = await fetch(resultDataUrl).then((r) => r.blob())
+        const resultFile = new File([resultBlob], originalImage.name, { type: 'image/png' })
+
+        const newImageInfo = {
+          ...originalImage,
+          file: resultFile,
+          width: data.result.width,
+          height: data.result.height,
+          size: data.result.size,
+          dataUrl: resultDataUrl,
+        }
+        setOriginalImage(newImageInfo)
+      }
+    } catch (err) {
+      console.error('Transform failed:', err)
+    } finally {
+      setIsTransforming(false)
+    }
+  }, [originalImage, transformConfig, setOriginalImage])
 
   // Canvas drawing for manual mask
   const initCanvas = useCallback(() => {
@@ -153,6 +201,8 @@ export default function ControlPanel() {
     }
   }, [mode, autoDetect, initCanvas])
 
+  const hasTransform = transformConfig.rotation !== 0 || transformConfig.flipH || transformConfig.flipV
+
   return (
     <motion.div
       initial={{ opacity: 0, x: 20 }}
@@ -160,6 +210,61 @@ export default function ControlPanel() {
       transition={{ duration: 0.3 }}
       className="flex w-full flex-col gap-3"
     >
+      {/* Transform controls - always visible */}
+      <div className="flex flex-col gap-2 rounded-md border bg-card p-2.5">
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] font-medium text-muted-foreground/60">Transform</span>
+          {hasTransform && (
+            <button
+              onClick={() => setTransformConfig({ rotation: 0, flipH: false, flipV: false })}
+              className="text-[9px] text-muted-foreground/40 hover:text-foreground"
+            >
+              Reset
+            </button>
+          )}
+        </div>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="outline"
+            size="icon"
+            className="size-7"
+            onClick={() => setTransformConfig({ rotation: (transformConfig.rotation + 90) % 360 })}
+            disabled={isTransforming}
+          >
+            <RotateCw className="size-3" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            className={`size-7 ${transformConfig.flipH ? 'bg-primary/10 border-primary/40' : ''}`}
+            onClick={() => setTransformConfig({ flipH: !transformConfig.flipH })}
+            disabled={isTransforming}
+          >
+            <FlipHorizontal className="size-3" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            className={`size-7 ${transformConfig.flipV ? 'bg-primary/10 border-primary/40' : ''}`}
+            onClick={() => setTransformConfig({ flipV: !transformConfig.flipV })}
+            disabled={isTransforming}
+          >
+            <FlipVertical className="size-3" />
+          </Button>
+          {hasTransform && (
+            <Button
+              size="sm"
+              onClick={handleTransform}
+              disabled={isTransforming}
+              className="ml-auto h-7 text-[10px] gap-1"
+            >
+              {isTransforming ? <Loader2 className="size-2.5 animate-spin" /> : null}
+              Apply
+            </Button>
+          )}
+        </div>
+      </div>
+
       <Tabs
         value={mode}
         onValueChange={(v) => setMode(v as 'remove' | 'add')}
@@ -177,7 +282,6 @@ export default function ControlPanel() {
         </TabsList>
 
         <TabsContent value="remove" className="mt-3 flex flex-col gap-3">
-          {/* Auto detect */}
           <div className="flex items-center justify-between rounded-md border bg-card p-2.5">
             <div className="flex items-center gap-2">
               <Scan className="size-3.5 text-muted-foreground" />
@@ -186,7 +290,6 @@ export default function ControlPanel() {
             <Switch checked={autoDetect} onCheckedChange={setAutoDetect} className="scale-90" />
           </div>
 
-          {/* Manual brush */}
           {!autoDetect && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
@@ -240,7 +343,6 @@ export default function ControlPanel() {
         </TabsContent>
       </Tabs>
 
-      {/* Process button */}
       <Button
         size="default"
         onClick={handleProcess}

@@ -24,6 +24,9 @@ export async function POST(req: NextRequest) {
       logoOpacity: parseInt(formData.get("logoOpacity") as string) || 50,
       logoSize: parseInt(formData.get("logoSize") as string) || 100,
       logoPosition: (formData.get("logoPosition") as string) || "bottom-right",
+      rotation: parseFloat(formData.get("rotation") as string) || 0,
+      shadow: formData.get("shadow") !== "false",
+      repeat: formData.get("repeat") === "true",
     };
 
     const resultBuffer = await addWatermark(imageBuffer, options);

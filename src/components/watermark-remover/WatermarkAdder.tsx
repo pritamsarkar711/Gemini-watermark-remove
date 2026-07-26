@@ -1,11 +1,12 @@
 'use client'
 
 import { useCallback, useRef } from 'react'
-import { Type, Upload, ImageIcon } from 'lucide-react'
+import { Type, Upload, ImageIcon, RotateCw, Sparkles, Grid3x3 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Slider } from '@/components/ui/slider'
 import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
 import { useAppStore, type WatermarkPosition } from '@/lib/store'
 
 const POSITIONS: WatermarkPosition[] = [
@@ -19,6 +20,11 @@ const POS_ICONS: Record<WatermarkPosition, string> = {
   'center': '⊕',
   'bottom-left': '↙', 'bottom-center': '↓', 'bottom-right': '↘',
 }
+
+const PRESET_COLORS = [
+  '#ffffff', '#000000', '#ff4444', '#4444ff',
+  '#44ff44', '#ffff44', '#ff44ff', '#44ffff',
+]
 
 export default function WatermarkAdder() {
   const { watermarkConfig, setWatermarkConfig } = useAppStore()
@@ -36,11 +42,21 @@ export default function WatermarkAdder() {
 
   return (
     <div className="flex flex-col gap-3">
-      {/* Text */}
+      {/* Text watermark */}
       <div className="flex flex-col gap-2 rounded-md border bg-card p-3">
-        <div className="flex items-center gap-1.5">
-          <Type className="size-3.5 text-muted-foreground" />
-          <Label className="text-xs font-medium">Text</Label>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <Type className="size-3.5 text-muted-foreground" />
+            <Label className="text-xs font-medium">Text</Label>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="text-[9px] text-muted-foreground/40">Shadow</span>
+            <Switch
+              checked={watermarkConfig.shadow}
+              onCheckedChange={(v) => setWatermarkConfig({ shadow: v })}
+              className="scale-75"
+            />
+          </div>
         </div>
 
         <Input
@@ -49,6 +65,31 @@ export default function WatermarkAdder() {
           placeholder="Watermark text"
           className="h-7 text-xs"
         />
+
+        {/* Color presets */}
+        <div className="flex items-center gap-1">
+          {PRESET_COLORS.map((color) => (
+            <button
+              key={color}
+              onClick={() => setWatermarkConfig({ color })}
+              className={`size-4 rounded border transition-all ${
+                watermarkConfig.color === color ? 'ring-1 ring-primary ring-offset-1' : ''
+              }`}
+              style={{ backgroundColor: color }}
+            />
+          ))}
+          <div className="flex items-center gap-1 ml-1">
+            <div
+              className="size-4 rounded border cursor-pointer"
+              style={{ backgroundColor: watermarkConfig.color }}
+            />
+            <Input
+              value={watermarkConfig.color}
+              onChange={(e) => setWatermarkConfig({ color: e.target.value })}
+              className="w-[4rem] h-5 text-[9px] px-1"
+            />
+          </div>
+        </div>
 
         <div className="flex items-center justify-between gap-2">
           <span className="text-[10px] text-muted-foreground/50">Size</span>
@@ -76,44 +117,58 @@ export default function WatermarkAdder() {
           <span className="text-[10px] tabular-nums text-muted-foreground/50 w-5 text-right">{watermarkConfig.opacity}%</span>
         </div>
 
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] text-muted-foreground/50">Color</span>
-          <div className="flex items-center gap-1.5">
-            <div
-              className="size-4 rounded border cursor-pointer"
-              style={{ backgroundColor: watermarkConfig.color }}
-            />
-            <Input
-              value={watermarkConfig.color}
-              onChange={(e) => setWatermarkConfig({ color: e.target.value })}
-              className="w-[4.5rem] h-6 text-[10px] px-1.5"
-            />
-          </div>
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[10px] text-muted-foreground/50 flex items-center gap-1">
+            <RotateCw className="size-2.5" />
+            Rotate
+          </span>
+          <Slider
+            value={[watermarkConfig.rotation]}
+            min={-90}
+            max={90}
+            step={5}
+            onValueChange={(v) => setWatermarkConfig({ rotation: v[0] })}
+            className="w-20"
+          />
+          <span className="text-[10px] tabular-nums text-muted-foreground/50 w-7 text-right">{watermarkConfig.rotation}°</span>
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          <span className="text-[10px] text-muted-foreground/50">Position</span>
-          <div className="grid grid-cols-3 gap-0.5">
-            {POSITIONS.map((pos) => (
-              <button
-                key={pos}
-                onClick={() => setWatermarkConfig({ position: pos })}
-                className={`
-                  flex size-7 items-center justify-center rounded text-[10px] transition-all
-                  ${watermarkConfig.position === pos
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted text-muted-foreground hover:bg-accent'
-                  }
-                `}
-              >
-                {POS_ICONS[pos]}
-              </button>
-            ))}
+        {/* Repeat toggle */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <Grid3x3 className="size-3 text-muted-foreground" />
+            <span className="text-[10px] text-muted-foreground/50">Tile</span>
           </div>
+          <Switch
+            checked={watermarkConfig.repeat}
+            onCheckedChange={(v) => setWatermarkConfig({ repeat: v })}
+            className="scale-75"
+          />
         </div>
+
+        {!watermarkConfig.repeat && (
+          <div className="flex flex-col gap-1.5">
+            <span className="text-[10px] text-muted-foreground/50">Position</span>
+            <div className="grid grid-cols-3 gap-0.5">
+              {POSITIONS.map((pos) => (
+                <button
+                  key={pos}
+                  onClick={() => setWatermarkConfig({ position: pos })}
+                  className={`flex size-7 items-center justify-center rounded text-[10px] transition-all ${
+                    watermarkConfig.position === pos
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted text-muted-foreground hover:bg-accent'
+                  }`}
+                >
+                  {POS_ICONS[pos]}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Logo */}
+      {/* Logo watermark */}
       <div className="flex flex-col gap-2 rounded-md border bg-card p-3">
         <div className="flex items-center gap-1.5">
           <ImageIcon className="size-3.5 text-muted-foreground" />
@@ -177,13 +232,11 @@ export default function WatermarkAdder() {
                   <button
                     key={pos}
                     onClick={() => setWatermarkConfig({ logoPosition: pos })}
-                    className={`
-                      flex size-7 items-center justify-center rounded text-[10px] transition-all
-                      ${watermarkConfig.logoPosition === pos
+                    className={`flex size-7 items-center justify-center rounded text-[10px] transition-all ${
+                      watermarkConfig.logoPosition === pos
                         ? 'bg-primary text-primary-foreground'
                         : 'bg-muted text-muted-foreground hover:bg-accent'
-                      }
-                    `}
+                    }`}
                   >
                     {POS_ICONS[pos]}
                   </button>

@@ -2,7 +2,7 @@
 
 import { useCallback, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Upload, ImageIcon, X } from 'lucide-react'
+import { Upload, ImageIcon, X, Sparkles } from 'lucide-react'
 import { useAppStore, type ImageInfo } from '@/lib/store'
 
 const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
@@ -84,71 +84,87 @@ export default function UploadArea() {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 30 }}
+      initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, ease: 'easeOut' }}
-      className="flex w-full max-w-lg flex-col items-center gap-3"
+      transition={{ duration: 0.4, ease: 'easeOut' }}
+      className="flex w-full max-w-md flex-col items-center gap-4"
     >
-      {/* Main title */}
+      {/* Hero section */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.1 }}
-        className="flex flex-col items-center gap-1 mb-4"
+        transition={{ duration: 0.4, delay: 0.1 }}
+        className="flex flex-col items-center gap-2"
       >
-        <div className="flex size-12 items-center justify-center rounded-xl bg-primary/10 mb-2">
-          <ImageIcon className="size-6 text-primary" />
+        <div className="relative">
+          <div className="flex size-14 items-center justify-center rounded-2xl bg-primary/10">
+            <Sparkles className="size-7 text-primary" />
+          </div>
+          <motion.div
+            animate={{ scale: [1, 1.15, 1], opacity: [0.5, 0.8, 0.5] }}
+            transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+            className="absolute inset-0 rounded-2xl bg-primary/5"
+          />
         </div>
-        <span className="text-2xl font-semibold tracking-tight">Zeminai</span>
-        <span className="text-xs text-muted-foreground/60">Watermark remover</span>
+        <h1 className="text-2xl font-semibold tracking-tight mt-1">Zeminai</h1>
+        <p className="text-xs text-muted-foreground/50">Watermark remover</p>
       </motion.div>
 
       {/* Upload zone */}
-      <div
-        onDrop={handleDrop}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onClick={() => inputRef.current?.click()}
-        className={`
-          group relative flex cursor-pointer flex-col items-center justify-center
-          rounded-2xl border-2 border-dashed transition-all duration-300
-          w-full aspect-[4/3]
-          ${isDragging
-            ? 'border-primary bg-primary/5 scale-[1.02] upload-area-active'
-            : 'border-border hover:border-primary/40 hover:bg-muted/30'
-          }
-        `}
+      <motion.div
+        whileHover={{ scale: 1.01 }}
+        transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+        className="w-full"
       >
-        <input
-          ref={inputRef}
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          onChange={handleInputChange}
-          className="hidden"
-        />
-
-        <motion.div
-          animate={isDragging ? { scale: 1.15, y: -8 } : { scale: 1, y: 0 }}
-          transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-          className="flex flex-col items-center gap-2.5"
+        <div
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onClick={() => inputRef.current?.click()}
+          className={`
+            group relative flex cursor-pointer flex-col items-center justify-center
+            rounded-2xl border-2 border-dashed transition-all duration-300
+            w-full aspect-[4/3]
+            ${isDragging
+              ? 'border-primary bg-primary/5 scale-[1.02] upload-area-active'
+              : 'border-border hover:border-primary/40 hover:bg-muted/30'
+            }
+          `}
         >
-          <div className={`
-            flex size-12 items-center justify-center rounded-xl transition-colors duration-300
-            ${isDragging ? 'bg-primary/15' : 'bg-muted/60'}
-          `}>
-            <Upload className={`size-5 transition-colors duration-300 ${isDragging ? 'text-primary' : 'text-muted-foreground'}`} />
-          </div>
+          <input
+            ref={inputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={handleInputChange}
+            className="hidden"
+          />
 
-          <div className="flex flex-col items-center gap-0.5">
-            <span className="text-sm font-medium text-foreground/80">
-              {isDragging ? 'Release' : 'Drop image'}
-            </span>
-            <span className="text-[11px] text-muted-foreground/50">
-              PNG JPEG WebP
-            </span>
-          </div>
-        </motion.div>
-      </div>
+          <motion.div
+            animate={isDragging ? { scale: 1.15, y: -6 } : { scale: 1, y: 0 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+            className="flex flex-col items-center gap-2.5"
+          >
+            <div className={`
+              flex size-11 items-center justify-center rounded-xl transition-all duration-300
+              ${isDragging
+                ? 'bg-primary/15 shadow-sm'
+                : 'bg-muted/50 group-hover:bg-muted'
+              }
+            `}>
+              <Upload className={`size-5 transition-colors duration-300 ${isDragging ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground/70'}`} />
+            </div>
+
+            <div className="flex flex-col items-center gap-0.5">
+              <span className="text-sm font-medium text-foreground/80">
+                {isDragging ? 'Release' : 'Drop image'}
+              </span>
+              <span className="text-[10px] text-muted-foreground/40">
+                PNG JPEG WebP
+              </span>
+            </div>
+          </motion.div>
+        </div>
+      </motion.div>
 
       <AnimatePresence>
         {error && (

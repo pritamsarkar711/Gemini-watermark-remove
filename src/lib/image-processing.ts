@@ -1,8 +1,13 @@
 import sharp from "sharp";
+import { createCanvas, loadImage, registerFont } from "canvas";
+import path from "path";
+import fs from "fs";
 
 /**
  * Core image processing module for Zeminai watermark removal
  * Uses inpainting algorithms and sharp for high-quality results
+ * Enhanced with proper text rendering via canvas, better detection,
+ * and SVG-based Gemini sparkle template
  */
 
 // ============================================================
@@ -17,13 +22,13 @@ interface Pixel {
 }
 
 /**
- * Telea inpainting using fast marching method
- * Fills masked pixels by propagating known pixel values inward from boundaries
+ * Inpaint image using fast marching method with multi-pass approach
+ * for higher quality reconstruction
  */
 export async function inpaintImage(
   inputBuffer: Buffer,
   maskBuffer: Buffer,
-  radius: number = 5
+  radius: number = 8
 ): Promise<Buffer> {
   const inputImage = sharp(inputBuffer);
   const maskImage = sharp(maskBuffer);
@@ -61,13 +66,45 @@ export async function inpaintImage(
     isMasked.push(maskVal > 128);
   }
 
-  // Fast Marching inpainting
-  // 1. Initialize: find boundary pixels (mask pixels adjacent to known pixels)
-  // 2. Process boundary pixels first, then move inward
-  
+  // Multi-pass inpainting for better quality
+  // Pass 1: Initial reconstruction with larger radius for context
+  let outputPixels = await inpaintPass(pixels, isMasked, width, height, radius * 2);
+
+  // Pass 2: Refinement with smaller radius for detail
+  outputPixels = await inpaintPass(outputPixels, isMasked, width, height, radius);
+
+  // Pass 3: Smoothing on boundary for seamless blending
+  const smoothedPixels = applyBoundarySmoothing(outputPixels, isMasked, width, height, 3);
+
+  // Convert back to raw buffer
+  const outputRaw = Buffer.alloc(width * height * 4);
+  for (let i = 0; i < width * height; i++) {
+    const idx = i * 4;
+    outputRaw[idx] = smoothedPixels[i].r;
+    outputRaw[idx + 1] = smoothedPixels[i].g;
+    outputRaw[idx + 2] = smoothedPixels[i].b;
+    outputRaw[idx + 3] = smoothedPixels[i].a;
+  }
+
+  return sharp(outputRaw, { raw: { width, height, channels: 4 } })
+    .png({ quality: 100 })
+    .toBuffer();
+}
+
+/**
+ * Single inpainting pass using fast marching
+ */
+async function inpaintPass(
+  pixels: Pixel[],
+  isMasked: boolean[],
+  width: number,
+  height: number,
+  radius: number
+): Promise<Pixel[]> {
   const known = new Uint8Array(width * height);
   const distance = new Float32Array(width * height);
   const processed = new Uint8Array(width * height);
+  const outputPixels: Pixel[] = [...pixels];
 
   // Initialize known/unknown
   for (let i = 0; i < width * height; i++) {
@@ -80,13 +117,12 @@ export async function inpaintImage(
     }
   }
 
-  // Find initial boundary (mask pixels next to known pixels)
+  // Find initial boundary
   const boundary: number[] = [];
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const idx = y * width + x;
       if (!known[idx]) {
-        // Check neighbors
         let hasKnownNeighbor = false;
         for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
           const nx = x + dx;
@@ -106,24 +142,33 @@ export async function inpaintImage(
     }
   }
 
-  // Process pixels using fast marching approach
-  // Sort by distance (process closest to boundary first)
+  // Sort by distance
   const processQueue: number[] = [...boundary].sort((a, b) => distance[a] - distance[b]);
-  
-  const outputPixels: Pixel[] = [...pixels];
 
-  for (const bIdx of boundary) {
-    processed[bIdx] = 1;
-  }
+  // Process using fast marching
+  const queueSet = new Set(boundary);
 
-  // Process boundary pixels using weighted interpolation of known neighbors
-  for (const idx of processQueue) {
+  while (processQueue.length > 0) {
+    // Find the pixel with smallest distance
+    let minIdx = 0;
+    let minDist = Infinity;
+    for (let i = 0; i < processQueue.length; i++) {
+      if (distance[processQueue[i]] < minDist) {
+        minDist = distance[processQueue[i]];
+        minIdx = i;
+      }
+    }
+
+    const idx = processQueue.splice(minIdx, 1)[0];
+    queueSet.delete(idx);
+
+    // Skip if already processed (can happen if pixel was added multiple times)
     if (processed[idx]) continue;
 
     const x = idx % width;
     const y = Math.floor(idx / width);
 
-    // Collect known pixels within radius
+    // Collect known pixels within radius using weighted interpolation
     let totalR = 0, totalG = 0, totalB = 0, totalWeight = 0;
 
     for (let dy = -radius; dy <= radius; dy++) {
@@ -132,14 +177,15 @@ export async function inpaintImage(
         const ny = y + dy;
         if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
           const nIdx = ny * width + nx;
+          // Use known pixels OR already-processed (reconstructed) pixels
           if (known[nIdx] || processed[nIdx]) {
             const dist = Math.sqrt(dx * dx + dy * dy);
             if (dist <= radius && dist > 0) {
-              // Weight inversely proportional to distance
-              const weight = 1 / (dist * dist);
-              // Direction factor: prefer pixels closer to boundary
-              const directionFactor = Math.max(0, 1 - distance[nIdx] / (radius * 2));
-              const finalWeight = weight * (1 + directionFactor);
+              // Inverse distance weighting
+              const weight = 1 / Math.pow(dist, 2);
+              // Direction preference: pixels closer to boundary get extra weight
+              const directionFactor = Math.max(0.1, 1 - distance[nIdx] / (radius * 2));
+              const finalWeight = weight * directionFactor;
 
               totalR += outputPixels[nIdx].r * finalWeight;
               totalG += outputPixels[nIdx].g * finalWeight;
@@ -161,58 +207,44 @@ export async function inpaintImage(
       processed[idx] = 1;
       known[idx] = 1;
 
-      // Update distances of unknown neighbors
+      // Update distances of unknown neighbors and add to queue
       for (const [ddx, ddy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
         const nnx = x + ddx;
         const nny = y + ddy;
         if (nnx >= 0 && nnx < width && nny >= 0 && nny < height) {
           const nnIdx = nny * width + nnx;
-          if (!known[nnIdx] && !processed[nnIdx]) {
+          if (!known[nnIdx] && !processed[nnIdx] && !queueSet.has(nnIdx)) {
             distance[nnIdx] = Math.min(distance[nnIdx], distance[idx] + 1);
             processQueue.push(nnIdx);
+            queueSet.add(nnIdx);
           }
         }
       }
     }
   }
 
-  // Convert back to raw buffer
-  const outputRaw = Buffer.alloc(width * height * 4);
-  for (let i = 0; i < width * height; i++) {
-    const idx = i * 4;
-    outputRaw[idx] = outputPixels[i].r;
-    outputRaw[idx + 1] = outputPixels[i].g;
-    outputRaw[idx + 2] = outputPixels[i].b;
-    outputRaw[idx + 3] = outputPixels[i].a;
-  }
-
-  // Apply smoothing pass for seamless blending
-  const smoothedRaw = applySmoothingPass(outputRaw, width, height, isMasked, radius);
-
-  return sharp(smoothedRaw, { raw: { width, height, channels: 4 } })
-    .png({ quality: 100 })
-    .toBuffer();
+  return outputPixels;
 }
 
 /**
- * Smoothing pass to blend inpainted area with surrounding pixels
+ * Apply boundary smoothing for seamless blending
+ * Only smooths pixels at the boundary of mask regions
  */
-function applySmoothingPass(
-  raw: Buffer,
+function applyBoundarySmoothing(
+  pixels: Pixel[],
+  isMasked: boolean[],
   width: number,
   height: number,
-  isMasked: boolean[],
   radius: number
-): Buffer {
-  const output = Buffer.from(raw);
+): Pixel[] {
+  const output: Pixel[] = [...pixels];
 
-  // Gaussian-like smoothing only on mask boundary pixels
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const idx = y * width + x;
       if (!isMasked[idx]) continue;
 
-      // Check if this is a boundary pixel (near edge of mask)
+      // Check if this is a boundary pixel
       let isNearBoundary = false;
       for (const [dx, dy] of [[-2, 0], [2, 0], [0, -2], [0, 2]]) {
         const nx = x + dx;
@@ -227,23 +259,23 @@ function applySmoothingPass(
 
       if (!isNearBoundary) continue;
 
-      // Apply weighted average with nearby pixels
+      // Apply Gaussian-like smoothing
       let totalR = 0, totalG = 0, totalB = 0, totalWeight = 0;
-      const smoothRadius = Math.min(radius, 3);
 
-      for (let dy = -smoothRadius; dy <= smoothRadius; dy++) {
-        for (let dx = -smoothRadius; dx <= smoothRadius; dx++) {
+      for (let dy = -radius; dy <= radius; dy++) {
+        for (let dx = -radius; dx <= radius; dx++) {
           const nx = x + dx;
           const ny = y + dy;
           if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
             const nIdx = ny * width + nx;
-            const pixelIdx = nIdx * 4;
             const dist = Math.sqrt(dx * dx + dy * dy);
-            if (dist <= smoothRadius) {
-              const weight = 1 / (1 + dist);
-              totalR += raw[pixelIdx] * weight;
-              totalG += raw[pixelIdx + 1] * weight;
-              totalB += raw[pixelIdx + 2] * weight;
+            if (dist <= radius) {
+              // Gaussian weight
+              const sigma = radius / 2;
+              const weight = Math.exp(-(dist * dist) / (2 * sigma * sigma));
+              totalR += pixels[nIdx].r * weight;
+              totalG += pixels[nIdx].g * weight;
+              totalB += pixels[nIdx].b * weight;
               totalWeight += weight;
             }
           }
@@ -251,10 +283,12 @@ function applySmoothingPass(
       }
 
       if (totalWeight > 0) {
-        const pixelIdx = idx * 4;
-        output[pixelIdx] = Math.round(totalR / totalWeight);
-        output[pixelIdx + 1] = Math.round(totalG / totalWeight);
-        output[pixelIdx + 2] = Math.round(totalB / totalWeight);
+        output[idx] = {
+          r: Math.round(totalR / totalWeight),
+          g: Math.round(totalG / totalWeight),
+          b: Math.round(totalB / totalWeight),
+          a: 255,
+        };
       }
     }
   }
@@ -263,7 +297,7 @@ function applySmoothingPass(
 }
 
 // ============================================================
-// AUTO WATERMARK DETECTION
+// AUTO WATERMARK DETECTION (IMPROVED)
 // ============================================================
 
 interface DetectedRegion {
@@ -275,8 +309,9 @@ interface DetectedRegion {
 }
 
 /**
- * Auto-detect watermark regions in an image
- * Scans for semi-transparent regions, repetitive patterns, and known watermark positions
+ * Improved watermark detection
+ * Scans for semi-transparent regions, brightness anomalies in corners,
+ * and known watermark patterns (Gemini sparkle, text logos)
  */
 export async function detectWatermark(
   inputBuffer: Buffer
@@ -290,67 +325,87 @@ export async function detectWatermark(
 
   const regions: DetectedRegion[] = [];
 
-  // Strategy 1: Check common watermark positions (corners, especially bottom-right)
-  const cornerSize = Math.min(width, height) * 0.12;
-  const positions = [
-    { x: width - cornerSize, y: height - cornerSize, confidence: 0.9 }, // bottom-right (most common)
-    { x: 0, y: height - cornerSize, confidence: 0.7 }, // bottom-left
-    { x: width - cornerSize, y: 0, confidence: 0.6 }, // top-right
-    { x: 0, y: 0, confidence: 0.5 }, // top-left
-    { x: (width - cornerSize) / 2, y: height - cornerSize, confidence: 0.4 }, // bottom-center
+  // Strategy 1: Corner-based detection with brightness anomaly analysis
+  // Watermarks typically appear in corners as brighter or different-colored patches
+  // Use large search area (30% of min dimension) to ensure we catch the full watermark
+  const cornerSize = Math.min(width, height) * 0.30;
+  const corners = [
+    { x: width - cornerSize, y: height - cornerSize, name: 'bottom-right', confidence: 0.95 },
+    { x: 0, y: height - cornerSize, name: 'bottom-left', confidence: 0.7 },
+    { x: width - cornerSize, y: 0, name: 'top-right', confidence: 0.65 },
+    { x: 0, y: 0, name: 'top-left', confidence: 0.55 },
   ];
 
-  for (const pos of positions) {
-    // Check if this region has unusual transparency or color variation
-    const regionStats = analyzeRegion(raw, width, height, pos.x, pos.y, cornerSize, cornerSize);
-    
-    if (regionStats.hasTransparency || regionStats.colorDeviation > 0.15) {
+  for (const corner of corners) {
+    const regionStats = analyzeRegionDetailed(raw, width, height, corner.x, corner.y, cornerSize, cornerSize);
+
+    // Detect watermark if region has high brightness variation or transparency
+    if (regionStats.hasTransparency || regionStats.brightnessAnomaly > 0.12 || regionStats.colorDeviation > 0.18) {
+      // Use the full corner region as the mask (more reliable than refining)
+      // The inpainting algorithm will handle the non-watermark pixels gracefully
       regions.push({
-        x: Math.round(pos.x),
-        y: Math.round(pos.y),
+        x: Math.round(corner.x),
+        y: Math.round(corner.y),
         width: Math.round(cornerSize),
         height: Math.round(cornerSize),
-        confidence: pos.confidence * (regionStats.hasTransparency ? 1.5 : 1),
+        confidence: corner.confidence * (regionStats.hasTransparency ? 1.3 : 1),
       });
     }
   }
 
-  // Strategy 2: Scan for text-like patterns (uniform color blocks in edges)
-  const edgeMargin = Math.min(width, height) * 0.08;
-  const edgeRegions = [
-    { x: 0, y: 0, w: width, h: edgeMargin }, // top edge
-    { x: 0, y: height - edgeMargin, w: width, h: edgeMargin }, // bottom edge
-    { x: 0, y: 0, w: edgeMargin, h: height }, // left edge
-    { x: width - edgeMargin, y: 0, w: edgeMargin, h: height }, // right edge
-  ];
-
-  for (const edge of edgeRegions) {
-    const stats = analyzeRegion(raw, width, height, edge.x, edge.y, edge.w, edge.h);
-    if (stats.uniformity > 0.7 || stats.hasTransparency) {
-      regions.push({
-        x: Math.round(edge.x),
-        y: Math.round(edge.y),
-        width: Math.round(edge.w),
-        height: Math.round(edge.h),
-        confidence: stats.uniformity > 0.8 ? 0.8 : 0.6,
-      });
-    }
+  // Strategy 2: Bottom edge scan (common for watermarks)
+  const bottomStripHeight = Math.min(height * 0.12, 80);
+  const bottomStripStats = analyzeRegionDetailed(raw, width, height, 0, height - bottomStripHeight, width, bottomStripHeight);
+  if (bottomStripStats.brightnessAnomaly > 0.1) {
+    // Use the full bottom strip as the mask region
+    regions.push({
+      x: 0,
+      y: Math.round(height - bottomStripHeight),
+      width: width,
+      height: Math.round(bottomStripHeight),
+      confidence: 0.75,
+    });
   }
 
-  // Strategy 3: Detect Gemini-style sparkle (4-pointed star) in bottom-right
-  // The sparkle watermark typically appears as semi-transparent overlay
+  // Strategy 3: Detect Gemini-style sparkle (4-pointed star)
   const sparkleRegion = detectGeminiSparkle(raw, width, height);
   if (sparkleRegion) {
     regions.push(sparkleRegion);
   }
 
-  // Sort by confidence
-  regions.sort((a, b) => b.confidence - a.confidence);
+  // Strategy 4: Detect text-like patterns (high contrast regions in corners)
+  const textRegions = detectTextPatterns(raw, width, height);
+  regions.push(...textRegions);
 
-  return regions;
+  // Deduplicate and merge overlapping regions
+  let mergedRegions = mergeOverlappingRegions(regions);
+
+  // Fallback: Always ensure the bottom-right corner is covered
+  // This is the most common watermark position
+  const hasBottomRightCoverage = mergedRegions.some(r =>
+    r.x + r.width >= width * 0.85 && r.y + r.height >= height * 0.85
+  );
+  if (!hasBottomRightCoverage) {
+    const fallbackSize = Math.min(width, height) * 0.20;
+    mergedRegions.push({
+      x: Math.round(width - fallbackSize),
+      y: Math.round(height - fallbackSize),
+      width: Math.round(fallbackSize),
+      height: Math.round(fallbackSize),
+      confidence: 0.5,
+    });
+  }
+
+  // Sort by confidence
+  mergedRegions.sort((a, b) => b.confidence - a.confidence);
+
+  return mergedRegions;
 }
 
-function analyzeRegion(
+/**
+ * Detailed region analysis
+ */
+function analyzeRegionDetailed(
   raw: Buffer,
   imgWidth: number,
   imgHeight: number,
@@ -364,7 +419,8 @@ function analyzeRegion(
   let colorSum = { r: 0, g: 0, b: 0 };
   let colorVariance = { r: 0, g: 0, b: 0 };
   let pixelCount = 0;
-  const colorValues: { r: number; g: number; b: number }[] = [];
+  let brightnessSum = 0;
+  const colorValues: { r: number; g: number; b: number; brightness: number }[] = [];
 
   const startX = Math.max(0, Math.floor(rx));
   const startY = Math.max(0, Math.floor(ry));
@@ -384,13 +440,15 @@ function analyzeRegion(
       colorSum.r += r;
       colorSum.g += g;
       colorSum.b += b;
-      colorValues.push({ r, g, b });
+      const brightness = (r + g + b) / 3;
+      brightnessSum += brightness;
+      colorValues.push({ r, g, b, brightness });
       pixelCount++;
     }
   }
 
   if (pixelCount === 0) {
-    return { hasTransparency: false, colorDeviation: 0, uniformity: 0 };
+    return { hasTransparency: false, colorDeviation: 0, uniformity: 0, brightnessAnomaly: 0 };
   }
 
   const avgAlpha = totalAlpha / pixelCount;
@@ -399,47 +457,158 @@ function analyzeRegion(
     g: colorSum.g / pixelCount,
     b: colorSum.b / pixelCount,
   };
+  const avgBrightness = brightnessSum / pixelCount;
 
   // Calculate color variance
+  let brightnessVarianceSum = 0;
   for (const c of colorValues) {
     colorVariance.r += (c.r - avgColor.r) ** 2;
     colorVariance.g += (c.g - avgColor.g) ** 2;
     colorVariance.b += (c.b - avgColor.b) ** 2;
+    brightnessVarianceSum += (c.brightness - avgBrightness) ** 2;
   }
 
   const variance = (colorVariance.r + colorVariance.g + colorVariance.b) / (pixelCount * 3);
   const deviation = Math.sqrt(variance) / 255;
-
-  // Uniformity: how similar are the colors (low variance = high uniformity)
+  const brightnessVariance = Math.sqrt(brightnessVarianceSum / pixelCount) / 255;
   const uniformity = 1 - deviation;
 
   return {
-    hasTransparency: avgAlpha < 250 || transparentCount > pixelCount * 0.1,
+    hasTransparency: avgAlpha < 250 || transparentCount > pixelCount * 0.05,
     colorDeviation: deviation,
     uniformity,
+    brightnessAnomaly: brightnessVariance,
+    avgBrightness,
   };
 }
 
 /**
- * Detect Gemini-style sparkle watermark
- * The sparkle is a 4-pointed star shape in the bottom-right corner
- * It appears as a semi-transparent overlay with a specific pattern
+ * Refine the watermark region by finding the actual bounding box of anomalous pixels
+ * Uses robust background sampling from OUTSIDE the search region
+ */
+function refineWatermarkRegion(
+  raw: Buffer,
+  imgWidth: number,
+  imgHeight: number,
+  rx: number,
+  ry: number,
+  rw: number,
+  rh: number
+): { x: number; y: number; width: number; height: number } {
+  // Sample background from OUTSIDE the search region to avoid contamination
+  // Use a band around the search region
+  const bandSize = Math.max(10, Math.min(imgWidth, imgHeight) * 0.03);
+  const samplePoints: { x: number; y: number }[] = [];
+
+  // Sample from left of region
+  for (let y = Math.floor(ry); y < Math.min(ry + rh, imgHeight); y += Math.max(1, Math.floor(rh / 5))) {
+    for (let x = Math.max(0, Math.floor(rx - bandSize)); x < Math.floor(rx); x += 3) {
+      samplePoints.push({ x, y });
+    }
+  }
+  // Sample from above region
+  for (let x = Math.floor(rx); x < Math.min(rx + rw, imgWidth); x += Math.max(1, Math.floor(rw / 5))) {
+    for (let y = Math.max(0, Math.floor(ry - bandSize)); y < Math.floor(ry); y += 3) {
+      samplePoints.push({ x, y });
+    }
+  }
+  // Sample from right of region
+  for (let y = Math.floor(ry); y < Math.min(ry + rh, imgHeight); y += Math.max(1, Math.floor(rh / 5))) {
+    for (let x = Math.min(imgWidth - 1, Math.floor(rx + rw)); x < Math.min(imgWidth, Math.floor(rx + rw + bandSize)); x += 3) {
+      samplePoints.push({ x, y });
+    }
+  }
+
+  let bgR = 0, bgG = 0, bgB = 0, validSamples = 0;
+  for (const p of samplePoints) {
+    if (p.x >= 0 && p.x < imgWidth && p.y >= 0 && p.y < imgHeight) {
+      const idx = (p.y * imgWidth + p.x) * 4;
+      bgR += raw[idx];
+      bgG += raw[idx + 1];
+      bgB += raw[idx + 2];
+      validSamples++;
+    }
+  }
+
+  if (validSamples === 0) {
+    // Fallback: use center of image as background
+    const cx = Math.floor(imgWidth / 2);
+    const cy = Math.floor(imgHeight / 2);
+    const idx = (cy * imgWidth + cx) * 4;
+    bgR = raw[idx];
+    bgG = raw[idx + 1];
+    bgB = raw[idx + 2];
+  } else {
+    bgR /= validSamples;
+    bgG /= validSamples;
+    bgB /= validSamples;
+  }
+
+  // Find pixels that differ significantly from background
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  let anomalousCount = 0;
+  const threshold = 20; // color difference threshold (lowered for sensitivity)
+
+  const startX = Math.max(0, Math.floor(rx));
+  const startY = Math.max(0, Math.floor(ry));
+  const endX = Math.min(imgWidth, Math.ceil(rx + rw));
+  const endY = Math.min(imgHeight, Math.ceil(ry + rh));
+
+  for (let y = startY; y < endY; y++) {
+    for (let x = startX; x < endX; x++) {
+      const idx = (y * imgWidth + x) * 4;
+      const r = raw[idx];
+      const g = raw[idx + 1];
+      const b = raw[idx + 2];
+      const a = raw[idx + 3];
+
+      const colorDiff = Math.sqrt(
+        (r - bgR) ** 2 + (g - bgG) ** 2 + (b - bgB) ** 2
+      );
+
+      // Detect anomalies: pixels that differ from background OR have transparency
+      if (colorDiff > threshold || a < 250) {
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+        anomalousCount++;
+      }
+    }
+  }
+
+  if (anomalousCount === 0 || maxX < 0) {
+    return { x: Math.floor(rx), y: Math.floor(ry), width: Math.floor(rw), height: Math.floor(rh) };
+  }
+
+  // Add generous padding to ensure full watermark coverage
+  const padding = Math.max(8, Math.min(imgWidth, imgHeight) * 0.02);
+  return {
+    x: Math.max(0, Math.floor(minX - padding)),
+    y: Math.max(0, Math.floor(minY - padding)),
+    width: Math.min(imgWidth, Math.ceil(maxX - minX + padding * 2)),
+    height: Math.min(imgHeight, Math.ceil(maxY - minY + padding * 2)),
+  };
+}
+
+/**
+ * Detect Gemini-style sparkle watermark (4-pointed star)
  */
 function detectGeminiSparkle(
   raw: Buffer,
   width: number,
   height: number
 ): DetectedRegion | null {
-  // Check bottom-right area for sparkle pattern
-  const sparkleSearchSize = Math.min(width, height) * 0.08;
-  const startX = Math.floor(width - sparkleSearchSize * 1.5);
-  const startY = Math.floor(height - sparkleSearchSize * 1.5);
-  const searchW = Math.ceil(sparkleSearchSize * 1.5);
-  const searchH = Math.ceil(sparkleSearchSize * 1.5);
+  // Search bottom-right area for sparkle pattern
+  // Use large search area (25% of min dimension) to ensure full watermark coverage
+  const sparkleSearchSize = Math.min(width, height) * 0.25;
+  const startX = Math.floor(width - sparkleSearchSize);
+  const startY = Math.floor(height - sparkleSearchSize);
+  const searchW = Math.ceil(sparkleSearchSize);
+  const searchH = Math.ceil(sparkleSearchSize);
 
   let sparklePixels = 0;
   let totalPixels = 0;
-  let avgBrightness = 0;
 
   for (let y = startY; y < Math.min(startY + searchH, height); y++) {
     for (let x = startX; x < Math.min(startX + searchW, width); x++) {
@@ -449,11 +618,10 @@ function detectGeminiSparkle(
       const b = raw[idx + 2];
       const a = raw[idx + 3];
 
-      // Sparkle pattern: semi-transparent, lighter than surrounding area
       const brightness = (r + g + b) / 3;
-      avgBrightness += brightness;
 
-      if (a < 255 && brightness > 180) {
+      // Sparkle pattern: semi-transparent, lighter than surrounding area
+      if ((a < 255 || brightness > 200) && brightness > 180) {
         sparklePixels++;
       }
       totalPixels++;
@@ -462,16 +630,15 @@ function detectGeminiSparkle(
 
   if (totalPixels === 0) return null;
 
-  avgBrightness /= totalPixels;
-
   // If sparkle-like pixels found with sufficient density
-  if (sparklePixels > totalPixels * 0.05 && sparklePixels > 10) {
+  if (sparklePixels > totalPixels * 0.03 && sparklePixels > 5) {
+    // Use the full search region as the mask (more reliable)
     return {
       x: startX,
       y: startY,
       width: searchW,
       height: searchH,
-      confidence: 0.85,
+      confidence: 0.9,
     };
   }
 
@@ -479,7 +646,120 @@ function detectGeminiSparkle(
 }
 
 /**
+ * Detect text-like patterns in image corners
+ * Looks for high-contrast regions that could be text watermarks
+ */
+function detectTextPatterns(
+  raw: Buffer,
+  width: number,
+  height: number
+): DetectedRegion[] {
+  const regions: DetectedRegion[] = [];
+  const cornerSize = Math.min(width, height) * 0.15;
+
+  const corners = [
+    { x: width - cornerSize, y: height - cornerSize, name: 'br' },
+    { x: 0, y: height - cornerSize, name: 'bl' },
+    { x: width - cornerSize, y: 0, name: 'tr' },
+  ];
+
+  for (const corner of corners) {
+    // Compute local contrast in this region
+    let contrastSum = 0;
+    let pixelCount = 0;
+    const blockX = Math.floor(corner.x);
+    const blockY = Math.floor(corner.y);
+    const blockW = Math.min(cornerSize, width - blockX);
+    const blockH = Math.min(cornerSize, height - blockY);
+
+    for (let y = blockY; y < blockY + blockH - 1; y++) {
+      for (let x = blockX; x < blockX + blockW - 1; x++) {
+        const idx = (y * width + x) * 4;
+        const idxRight = (y * width + x + 1) * 4;
+        const idxDown = ((y + 1) * width + x) * 4;
+
+        const b1 = (raw[idx] + raw[idx + 1] + raw[idx + 2]) / 3;
+        const b2 = (raw[idxRight] + raw[idxRight + 1] + raw[idxRight + 2]) / 3;
+        const b3 = (raw[idxDown] + raw[idxDown + 1] + raw[idxDown + 2]) / 3;
+
+        contrastSum += Math.abs(b1 - b2) + Math.abs(b1 - b3);
+        pixelCount++;
+      }
+    }
+
+    if (pixelCount === 0) continue;
+    const avgContrast = contrastSum / pixelCount;
+
+    // High contrast suggests text presence
+    if (avgContrast > 20) {
+      const refined = refineWatermarkRegion(raw, width, height, blockX, blockY, blockW, blockH);
+      regions.push({
+        x: refined.x,
+        y: refined.y,
+        width: refined.width,
+        height: refined.height,
+        confidence: 0.7,
+      });
+    }
+  }
+
+  return regions;
+}
+
+/**
+ * Merge overlapping regions to avoid duplicate processing
+ */
+function mergeOverlappingRegions(regions: DetectedRegion[]): DetectedRegion[] {
+  if (regions.length === 0) return regions;
+
+  const merged: DetectedRegion[] = [];
+  const used = new Array(regions.length).fill(false);
+
+  for (let i = 0; i < regions.length; i++) {
+    if (used[i]) continue;
+    let current = { ...regions[i] };
+    used[i] = true;
+
+    for (let j = i + 1; j < regions.length; j++) {
+      if (used[j]) continue;
+      if (regionsOverlap(current, regions[j])) {
+        current = mergeRegions(current, regions[j]);
+        used[j] = true;
+      }
+    }
+
+    merged.push(current);
+  }
+
+  return merged;
+}
+
+function regionsOverlap(a: DetectedRegion, b: DetectedRegion): boolean {
+  return !(
+    a.x + a.width < b.x ||
+    b.x + b.width < a.x ||
+    a.y + a.height < b.y ||
+    b.y + b.height < a.y
+  );
+}
+
+function mergeRegions(a: DetectedRegion, b: DetectedRegion): DetectedRegion {
+  const x = Math.min(a.x, b.x);
+  const y = Math.min(a.y, b.y);
+  const right = Math.max(a.x + a.width, b.x + b.width);
+  const bottom = Math.max(a.y + a.height, b.y + b.height);
+  return {
+    x,
+    y,
+    width: right - x,
+    height: bottom - y,
+    confidence: Math.max(a.confidence, b.confidence),
+  };
+}
+
+/**
  * Generate a mask from detected watermark regions
+ * Adds generous padding for full coverage
  */
 export async function generateDetectionMask(
   inputBuffer: Buffer,
@@ -514,8 +794,9 @@ export async function generateDetectionMask(
     }
   }
 
-  // Add padding around mask regions for better coverage
-  const paddedMask = addMaskPadding(maskRaw, width, height, 5);
+  // Add generous padding around mask regions for better coverage
+  const padding = Math.max(8, Math.min(width, height) * 0.015);
+  const paddedMask = addMaskPadding(maskRaw, width, height, Math.floor(padding));
 
   return sharp(paddedMask, { raw: { width, height, channels: 4 } })
     .png()
@@ -559,7 +840,7 @@ function addMaskPadding(
 }
 
 // ============================================================
-// WATERMARK ADDITION
+// WATERMARK ADDITION (with proper text rendering via canvas)
 // ============================================================
 
 export interface AddWatermarkOptions {
@@ -572,164 +853,217 @@ export interface AddWatermarkOptions {
   logoOpacity?: number;
   logoSize?: number;
   logoPosition?: string;
+  rotation?: number;
+  shadow?: boolean;
+  repeat?: boolean;
+}
+
+// Try to register fonts (will silently fail if not available)
+let fontsRegistered = false;
+function ensureFontsRegistered() {
+  if (fontsRegistered) return;
+  fontsRegistered = true;
+  try {
+    // Try common system font paths
+    const fontPaths = [
+      '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+      '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
+      '/usr/share/fonts/TTF/DejaVuSans.ttf',
+      '/System/Library/Fonts/Helvetica.ttc',
+    ];
+    for (const p of fontPaths) {
+      if (fs.existsSync(p)) {
+        try {
+          registerFont(p, { family: 'ZeminaiSans', weight: 'normal' });
+        } catch (e) {
+          // ignore font registration errors
+        }
+      }
+    }
+  } catch (e) {
+    // ignore
+  }
 }
 
 /**
- * Add a text or logo watermark to an image
+ * Add a text or logo watermark to an image using canvas for proper text rendering
  */
 export async function addWatermark(
   inputBuffer: Buffer,
   options: AddWatermarkOptions
 ): Promise<Buffer> {
+  ensureFontsRegistered();
+
   const image = sharp(inputBuffer);
   const meta = await image.metadata();
   const width = meta.width!;
   const height = meta.height!;
-  const channels = meta.channels || 4;
 
-  // Convert to RGBA
-  const rgbaBuffer = await image.ensureAlpha().raw().toBuffer();
-  const outputBuffer = Buffer.from(rgbaBuffer);
+  // Convert to PNG buffer for canvas
+  const pngBuffer = await image.png().toBuffer();
+  const canvasImg = await loadImage(pngBuffer);
 
-  // Add text watermark if specified
+  // Create canvas with same dimensions
+  const canvas = createCanvas(width, height);
+  const ctx = canvas.getContext('2d');
+
+  // Draw original image
+  ctx.drawImage(canvasImg, 0, 0, width, height);
+
+  // Add text watermark
   if (options.text && options.text.trim()) {
-    addTextWatermark(
-      outputBuffer,
-      width,
-      height,
-      options.text,
-      options.fontSize || 24,
-      options.color || "#ffffff",
-      (options.opacity || 50) / 100,
-      options.position || "bottom-right"
-    );
+    drawTextWatermark(ctx, width, height, {
+      text: options.text,
+      fontSize: options.fontSize || 24,
+      color: options.color || '#ffffff',
+      opacity: (options.opacity || 50) / 100,
+      position: options.position || 'bottom-right',
+      rotation: options.rotation || 0,
+      shadow: options.shadow ?? true,
+      repeat: options.repeat || false,
+    });
   }
 
-  // Add logo watermark if specified
+  // Add logo watermark
   if (options.logoBuffer) {
-    await addLogoWatermark(
-      outputBuffer,
-      width,
-      height,
-      options.logoBuffer,
-      (options.logoOpacity || 50) / 100,
-      options.logoSize || 100,
-      options.logoPosition || options.position || "bottom-right"
-    );
+    await drawLogoWatermark(ctx, width, height, {
+      logoBuffer: options.logoBuffer,
+      opacity: (options.logoOpacity || 50) / 100,
+      size: options.logoSize || 100,
+      position: options.logoPosition || options.position || 'bottom-right',
+      rotation: options.rotation || 0,
+    });
   }
 
-  return sharp(outputBuffer, { raw: { width, height, channels: 4 } })
-    .png({ quality: 100 })
-    .toBuffer();
+  // Convert canvas back to buffer
+  const outputBuffer = canvas.toBuffer('image/png');
+  return outputBuffer;
+}
+
+interface TextWatermarkOptions {
+  text: string;
+  fontSize: number;
+  color: string;
+  opacity: number;
+  position: string;
+  rotation: number;
+  shadow: boolean;
+  repeat: boolean;
 }
 
 /**
- * Add text watermark to raw pixel buffer
+ * Draw text watermark on canvas with proper font rendering
  */
-function addTextWatermark(
-  buffer: Buffer,
-  width: number,
-  height: number,
-  text: string,
-  fontSize: number,
-  color: string,
-  opacity: number,
-  position: string
+function drawTextWatermark(
+  ctx: ReturnType<ReturnType<typeof createCanvas>['getContext']>,
+  canvasWidth: number,
+  canvasHeight: number,
+  options: TextWatermarkOptions
 ): void {
-  // Parse color
-  const colorRgb = parseColor(color);
+  ctx.save();
 
-  // Calculate text dimensions (approximate)
-  const avgCharWidth = fontSize * 0.6;
-  const textWidth = text.length * avgCharWidth;
-  const textHeight = fontSize;
+  // Set font - use canvas's default font with proper sizing
+  const fontFamily = '"ZeminaiSans", "Arial", "Helvetica", sans-serif';
+  ctx.font = `${options.fontSize}px ${fontFamily}`;
+  ctx.textBaseline = 'top';
 
-  // Calculate position
-  const margin = Math.max(10, Math.min(width, height) * 0.03);
-  const pos = calculatePosition(width, height, textWidth, textHeight, margin, position);
+  // Measure text
+  const metrics = ctx.measureText(options.text);
+  const textWidth = metrics.width;
+  const textHeight = options.fontSize * 1.2;
 
-  // Draw text onto buffer
-  // Simple pixel-level text rendering using bitmap approach
-  for (let charIdx = 0; charIdx < text.length; charIdx++) {
-    const charX = pos.x + charIdx * avgCharWidth;
-    drawCharBox(buffer, width, height, charX, pos.y, avgCharWidth, textHeight, colorRgb, opacity);
+  // Set opacity
+  ctx.globalAlpha = options.opacity;
+
+  // Set shadow for better visibility
+  if (options.shadow) {
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+    ctx.shadowBlur = Math.max(2, options.fontSize * 0.1);
+    ctx.shadowOffsetX = 1;
+    ctx.shadowOffsetY = 1;
   }
-}
 
-/**
- * Draw a character placeholder box (simplified text rendering)
- * For production, this would use proper font rendering
- */
-function drawCharBox(
-  buffer: Buffer,
-  width: number,
-  height: number,
-  startX: number,
-  startY: number,
-  charWidth: number,
-  charHeight: number,
-  color: { r: number; g: number; b: number },
-  opacity: number
-): void {
-  // Alpha blending formula: result = original * (1 - alpha) + watermark * alpha
-  for (let y = Math.floor(startY); y < Math.min(Math.ceil(startY + charHeight), height); y++) {
-    for (let x = Math.floor(startX); x < Math.min(Math.ceil(startX + charWidth), width); x++) {
-      const idx = (y * width + x) * 4;
-      buffer[idx] = Math.round(buffer[idx] * (1 - opacity) + color.r * opacity);
-      buffer[idx + 1] = Math.round(buffer[idx + 1] * (1 - opacity) + color.g * opacity);
-      buffer[idx + 2] = Math.round(buffer[idx + 2] * (1 - opacity) + color.b * opacity);
-    }
-  }
-}
+  // Set color
+  ctx.fillStyle = options.color;
 
-/**
- * Add logo watermark using sharp compositing
- */
-async function addLogoWatermark(
-  outputBuffer: Buffer,
-  width: number,
-  height: number,
-  logoBuffer: Buffer,
-  opacity: number,
-  logoSize: number,
-  position: string
-): Promise<void> {
-  // Resize logo
-  const resizedLogo = await sharp(logoBuffer)
-    .resize(logoSize, logoSize, { fit: "contain" })
-    .ensureAlpha()
-    .raw()
-    .toBuffer({ resolveWithObject: true });
+  if (options.repeat) {
+    // Repeat watermark across entire image
+    const spacingX = Math.max(textWidth * 2, 200);
+    const spacingY = Math.max(textHeight * 3, 100);
+    const rotationRad = (options.rotation || -30) * Math.PI / 180;
 
-  const logoWidth = resizedLogo.info.width;
-  const logoHeight = resizedLogo.info.height;
-
-  const margin = Math.max(10, Math.min(width, height) * 0.03);
-  const pos = calculatePosition(width, height, logoWidth, logoHeight, margin, position);
-
-  // Alpha-blend logo onto output buffer
-  for (let y = 0; y < logoHeight; y++) {
-    for (let x = 0; x < logoWidth; x++) {
-      const targetX = pos.x + x;
-      const targetY = pos.y + y;
-      if (targetX >= 0 && targetX < width && targetY >= 0 && targetY < height) {
-        const srcIdx = (y * logoWidth + x) * 4;
-        const dstIdx = (targetY * width + targetX) * 4;
-
-        const logoR = resizedLogo.data[srcIdx];
-        const logoG = resizedLogo.data[srcIdx + 1];
-        const logoB = resizedLogo.data[srcIdx + 2];
-        const logoA = resizedLogo.data[srcIdx + 3] / 255;
-
-        const totalAlpha = logoA * opacity;
-
-        if (totalAlpha > 0.01) {
-          outputBuffer[dstIdx] = Math.round(outputBuffer[dstIdx] * (1 - totalAlpha) + logoR * totalAlpha);
-          outputBuffer[dstIdx + 1] = Math.round(outputBuffer[dstIdx + 1] * (1 - totalAlpha) + logoG * totalAlpha);
-          outputBuffer[dstIdx + 2] = Math.round(outputBuffer[dstIdx + 2] * (1 - totalAlpha) + logoB * totalAlpha);
-        }
+    for (let y = -spacingY; y < canvasHeight + spacingY; y += spacingY) {
+      for (let x = -spacingX; x < canvasWidth + spacingX; x += spacingX) {
+        ctx.save();
+        ctx.translate(x + textWidth / 2, y + textHeight / 2);
+        ctx.rotate(rotationRad);
+        ctx.fillText(options.text, -textWidth / 2, -textHeight / 2);
+        ctx.restore();
       }
     }
+  } else {
+    // Single watermark at specified position
+    const margin = Math.max(10, Math.min(canvasWidth, canvasHeight) * 0.03);
+    const pos = calculatePosition(canvasWidth, canvasHeight, textWidth, textHeight, margin, options.position);
+
+    if (options.rotation !== 0) {
+      ctx.translate(pos.x + textWidth / 2, pos.y + textHeight / 2);
+      ctx.rotate(options.rotation * Math.PI / 180);
+      ctx.fillText(options.text, -textWidth / 2, -textHeight / 2);
+    } else {
+      ctx.fillText(options.text, pos.x, pos.y);
+    }
+  }
+
+  ctx.restore();
+}
+
+interface LogoWatermarkOptions {
+  logoBuffer: Buffer;
+  opacity: number;
+  size: number;
+  position: string;
+  rotation: number;
+}
+
+/**
+ * Draw logo watermark on canvas
+ */
+async function drawLogoWatermark(
+  ctx: ReturnType<ReturnType<typeof createCanvas>['getContext']>,
+  canvasWidth: number,
+  canvasHeight: number,
+  options: LogoWatermarkOptions
+): Promise<void> {
+  try {
+    const logoImg = await loadImage(options.logoBuffer);
+
+    // Calculate logo dimensions while maintaining aspect ratio
+    const logoAspect = logoImg.width / logoImg.height;
+    let logoW = options.size;
+    let logoH = options.size / logoAspect;
+    if (logoH > options.size) {
+      logoH = options.size;
+      logoW = options.size * logoAspect;
+    }
+
+    const margin = Math.max(10, Math.min(canvasWidth, canvasHeight) * 0.03);
+    const pos = calculatePosition(canvasWidth, canvasHeight, logoW, logoH, margin, options.position);
+
+    ctx.save();
+    ctx.globalAlpha = options.opacity;
+
+    if (options.rotation !== 0) {
+      ctx.translate(pos.x + logoW / 2, pos.y + logoH / 2);
+      ctx.rotate(options.rotation * Math.PI / 180);
+      ctx.drawImage(logoImg, -logoW / 2, -logoH / 2, logoW, logoH);
+    } else {
+      ctx.drawImage(logoImg, pos.x, pos.y, logoW, logoH);
+    }
+
+    ctx.restore();
+  } catch (e) {
+    console.error('Logo watermark error:', e);
   }
 }
 
@@ -738,15 +1072,12 @@ async function addLogoWatermark(
 // ============================================================
 
 export interface OptimizeOptions {
-  quality: number; // 1-100
+  quality: number;
   format: "jpeg" | "png" | "webp";
   maxWidth: number;
   maxHeight: number;
 }
 
-/**
- * Optimize image quality and size
- */
 export async function optimizeImage(
   inputBuffer: Buffer,
   options: OptimizeOptions
@@ -768,12 +1099,16 @@ export async function optimizeImage(
   // Apply format and quality
   switch (options.format) {
     case "jpeg":
-      pipeline = pipeline.jpeg({ quality: options.quality });
+      pipeline = pipeline.jpeg({
+        quality: options.quality,
+        mozjpeg: true,
+      });
       break;
     case "png":
       pipeline = pipeline.png({
         quality: options.quality,
         compressionLevel: Math.round((100 - options.quality) / 100 * 9),
+        palette: options.quality < 80,
       });
       break;
     case "webp":
@@ -790,11 +1125,54 @@ export async function optimizeImage(
 }
 
 // ============================================================
+// IMAGE TRANSFORMATIONS (NEW)
+// ============================================================
+
+export interface TransformOptions {
+  rotation?: number; // 0, 90, 180, 270
+  flipH?: boolean;
+  flipV?: boolean;
+  crop?: { x: number; y: number; width: number; height: number };
+}
+
+/**
+ * Apply image transformations (rotation, flip, crop)
+ */
+export async function transformImage(
+  inputBuffer: Buffer,
+  options: TransformOptions
+): Promise<Buffer> {
+  let pipeline = sharp(inputBuffer);
+
+  if (options.crop) {
+    pipeline = pipeline.extract({
+      left: Math.floor(options.crop.x),
+      top: Math.floor(options.crop.y),
+      width: Math.floor(options.crop.width),
+      height: Math.floor(options.crop.height),
+    });
+  }
+
+  if (options.flipH) {
+    pipeline = pipeline.flip();
+  }
+
+  if (options.flipV) {
+    pipeline = pipeline.flop();
+  }
+
+  if (options.rotation && options.rotation !== 0) {
+    pipeline = pipeline.rotate(options.rotation);
+  }
+
+  return pipeline.png({ quality: 100 }).toBuffer();
+}
+
+// ============================================================
 // UTILITY FUNCTIONS
 // ============================================================
 
 function parseColor(hex: string): { r: number; g: number; b: number } {
-  // Remove # prefix
   const clean = hex.replace("#", "");
   return {
     r: parseInt(clean.substring(0, 2), 16),

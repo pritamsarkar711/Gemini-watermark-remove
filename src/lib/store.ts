@@ -37,6 +37,9 @@ export interface WatermarkConfig {
   color: string;
   opacity: number;
   position: WatermarkPosition;
+  rotation: number;
+  shadow: boolean;
+  repeat: boolean;
   logoFile: File | null;
   logoOpacity: number;
   logoSize: number;
@@ -44,62 +47,58 @@ export interface WatermarkConfig {
 }
 
 export interface QualityConfig {
-  quality: number; // 1-100
+  quality: number;
   format: "jpeg" | "png" | "webp";
   maxWidth: number;
   maxHeight: number;
 }
 
+export interface TransformConfig {
+  rotation: number; // 0, 90, 180, 270
+  flipH: boolean;
+  flipV: boolean;
+}
+
 interface AppState {
-  // Current step
   step: ProcessingStep;
   setStep: (step: ProcessingStep) => void;
 
-  // Original image
   originalImage: ImageInfo | null;
   setOriginalImage: (image: ImageInfo | null) => void;
 
-  // Processed result
   processedImage: ProcessedImage | null;
   setProcessedImage: (image: ProcessedImage | null) => void;
 
-  // Mode: remove or add watermark
   mode: WatermarkMode;
   setMode: (mode: WatermarkMode) => void;
 
-  // Watermark removal mask (coordinates for manual selection)
-  maskData: string | null; // base64 mask image
+  maskData: string | null;
   setMaskData: (data: string | null) => void;
 
-  // Auto-detect mode
   autoDetect: boolean;
   setAutoDetect: (auto: boolean) => void;
 
-  // Watermark add config
   watermarkConfig: WatermarkConfig;
   setWatermarkConfig: (config: Partial<WatermarkConfig>) => void;
 
-  // Quality config
   qualityConfig: QualityConfig;
   setQualityConfig: (config: Partial<QualityConfig>) => void;
 
-  // Rename
+  transformConfig: TransformConfig;
+  setTransformConfig: (config: Partial<TransformConfig>) => void;
+
   outputFileName: string;
   setOutputFileName: (name: string) => void;
 
-  // Processing state
   isProcessing: boolean;
   setIsProcessing: (processing: boolean) => void;
 
-  // Comparison slider position
-  sliderPosition: number; // 0-100
+  sliderPosition: number;
   setSliderPosition: (pos: number) => void;
 
-  // Before/After view enabled
   showComparison: boolean;
   setShowComparison: (show: boolean) => void;
 
-  // Reset all
   reset: () => void;
 }
 
@@ -109,6 +108,9 @@ const defaultWatermarkConfig: WatermarkConfig = {
   color: "#ffffff",
   opacity: 50,
   position: "bottom-right",
+  rotation: 0,
+  shadow: true,
+  repeat: false,
   logoFile: null,
   logoOpacity: 50,
   logoSize: 100,
@@ -120,6 +122,12 @@ const defaultQualityConfig: QualityConfig = {
   format: "png",
   maxWidth: 4096,
   maxHeight: 4096,
+};
+
+const defaultTransformConfig: TransformConfig = {
+  rotation: 0,
+  flipH: false,
+  flipV: false,
 };
 
 export const useAppStore = create<AppState>((set) => ({
@@ -151,6 +159,11 @@ export const useAppStore = create<AppState>((set) => ({
     qualityConfig: { ...state.qualityConfig, ...config },
   })),
 
+  transformConfig: defaultTransformConfig,
+  setTransformConfig: (config) => set((state) => ({
+    transformConfig: { ...state.transformConfig, ...config },
+  })),
+
   outputFileName: "",
   setOutputFileName: (name) => set({ outputFileName: name }),
 
@@ -172,6 +185,7 @@ export const useAppStore = create<AppState>((set) => ({
     autoDetect: true,
     watermarkConfig: defaultWatermarkConfig,
     qualityConfig: defaultQualityConfig,
+    transformConfig: defaultTransformConfig,
     outputFileName: "",
     isProcessing: false,
     sliderPosition: 50,
