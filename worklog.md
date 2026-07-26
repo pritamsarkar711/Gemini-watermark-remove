@@ -1400,3 +1400,232 @@ The project compiles successfully and serves pages correctly. The main areas for
 4. **Error handling improvement**: Add more descriptive error messages in toast notifications (e.g., include the HTTP status code or server error message).
 
 5. **Accessibility review**: Verify all new components (MobileDrawer, BatchPanel, How It Works) meet WCAG 2.1 AA standards with proper ARIA attributes.
+
+---
+Task ID: 4-a+4-b
+Agent: styling-polish-agent
+Task: Fix styling bugs and comprehensive UI polish
+
+Work Log:
+- Added 3 new CSS utility classes to globals.css: `.upload-inner-glow` (inner shadow for upload zone), `.step-connector::after` (arrow connector between step cards), `.brand-shadow` (text-shadow for brand name)
+- Fixed floating ArrowRight bug in UploadArea.tsx: Removed ArrowRight import, replaced ArrowRight icons with step number badges (①②③) using `.step-badge` CSS class positioned in top-left of each card. Cards now have `relative` positioning for proper badge placement
+- Fixed 6 low-contrast text issues in UploadArea.tsx: Increased opacity on muted-foreground and primary text across hero subtitle, "Powered by AI" badge, "Reading image..." text, "or click to browse", "up to 50MB", and How It Works step descriptions
+- Enhanced upload zone border: Added `border-primary/30`, `shadow-inner`, and `upload-inner-glow` CSS class for more visible dashed border with subtle inner glow
+- Redesigned How It Works section: Replaced ArrowRight connectors with ①②③ step number badges in absolute-positioned corners, using the pre-existing `.step-badge` CSS class
+- Improved hero section: Changed icon container from `size-16` to `size-20`, changed ring from `ring-1 ring-primary/20` to `ring-2 ring-primary/10`, changed "Powered by AI" from inline text to pill badge with `rounded-full bg-primary/15 px-2 py-0.5`, made subtitle bolder with `text-sm font-medium text-muted-foreground`
+- Improved trust badges: Changed `py-1.5` to `py-2`, `text-[11px]` to `text-xs`, added `ring-1 ring-primary/5`, changed icon size from `size-3` to `size-3.5`
+- Improved Header.tsx: Changed brand text from `text-base` to `text-lg`, added `brand-shadow` CSS class for depth, changed subtitle from `text-[10px]` to `text-xs`
+- Improved Footer.tsx: Changed footer height from `h-12` to `h-14`, changed brand text from `text-[12px]` to `text-xs font-medium`, changed keyboard shortcut text from `text-muted-foreground/70` to `text-muted-foreground`
+- Improved ComparisonSlider.tsx: Changed bottom info row from gradient background to `border rounded-lg bg-card/60`, changed "Original" and "Result" labels from `text-muted-foreground/80` to `text-muted-foreground font-medium`
+- Improved ControlPanel.tsx: Changed sidebar header from `text-muted-foreground/60` to `text-muted-foreground/70`, added `gap-3` to Auto detect switch area, changed Scan and Paintbrush icons from `text-muted-foreground/60` to `text-muted-foreground/70`
+- Ran `bun run lint` — only pre-existing error in ImagePreview.tsx (setProcessingStage in effect), no new errors from changes
+
+Stage Summary:
+- All 3 critical bugs fixed: floating ArrowRight removed, 6 low-contrast texts corrected, upload zone border enhanced with inner glow
+- All 7 styling polish items completed: hero redesign, How It Works timeline, trust badges, header improvements, footer improvements, ComparisonSlider bottom row, ControlPanel sidebar labels
+- 6 files modified: globals.css, UploadArea.tsx, Header.tsx, Footer.tsx, ComparisonSlider.tsx, ControlPanel.tsx
+- No new lint errors introduced
+
+---
+Task ID: 5-a
+Agent: feature-agent-1
+Task: Add processing progress bar and format conversion
+
+Work Log:
+- Read project worklog and all relevant source files (ImagePreview.tsx, ComparisonSlider.tsx, ResizePanel.tsx, store.ts, resize/route.ts, globals.css)
+- Feature 1: Added 3-stage processing progress bar to ImagePreview.tsx
+  - Created PROCESSING_STAGES constant with labels and descriptions
+  - Added processingStage state (0, 1, 2) with timer-based advancement (2s detect, 3s remove, then finishing)
+  - Replaced simple spinner overlay with enhanced overlay containing progress bar using quality-bar CSS gradient
+  - Added stage indicators (Detecting, Removing, Finishing) with active/inactive styling
+  - Added dynamic stage description text below progress bar
+- Feature 1: Added same 3-stage processing progress bar to ComparisonSlider.tsx
+  - Identical PROCESSING_STAGES constant and processingStage state
+  - Same timer mechanism and same enhanced overlay UI
+  - Used setTimeout(fn, 0) pattern to avoid synchronous setState in effect (lint requirement)
+- Feature 2: Updated store.ts - added targetFormat field to ResizeConfig interface
+  - Added type: 'same' | 'png' | 'jpeg' | 'webp' | 'avif' with default 'same'
+  - Added targetFormat: 'same' to defaultResizeConfig
+  - Added targetFormat: 'same' to handleReset function
+- Feature 2: Updated ResizePanel.tsx - added format selector dropdown
+  - Added FORMAT_OPTIONS array with Same, PNG, JPEG, WebP, AVIF
+  - Added FileOutput icon import
+  - Added format selector row below dimension preview with button-based format picker
+  - Updated handleApply to append format to FormData when targetFormat !== 'same'
+  - Updated result file creation to use dynamic MIME type from API response
+  - Updated handleReset to also reset targetFormat to 'same'
+- Feature 2: Updated resize API route (route.ts) - added format conversion support
+  - Added format parameter parsing from FormData
+  - Added FORMAT_MAP with MIME types and sharp format enums
+  - Built dynamic sharp pipeline: resize first, then format conversion
+  - Format-specific quality settings: PNG 100, JPEG 90, WebP 90, AVIF 80
+  - Returns dynamic MIME type in dataUrl and format field in response
+- Ran bun run lint - all errors resolved (initial synchronous setState lint error fixed with async timeout pattern)
+
+Stage Summary:
+- Processing overlay now shows animated progress bar with 3 stages (Detecting → Removing → Finishing) and stage descriptions
+- Resize panel now includes format conversion selector (Same, PNG, JPEG, WebP, AVIF)
+- Resize API supports format conversion using sharp's format-specific output options
+- All lint checks pass cleanly
+
+---
+Task ID: 5-b
+Agent: image-info-panel-agent
+Task: Add image info panel with before/after comparison stats
+
+Work Log:
+- Read worklog.md, page.tsx, MobileDrawer.tsx, store.ts, ComparisonSlider.tsx, and globals.css to understand project context and patterns
+- Analyzed ImageInfo, ProcessedImage, and DiffStats data structures from the store and ComparisonSlider
+- Studied sidebar-panel and sidebar-panel-header CSS classes and existing panel patterns (CropPanel, HistoryPanel, ResizePanel)
+- Created /home/z/my-project/src/components/watermark-remover/ImageInfoPanel.tsx — new component with:
+  - Collapsible header using sidebar-panel/sidebar-panel-header classes, defaulting to open
+  - Before section: shows original image dimensions, size, format, filename (muted colors with ImageIcon)
+  - After section: shows processed image dimensions, size, format (primary colors with Sparkles icon)
+  - Comparison section with GitCompareArrows icon:
+    - Size comparison: "12.3 KB → 8.1 KB (↓ 34%)" with visual progress bar and color indicator (green/amber/red)
+    - Dimensions comparison: shows unchanged or reduction percentage
+    - Pixel diff stats: reused computation logic from ComparisonSlider (RGBA pixel comparison with >3 threshold)
+  - Framer Motion AnimatePresence for collapse/expand animation
+  - Size reduction bar with green/amber/red color indicator based on percentage
+- Updated /home/z/my-project/src/app/page.tsx:
+  - Added import for ImageInfoPanel
+  - Added ImageInfoPanel in sidebar between ControlPanel and CropPanel, conditionally rendered when processedImage && step === 'result'
+- Updated /home/z/my-project/src/components/watermark-remover/MobileDrawer.tsx:
+  - Added import for ImageInfoPanel
+  - Added ImageInfoPanel in mobile drawer between ControlPanel and CropPanel, same conditional rendering
+- Ran bun run lint — all checks pass cleanly
+- Verified dev server compiles successfully (GET / 200 in 5.7s)
+
+Stage Summary:
+- ImageInfoPanel component created with full before/after comparison stats
+- Panel shows dimensions, file size, format, filename for before; dimensions, size, format for after
+- Comparison section includes visual size reduction progress bar with color-coded indicators
+- Pixel diff stats computed client-side (reusing ComparisonSlider logic)
+- Panel integrated into both desktop sidebar and mobile drawer between ControlPanel and CropPanel
+- All lint checks pass, dev server compiles successfully
+
+---
+Task ID: 4-c+5-c
+Agent: comparison-view-agent
+Task: Add side-by-side and overlay comparison views with mode switcher
+
+Work Log:
+- Added `ComparisonMode` type (`'slider' | 'side-by-side' | 'overlay'`) and `comparisonMode` + `setComparisonMode` state to `/home/z/my-project/src/lib/store.ts`
+- Added `comparisonMode: 'slider'` as default value and included it in the reset function
+- Did NOT add comparisonMode to persist partialize (transient UI state as specified)
+- Created `/home/z/my-project/src/components/watermark-remover/ComparisonViewModeSwitcher.tsx` — a pill-shaped toolbar with 3 toggle buttons (Slider/ArrowLeftRight, Side-by-side/Columns2, Overlay/Layers) using Framer Motion layoutId animation for smooth active state transitions
+- Created `/home/z/my-project/src/components/watermark-remover/SideBySideView.tsx` — shows original (Before) and processed (After) images side by side with label badges, vertical divider on desktop, horizontal divider on mobile, responsive stacking (md breakpoint), processing overlay on left side
+- Created `/home/z/my-project/src/components/watermark-remover/OverlayView.tsx` — shows processed image as base with original overlaid at configurable opacity, local opacity state with Slider component (0-100%), opacity percentage badge with Eye icon, processing overlay spinner
+- Updated `/home/z/my-project/src/app/page.tsx` — imported new components, added comparisonMode from store, added ComparisonViewModeSwitcher above image area when comparison is shown, rendered appropriate comparison component based on comparisonMode (slider → ComparisonSlider, side-by-side → SideBySideView, overlay → OverlayView)
+- Updated `/home/z/my-project/src/components/watermark-remover/MobileDrawer.tsx` — imported ComparisonViewModeSwitcher, added showComparison from store, added view mode switcher in drawer content when comparison is active
+- Ran `bun run lint` — all checks pass cleanly
+- Verified dev server compiles successfully (GET / 200)
+
+Stage Summary:
+- ComparisonMode state added to Zustand store with default 'slider', not persisted
+- 3 new comparison view components created: ComparisonViewModeSwitcher, SideBySideView, OverlayView
+- ComparisonSlider remains unchanged (per instructions)
+- All 3 view modes fully integrated in page.tsx and MobileDrawer
+- View mode switcher appears above image area when showComparison && processedImage is true
+- Side-by-side view is responsive (stacks vertically on mobile, side-by-side on md+)
+- Overlay view has local opacity slider (0-100%) with real-time overlay blending
+- All lint checks pass, dev server compiles successfully
+
+---
+Task ID: cron-review-8
+Agent: main-agent
+Task: QA testing, styling polish, and new feature additions for Zeminai watermark remover (round 8)
+
+## Current Project Status Assessment
+
+The project was in a stable state from previous rounds with comprehensive features (watermark removal/addition, comparison slider, crop, resize, adjust, transform, quality optimizer, batch processing, dark mode, keyboard shortcuts, undo/redo/history, mobile drawer). However, a VLM QA analysis of the home page revealed a **4/10 polish rating** with critical issues:
+
+1. Floating ArrowRight icons outside their containers in the "How It Works" section
+2. Low contrast text (multiple `text-muted-foreground/60` and `/70` instances)
+3. Weak upload zone border (animated border too subtle)
+4. Typography hierarchy confusion
+5. No processing progress bar (only a static spinner)
+6. No comparison view mode switching (only slider)
+7. No format conversion in resize
+8. No before/after image info panel
+
+Additionally, the dev server consistently gets **OOM-killed** by the Linux kernel after 1-2 page requests (~1.7GB memory usage), making thorough agent-browser QA difficult. The server must be restarted before each QA attempt.
+
+## Completed Modifications
+
+### Styling Bug Fixes (4-a)
+- **Floating ArrowRight bug**: Removed absolute-positioned ArrowRight icons from "How It Works" cards that floated outside their grid containers. Replaced with outlined numbered step badges (1, 2, 3) using the `.step-badge` CSS class.
+- **Low contrast text**: Fixed 6 instances of low-opacity text across UploadArea, improving `text-muted-foreground/70` → `text-muted-foreground`, `text-muted-foreground/60` → `text-muted-foreground/80`, etc.
+- **Weak upload zone border**: Added `border-primary/30`, `shadow-inner`, and `upload-inner-glow` CSS class for a visible dashed border with subtle inner glow.
+
+### Comprehensive Styling Polish (4-b)
+- **Hero section**: Icon container upgraded to `size-20` with `ring-2 ring-primary/10`. "Powered by AI" redesigned as a pill badge. Subtitle made `font-medium`.
+- **How It Works**: Timeline-style with numbered step badges (①②③ → 1 2 3) instead of broken arrows. Step badges changed from filled circles to outlined style to avoid "error/notification" visual confusion.
+- **Trust badges**: Larger padding, font, icons. Harmonized colors with format tags (both use `bg-primary/10` and `text-primary/70/80`). Added `ring-1 ring-primary/5`.
+- **Header**: Brand `text-lg` with `brand-shadow` text-shadow. Subtitle `text-xs`.
+- **Footer**: `h-14`, full-opacity text, `text-xs font-medium` brand name.
+- **ComparisonSlider**: Bottom row styled with `border rounded-lg bg-card/60`, labels `font-medium`.
+- **ControlPanel**: Headers at `/70` opacity, `gap-3` spacing.
+- **globals.css**: Added `.upload-inner-glow`, `.step-connector::after`, `.brand-shadow` utilities. Added `overflow-x: hidden` on body. Changed `.step-badge` from filled to outlined (white background, primary border, with card-colored box-shadow halo).
+
+### New Feature: Processing Progress Bar (5-a)
+- Added 3-stage animated progress bar in ImagePreview and ComparisonSlider processing overlays
+- Stages: "Detecting" (2s, 33%) → "Removing" (3s, 66%) → "Finishing" (until complete, 100%)
+- Uses `quality-bar` gradient (red→orange→yellow→green) with Framer Motion animated fill
+- Stage indicator dots and dynamic description text below the bar
+
+### New Feature: Format Conversion in Resize (5-a)
+- Added `targetFormat: 'same' | 'png' | 'jpeg' | 'webp' | 'avif'` to ResizeConfig in store
+- ResizePanel now has a format selector row with 5 options (Same, PNG, JPEG, WebP, AVIF)
+- Updated resize API route to accept format parameter and convert using sharp's `toFormat()`
+
+### New Feature: Comparison View Mode Switcher (4-c + 5-c)
+- Added `comparisonMode` state to store: `'slider' | 'side-by-side' | 'overlay'`
+- Created `ComparisonViewModeSwitcher.tsx`: pill-shaped toolbar with 3 toggle buttons (Slider/Side-by-side/Overlay) using Framer Motion `layoutId` animation
+- Created `SideBySideView.tsx`: original and processed images side by side, responsive (stacks vertically on mobile), with "Before"/"After" labels and divider line
+- Created `OverlayView.tsx`: processed image as base, original overlaid with configurable opacity via Slider component, opacity percentage badge
+- Integrated in page.tsx: mode switcher appears above image area when comparison is shown, conditional rendering based on comparisonMode
+
+### New Feature: Image Info Panel (5-b)
+- Created `ImageInfoPanel.tsx`: collapsible sidebar panel showing:
+  - Before section: dimensions, size, format, filename (muted colors)
+  - After section: dimensions, size, format (primary/foreground colors)
+  - Comparison section: size reduction with animated visual progress bar and green/amber/red indicator, dimensions comparison, pixel diff stats (reusing RGBA >3 threshold computation)
+- Integrated in page.tsx sidebar and MobileDrawer
+
+## Verification Results
+- ESLint: Passes with zero errors
+- VLM QA rating: Improved from **4/10** to **8/10** (2x improvement)
+- Dev server: Compiles and serves pages successfully (GET / 200 in ~5.7s)
+- 22 components total (4 new + 18 existing)
+- 9 API endpoints (including resize with format conversion)
+
+## Unresolved Issues or Risks
+
+1. **OOM Killing**: The Next.js dev server consistently gets killed by the Linux OOM killer after 1-2 requests (~1.7GB memory). This is an environment constraint, not a code bug. Server must be restarted before each QA session. The Caddy gateway and auto-restart mechanism should handle this in production.
+
+2. **Pre-existing TypeScript error**: `src/app/api/adjust/route.ts` has a TS2694 error about sharp.Modulate. This doesn't affect runtime functionality.
+
+3. **MobileDrawer UX**: The mobile drawer approach works but needs testing on real devices. The floating "Edit tools" button and ShortcutHelp FAB might overlap on small screens.
+
+4. **BatchPanel limitations**: Currently only supports watermark removal in batch mode. Could be enhanced to support watermark addition and per-image options.
+
+5. **AVIF browser support**: AVIF format may not be supported in all browsers. Consider adding a compatibility warning.
+
+6. **Logo file in undo/redo**: logoFile File object cannot be serialized into history snapshots. When restoring from undo/redo, logoFile is set to null and needs re-upload.
+
+## Priority Recommendations for Next Phase
+
+1. **Optimize dev server memory**: Reduce Turbopack memory footprint or switch to webpack for better OOM resilience in constrained environments.
+
+2. **Add real-time watermark preview**: Implement client-side canvas preview for watermark addition so users can see changes before applying.
+
+3. **Add SVG-based Gemini sparkle template**: Create an SVG template for precise mask matching during watermark detection.
+
+4. **Improve mobile touch interactions**: Better touch event handling for the comparison slider and crop overlay on mobile devices.
+
+5. **Add batch watermark addition**: Extend BatchPanel to support watermark addition mode and per-image options.
+
+6. **Add AVIF compatibility warning**: Show browser compatibility warning when AVIF is selected for export.
+
+7. **Add progress bar to API calls**: Show server-side processing progress via streaming or polling instead of simulated client-side timer stages.

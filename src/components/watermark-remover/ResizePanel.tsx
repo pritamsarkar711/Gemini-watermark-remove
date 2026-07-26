@@ -2,18 +2,27 @@
 
 import { useCallback, useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Maximize, Loader2, RotateCcw, Lock, Unlock, ChevronDown } from 'lucide-react'
+import { Maximize, Loader2, RotateCcw, Lock, Unlock, ChevronDown, FileOutput } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAppStore, type ResizeConfig } from '@/lib/store'
 import { toast } from '@/hooks/use-toast'
 
 type ResizeMode = ResizeConfig['mode']
+type TargetFormat = ResizeConfig['targetFormat']
 
 const RESIZE_MODES: { label: string; value: ResizeMode; desc: string }[] = [
   { label: 'Fit', value: 'fit', desc: 'Inside' },
   { label: 'Fill', value: 'fill', desc: 'Cover' },
   { label: 'Stretch', value: 'stretch', desc: 'Stretch' },
   { label: 'Exact', value: 'exact', desc: 'Exact' },
+]
+
+const FORMAT_OPTIONS: { label: string; value: TargetFormat; desc: string }[] = [
+  { label: 'Same', value: 'same', desc: 'Keep original' },
+  { label: 'PNG', value: 'png', desc: 'Lossless' },
+  { label: 'JPEG', value: 'jpeg', desc: 'Compressed' },
+  { label: 'WebP', value: 'webp', desc: 'Modern' },
+  { label: 'AVIF', value: 'avif', desc: 'Next-gen' },
 ]
 
 interface SizePreset {
@@ -121,6 +130,9 @@ export default function ResizePanel() {
       formData.append('width', String(resizeConfig.width))
       formData.append('height', String(resizeConfig.height))
       formData.append('mode', resizeConfig.mode)
+      if (resizeConfig.targetFormat !== 'same') {
+        formData.append('format', resizeConfig.targetFormat)
+      }
 
       const res = await fetch('/api/resize', {
         method: 'POST',
@@ -131,8 +143,9 @@ export default function ResizePanel() {
       if (data.success) {
         const resultDataUrl = data.result.dataUrl
         const resultBlob = await fetch(resultDataUrl).then((r) => r.blob())
+        const resultMimeType = data.result.format || 'image/png'
         const resultFile = new File([resultBlob], originalImage.name, {
-          type: 'image/png',
+          type: resultMimeType,
         })
 
         const newImageInfo = {
@@ -162,6 +175,7 @@ export default function ResizePanel() {
       height: originalImage.height,
       mode: 'fit',
       lockAspectRatio: true,
+      targetFormat: 'same',
     })
   }, [originalImage, setResizeConfig])
 
@@ -307,6 +321,29 @@ export default function ResizePanel() {
         <span className={hasResize ? 'text-primary font-semibold' : ''}>
           {resizeConfig.width}×{resizeConfig.height}
         </span>
+      </div>
+
+      {/* Format selector */}
+      <div className="flex items-center gap-1.5">
+        <FileOutput className="size-3 text-muted-foreground/60" />
+        <span className="text-[10px] font-medium text-muted-foreground/60">Format</span>
+        <div className="flex gap-1 ml-auto">
+          {FORMAT_OPTIONS.map((f) => (
+            <button
+              key={f.value}
+              type="button"
+              onClick={() => setResizeConfig({ targetFormat: f.value })}
+              className={`h-6 rounded-md text-[9px] font-medium transition-all px-2 ${
+                resizeConfig.targetFormat === f.value
+                  ? 'bg-primary text-primary-foreground shadow-md'
+                  : 'bg-muted/50 text-muted-foreground/70 hover:bg-muted hover:text-foreground'
+              }`}
+              title={f.desc}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Apply button */}

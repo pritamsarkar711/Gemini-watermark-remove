@@ -6,6 +6,12 @@ import { ArrowLeft, ArrowRight, Maximize2, Loader2, GitCompareArrows } from 'luc
 import { Button } from '@/components/ui/button'
 import { useAppStore } from '@/lib/store'
 
+const PROCESSING_STAGES = [
+  { label: 'Detecting', description: 'Detecting watermark...', progress: 33 },
+  { label: 'Removing', description: 'Removing watermark...', progress: 66 },
+  { label: 'Finishing', description: 'Applying final touches...', progress: 100 },
+] as const
+
 interface DiffStats {
   changedPixels: number
   totalPixels: number
@@ -35,6 +41,7 @@ export default function ComparisonSlider() {
   const containerRef = useRef<HTMLDivElement>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [hasPulsed, setHasPulsed] = useState(false)
+  const [processingStage, setProcessingStage] = useState(0)
 
   // Pixel diff stats — computed client-side from the two dataUrls. We
   // can't extend the store's ProcessedImage type (a parallel agent owns
@@ -119,6 +126,22 @@ export default function ComparisonSlider() {
     const t = setTimeout(() => setHasPulsed(true), 3500)
     return () => clearTimeout(t)
   }, [hasPulsed])
+
+  // ─── Processing stage timer ────────────────────────────────────────────────
+  useEffect(() => {
+    if (!isProcessing) return
+    // Reset stage when processing begins (async callback avoids synchronous setState in effect)
+    const resetTimer = setTimeout(() => setProcessingStage(0), 0)
+    // Stage 0 (Detecting): 2 seconds
+    const timer1 = setTimeout(() => setProcessingStage(1), 2000)
+    // Stage 1 (Removing): 3 seconds
+    const timer2 = setTimeout(() => setProcessingStage(2), 5000)
+    return () => {
+      clearTimeout(resetTimer)
+      clearTimeout(timer1)
+      clearTimeout(timer2)
+    }
+  }, [isProcessing])
 
   // Compute pixel diff stats whenever the original or processed image changes.
   // Inline computation (no Web Worker) — for typical 800×600 images this is
@@ -278,7 +301,45 @@ export default function ComparisonSlider() {
                 />
               </div>
               <span className="text-sm font-semibold text-foreground">Processing</span>
-              <span className="text-[10px] text-muted-foreground/70">Your image is being processed...</span>
+              {/* Progress bar */}
+              <div className="w-full">
+                <div className="quality-bar relative h-2 w-full rounded-full bg-muted/30 overflow-hidden">
+                  <motion.div
+                    className="absolute inset-y-0 left-0 rounded-full"
+                    style={{ background: 'linear-gradient(to right, #ef4444, #f97316, #eab308, #22c55e)' }}
+                    initial={{ width: '0%' }}
+                    animate={{ width: `${PROCESSING_STAGES[processingStage].progress}%` }}
+                    transition={{ duration: 0.5, ease: 'easeOut' }}
+                  />
+                </div>
+                {/* Stage indicators */}
+                <div className="flex items-center justify-between mt-1.5">
+                  {PROCESSING_STAGES.map((stage, idx) => (
+                    <div
+                      key={stage.label}
+                      className={`flex items-center gap-1 text-[9px] font-medium transition-all duration-300 ${
+                        idx <= processingStage
+                          ? 'text-primary'
+                          : 'text-muted-foreground/40'
+                      }`}
+                    >
+                      <div
+                        className={`size-1.5 rounded-full transition-all duration-300 ${
+                          idx <= processingStage
+                            ? 'bg-primary'
+                            : 'bg-muted-foreground/30'
+                        }`
+                      }
+                      />
+                      {stage.label}
+                    </div>
+                  ))}
+                </div>
+                {/* Stage description */}
+                <div className="text-[10px] text-muted-foreground/70 mt-1 text-center">
+                  {PROCESSING_STAGES[processingStage].description}
+                </div>
+              </div>
             </div>
           </motion.div>
         )}
@@ -374,12 +435,12 @@ export default function ComparisonSlider() {
       </div>
 
       {/* Bottom info */}
-      <div className="flex items-center justify-between px-1.5 py-1 rounded-lg bg-gradient-to-r from-muted/30 via-transparent to-muted/30">
-        <span className="text-[10px] font-medium text-muted-foreground/80">Original</span>
+      <div className="flex items-center justify-between px-2 py-1.5 rounded-lg border bg-card/60">
+        <span className="text-[10px] font-medium text-muted-foreground">Original</span>
         <div className="flex items-center gap-1 text-[10px] text-muted-foreground/70">
           <span>Drag slider or use arrow keys</span>
         </div>
-        <span className="text-[10px] font-medium text-muted-foreground/80">Result</span>
+        <span className="text-[10px] font-medium text-muted-foreground">Result</span>
       </div>
     </motion.div>
   )

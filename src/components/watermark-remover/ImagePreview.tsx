@@ -59,6 +59,12 @@ const HANDLE_CURSORS: Record<DragMode, string> = {
 
 const MIN_CROP_SIZE = 8 // minimum crop dimension in image pixels
 
+const PROCESSING_STAGES = [
+  { label: 'Detecting', description: 'Detecting watermark...', progress: 33 },
+  { label: 'Removing', description: 'Removing watermark...', progress: 66 },
+  { label: 'Finishing', description: 'Applying final touches...', progress: 100 },
+] as const
+
 export default function ImagePreview() {
   const {
     originalImage,
@@ -69,11 +75,28 @@ export default function ImagePreview() {
     isProcessing,
   } = useAppStore()
   const [zoom, setZoom] = useState(1)
+  const [processingStage, setProcessingStage] = useState(0)
   const [offset, setOffset] = useState({ x: 0, y: 0 })
   const [isDragging, setIsDragging] = useState(false)
   const [isDragOver, setIsDragOver] = useState(false)
   const dragStart = useRef({ x: 0, y: 0 })
   const offsetStart = useRef({ x: 0, y: 0 })
+
+  // ─── Processing stage timer ────────────────────────────────────────────────
+  useEffect(() => {
+    if (!isProcessing) return
+    // Reset stage when processing begins (async callback avoids synchronous setState in effect)
+    const resetTimer = setTimeout(() => setProcessingStage(0), 0)
+    // Stage 0 (Detecting): 2 seconds
+    const timer1 = setTimeout(() => setProcessingStage(1), 2000)
+    // Stage 1 (Removing): 3 seconds
+    const timer2 = setTimeout(() => setProcessingStage(2), 5000)
+    return () => {
+      clearTimeout(resetTimer)
+      clearTimeout(timer1)
+      clearTimeout(timer2)
+    }
+  }, [isProcessing])
 
   // ─── Image measurement (for crop overlay positioning) ─────────────────────
   const imgRef = useRef<HTMLImageElement | null>(null)
@@ -562,7 +585,7 @@ export default function ImagePreview() {
           </div>
         )}
 
-        {/* Processing overlay — semi-transparent with spinner and text */}
+        {/* Processing overlay — semi-transparent with spinner and progress bar */}
         <AnimatePresence>
           {isProcessing && (
             <motion.div
@@ -582,7 +605,44 @@ export default function ImagePreview() {
                   />
                 </div>
                 <span className="text-sm font-semibold text-foreground">Processing</span>
-                <span className="text-[10px] text-muted-foreground/70">Your image is being processed...</span>
+                {/* Progress bar */}
+                <div className="w-full">
+                  <div className="quality-bar relative h-2 w-full rounded-full bg-muted/30 overflow-hidden">
+                    <motion.div
+                      className="absolute inset-y-0 left-0 rounded-full"
+                      style={{ background: 'linear-gradient(to right, #ef4444, #f97316, #eab308, #22c55e)' }}
+                      initial={{ width: '0%' }}
+                      animate={{ width: `${PROCESSING_STAGES[processingStage].progress}%` }}
+                      transition={{ duration: 0.5, ease: 'easeOut' }}
+                    />
+                  </div>
+                  {/* Stage indicators */}
+                  <div className="flex items-center justify-between mt-1.5">
+                    {PROCESSING_STAGES.map((stage, idx) => (
+                      <div
+                        key={stage.label}
+                        className={`flex items-center gap-1 text-[9px] font-medium transition-all duration-300 ${
+                          idx <= processingStage
+                            ? 'text-primary'
+                            : 'text-muted-foreground/40'
+                        }`}
+                      >
+                        <div
+                          className={`size-1.5 rounded-full transition-all duration-300 ${
+                            idx <= processingStage
+                              ? 'bg-primary'
+                              : 'bg-muted-foreground/30'
+                          }`}
+                        />
+                        {stage.label}
+                      </div>
+                    ))}
+                  </div>
+                  {/* Stage description */}
+                  <div className="text-[10px] text-muted-foreground/70 mt-1 text-center">
+                    {PROCESSING_STAGES[processingStage].description}
+                  </div>
+                </div>
               </div>
             </motion.div>
           )}

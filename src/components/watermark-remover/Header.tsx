@@ -40,7 +40,7 @@ export default function Header() {
             <Eraser className="size-4 text-primary-foreground" />
           </motion.div>
           <div className="flex items-center gap-1.5 leading-none">
-            <span className="gradient-text text-base font-semibold tracking-tight">Zeminai</span>
+            <span className="gradient-text text-lg font-semibold tracking-tight brand-shadow">Zeminai</span>
             {step !== 'upload' && (
               <motion.span
                 initial={{ scale: 0, opacity: 0 }}
@@ -49,7 +49,7 @@ export default function Header() {
                 aria-label="Ready"
               />
             )}
-            <span className="hidden text-[10px] text-muted-foreground sm:inline-block">Watermark Remover</span>
+            <span className="hidden text-xs text-muted-foreground sm:inline-block">Watermark Remover</span>
           </div>
         </div>
 

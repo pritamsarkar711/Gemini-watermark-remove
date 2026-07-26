@@ -2,7 +2,7 @@
 
 import { useCallback, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Upload, X, Sparkles, Shield, Zap, Eye, Lock, ArrowRight, Scan, Paintbrush } from 'lucide-react'
+import { Upload, X, Sparkles, Shield, Zap, Eye, Lock, Scan, Paintbrush } from 'lucide-react'
 import { useAppStore, type ImageInfo } from '@/lib/store'
 
 const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
@@ -112,8 +112,8 @@ export default function UploadArea() {
         className="flex flex-col items-center gap-3"
       >
         <div className="relative">
-          <div className="flex size-16 items-center justify-center rounded-2xl bg-primary/10 ring-1 ring-primary/20 animated-border">
-            <Sparkles className="size-8 text-primary" />
+          <div className="flex size-20 items-center justify-center rounded-2xl bg-primary/10 ring-2 ring-primary/10 animated-border">
+            <Sparkles className="size-9 text-primary" />
           </div>
           <motion.div
             animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.6, 0.3] }}
@@ -136,8 +136,8 @@ export default function UploadArea() {
         </div>
         <div className="flex flex-col items-center gap-0.5">
           <h1 className="gradient-text text-3xl font-bold tracking-tight">Zeminai</h1>
-          <p className="text-sm text-muted-foreground/70">Watermark remover</p>
-          <span className="text-[10px] font-medium text-primary/50">Powered by AI</span>
+          <p className="text-sm font-medium text-muted-foreground">Watermark remover</p>
+          <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-medium text-primary/70">Powered by AI</span>
         </div>
       </motion.div>
 
@@ -154,8 +154,8 @@ export default function UploadArea() {
           onClick={() => !isReading && inputRef.current?.click()}
           className={`
             group relative flex cursor-pointer flex-col items-center justify-center
-            rounded-2xl border-2 border-dashed transition-all duration-300
-            w-full aspect-[4/3]
+            rounded-2xl border-2 border-dashed border-primary/30 transition-all duration-300
+            w-full aspect-[4/3] shadow-inner upload-inner-glow
             ${isDragging
               ? 'border-primary bg-primary/5 scale-[1.02] upload-area-active shadow-lg shadow-primary/10'
               : 'animated-border hover:bg-muted/30 hover:shadow-sm'
@@ -195,7 +195,7 @@ export default function UploadArea() {
                     />
                   ))}
                 </div>
-                <span className="text-xs font-medium text-muted-foreground/70">Reading image...</span>
+                <span className="text-xs font-medium text-muted-foreground">Reading image...</span>
               </motion.div>
             ) : (
               <motion.div
@@ -219,7 +219,7 @@ export default function UploadArea() {
                     {isDragging ? 'Release' : 'Drop image'}
                   </span>
                   {!isDragging && (
-                    <span className="text-[11px] text-muted-foreground/60">
+                    <span className="text-[11px] text-muted-foreground/80">
                       or click to browse
                     </span>
                   )}
@@ -227,7 +227,7 @@ export default function UploadArea() {
                     <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary/70">PNG</span>
                     <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary/70">JPEG</span>
                     <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary/70">WebP</span>
-                    <span className="text-[10px] text-muted-foreground/70">up to 50MB</span>
+                    <span className="text-[10px] text-muted-foreground/80">up to 50MB</span>
                   </div>
                 </div>
               </motion.div>
@@ -249,10 +249,10 @@ export default function UploadArea() {
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.3, delay: 0.5 + i * 0.1 }}
-            className="flex items-center justify-center gap-1.5 rounded-full border bg-primary/5 px-2.5 py-1.5 shadow-sm hover:bg-primary/10 transition-colors"
+            className="flex items-center justify-center gap-1.5 rounded-full border bg-primary/10 px-2.5 py-2 shadow-sm hover:bg-primary/20 hover:border-primary/30 transition-colors ring-1 ring-primary/5"
           >
-            <item.icon className="size-3 text-primary/80" />
-            <span className="text-[11px] font-semibold text-muted-foreground/80">{item.label}</span>
+            <item.icon className="size-3.5 text-primary/70" />
+            <span className="text-xs font-semibold text-primary/80">{item.label}</span>
           </motion.div>
         ))}
       </motion.div>
@@ -268,22 +268,20 @@ export default function UploadArea() {
           { step: 1, icon: Upload, title: 'Upload', desc: 'Drop your image' },
           { step: 2, icon: Scan, title: 'Detect', desc: 'AI finds watermark' },
           { step: 3, icon: Paintbrush, title: 'Remove', desc: 'Seamless cleanup' },
-        ].map((item, i) => (
+        ].map((item) => (
           <motion.div
             key={item.step}
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.3, delay: 0.7 + i * 0.1 }}
-            className="flex flex-col items-center gap-1.5 rounded-lg border bg-card/60 p-3 shadow-sm hover:bg-card/80 hover:shadow-md hover:border-primary/20 transition-all group"
+            transition={{ duration: 0.3, delay: 0.7 + item.step * 0.1 }}
+            className="flex flex-col items-center gap-1.5 rounded-lg border bg-card/60 p-3 shadow-sm hover:bg-card/80 hover:shadow-md hover:border-primary/20 transition-all group relative"
           >
+            <span className="step-badge absolute -top-2.5 -left-2.5 z-10">{item.step}</span>
             <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 ring-1 ring-primary/15 group-hover:bg-primary/20 group-hover:ring-primary/30 transition-all">
               <item.icon className="size-4 text-primary/70 group-hover:text-primary transition-colors" />
             </div>
             <span className="text-xs font-semibold text-foreground/80 group-hover:text-foreground transition-colors">{item.title}</span>
-            <span className="text-[10px] text-muted-foreground/60">{item.desc}</span>
-            {i < 2 && (
-              <ArrowRight className="hidden sm:block absolute right-0 top-1/2 -translate-y-1/2 text-muted-foreground/30" />
-            )}
+            <span className="text-[10px] text-muted-foreground/80">{item.desc}</span>
           </motion.div>
         ))}
       </motion.div>

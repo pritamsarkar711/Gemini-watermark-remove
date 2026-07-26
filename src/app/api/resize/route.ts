@@ -19,6 +19,7 @@ export async function POST(req: NextRequest) {
     const width = parseInt(formData.get("width") as string) || imgWidth;
     const height = parseInt(formData.get("height") as string) || imgHeight;
     const mode = (formData.get("mode") as string) || "fit"; // fit | fill | stretch | exact
+    const format = (formData.get("format") as string) || null; // png | jpeg | webp | avif
 
     // Clamp dimensions to reasonable bounds
     const MIN_DIM = 16;
@@ -58,14 +59,50 @@ export async function POST(req: NextRequest) {
       resizeOptions.fit = mode === "stretch" ? "fill" : "fill";
     }
 
-    const resultBuffer = await sharp(imageBuffer, { failOn: "none" })
-      .resize(targetWidth, targetHeight, resizeOptions)
-      .png({ quality: 100 })
-      .toBuffer();
+    // Build the sharp pipeline: resize first, then optionally convert format
+    let pipeline = sharp(imageBuffer, { failOn: "none" })
+      .resize(targetWidth, targetHeight, resizeOptions);
+
+    // Determine output format and MIME type
+    // If no explicit format specified (or "same"), preserve original format as PNG
+    const FORMAT_MAP: Record<string, { mime: string; sharpFormat: keyof sharp.FormatEnum }> = {
+      png: { mime: "image/png", sharpFormat: "png" },
+      jpeg: { mime: "image/jpeg", sharpFormat: "jpeg" },
+      webp: { mime: "image/webp", sharpFormat: "webp" },
+      avif: { mime: "image/avif", sharpFormat: "avif" },
+    };
+
+    let outputMime = "image/png";
+
+    if (format && FORMAT_MAP[format]) {
+      const target = FORMAT_MAP[format];
+      outputMime = target.mime;
+
+      // Apply format conversion with appropriate options
+      switch (format) {
+        case "png":
+          pipeline = pipeline.png({ quality: 100 });
+          break;
+        case "jpeg":
+          pipeline = pipeline.jpeg({ quality: 90 });
+          break;
+        case "webp":
+          pipeline = pipeline.webp({ quality: 90 });
+          break;
+        case "avif":
+          pipeline = pipeline.avif({ quality: 80 });
+          break;
+      }
+    } else {
+      // Default: output as PNG (lossless)
+      pipeline = pipeline.png({ quality: 100 });
+    }
+
+    const resultBuffer = await pipeline.toBuffer();
 
     const resultMeta = await sharp(resultBuffer).metadata();
     const size = resultBuffer.byteLength;
-    const dataUrl = `data:image/png;base64,${resultBuffer.toString("base64")}`;
+    const dataUrl = `data:${outputMime};base64,${resultBuffer.toString("base64")}`;
 
     return NextResponse.json({
       success: true,
@@ -74,6 +111,7 @@ export async function POST(req: NextRequest) {
         width: resultMeta.width ?? targetWidth,
         height: resultMeta.height ?? targetHeight,
         size,
+        format: outputMime,
       },
     });
   } catch (error: unknown) {

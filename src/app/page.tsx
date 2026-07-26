@@ -8,6 +8,9 @@ import Header from '@/components/watermark-remover/Header'
 import UploadArea from '@/components/watermark-remover/UploadArea'
 import ImagePreview from '@/components/watermark-remover/ImagePreview'
 import ComparisonSlider from '@/components/watermark-remover/ComparisonSlider'
+import ComparisonViewModeSwitcher from '@/components/watermark-remover/ComparisonViewModeSwitcher'
+import SideBySideView from '@/components/watermark-remover/SideBySideView'
+import OverlayView from '@/components/watermark-remover/OverlayView'
 import ControlPanel from '@/components/watermark-remover/ControlPanel'
 import CropPanel from '@/components/watermark-remover/CropPanel'
 import ResizePanel from '@/components/watermark-remover/ResizePanel'
@@ -20,6 +23,7 @@ import StickyCTA from '@/components/watermark-remover/StickyCTA'
 import Footer from '@/components/watermark-remover/Footer'
 import MobileDrawer from '@/components/watermark-remover/MobileDrawer'
 import BatchPanel from '@/components/watermark-remover/BatchPanel'
+import ImageInfoPanel from '@/components/watermark-remover/ImageInfoPanel'
 
 export default function Home() {
   const {
@@ -27,6 +31,7 @@ export default function Home() {
     originalImage,
     processedImage,
     showComparison,
+    comparisonMode,
     canUndo,
     canRedo,
     undo,
@@ -264,8 +269,17 @@ export default function Home() {
                 <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-4">
                   {/* Image area */}
                   <div className="flex flex-col gap-2">
+                    {showComparison && processedImage && (
+                      <ComparisonViewModeSwitcher />
+                    )}
                     {showComparison && processedImage ? (
-                      <ComparisonSlider />
+                      comparisonMode === 'slider' ? (
+                        <ComparisonSlider />
+                      ) : comparisonMode === 'side-by-side' ? (
+                        <SideBySideView />
+                      ) : (
+                        <OverlayView />
+                      )
                     ) : (
                       <ImagePreview />
                     )}
@@ -274,6 +288,9 @@ export default function Home() {
                   {/* Controls sidebar — hidden on mobile (accessible via MobileDrawer), visible on lg+ */}
                   <div className="hidden lg:flex lg:flex-col gap-3 lg:max-h-[calc(100vh-10rem)] lg:overflow-y-auto custom-scrollbar lg:pr-1">
                     <ControlPanel />
+
+                    {/* Image info panel — shows before/after comparison stats when result is available */}
+                    {processedImage && step === 'result' && <ImageInfoPanel />}
 
                     {/* Crop tool — available whenever an image is loaded */}
                     <CropPanel />

@@ -14,6 +14,8 @@ export type WatermarkPosition =
 
 export type WatermarkMode = "remove" | "add";
 
+export type ComparisonMode = 'slider' | 'side-by-side' | 'overlay';
+
 export type LastAction =
   | "upload"
   | "remove-watermark"
@@ -117,6 +119,7 @@ export interface ResizeConfig {
   height: number;
   mode: 'fit' | 'fill' | 'stretch' | 'exact';
   lockAspectRatio: boolean;
+  targetFormat: 'same' | 'png' | 'jpeg' | 'webp' | 'avif';
 }
 
 /**
@@ -277,6 +280,7 @@ const defaultResizeConfig: ResizeConfig = {
   height: 0,
   mode: 'fit',
   lockAspectRatio: true,
+  targetFormat: 'same',
 };
 
 /**
@@ -410,6 +414,9 @@ interface AppState {
 
   showComparison: boolean;
   setShowComparison: (show: boolean) => void;
+
+  comparisonMode: ComparisonMode;
+  setComparisonMode: (mode: ComparisonMode) => void;
 
   // ─── Crop overlay state (UI-only, not part of history) ────────────────────
   // Shared between CropPanel (numeric inputs + ratio presets) and ImagePreview
@@ -589,6 +596,9 @@ export const useAppStore = create<AppState>()(
   showComparison: false,
   setShowComparison: (show) => set({ showComparison: show }),
 
+  comparisonMode: 'slider',
+  setComparisonMode: (mode) => set({ comparisonMode: mode }),
+
   // Crop overlay state — UI-only, not persisted into history snapshots.
   cropRect: { x: 0, y: 0, width: 0, height: 0 },
   setCropRect: (rect) => set({ cropRect: { ...rect } }),
@@ -752,6 +762,7 @@ export const useAppStore = create<AppState>()(
       isProcessing: false,
       sliderPosition: 50,
       showComparison: false,
+      comparisonMode: 'slider',
       // Reset crop overlay UI state as well
       cropRect: { x: 0, y: 0, width: 0, height: 0 },
       isCropOverlayActive: false,

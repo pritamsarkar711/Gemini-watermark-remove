@@ -248,7 +248,7 @@ export default function ControlPanel() {
           onClick={() => setIsTransformOpen((prev) => !prev)}
           className="sidebar-panel-header flex items-center justify-between cursor-pointer"
         >
-          <span className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider">Transform</span>
+          <span className="text-[10px] font-semibold text-muted-foreground/70 uppercase tracking-wider">Transform</span>
           <div className="flex items-center gap-2">
             {hasTransform && (
               <span
@@ -429,9 +429,9 @@ export default function ControlPanel() {
         </TabsList>
 
         <TabsContent value="remove" className="mt-3 flex flex-col gap-3 data-[state=active]:animate-in data-[state=active]:fade-in data-[state=active]:slide-in-from-left-1 data-[state=inactive]:animate-out data-[state=inactive]:fade-out">
-          <div className="sidebar-panel flex items-center justify-between rounded-lg p-2.5 shadow-sm">
+          <div className="sidebar-panel flex items-center justify-between rounded-lg p-2.5 shadow-sm gap-3">
             <div className="flex items-center gap-2">
-              <Scan className="size-3.5 text-muted-foreground/60" />
+              <Scan className="size-3.5 text-muted-foreground/70" />
               <span className="text-xs font-medium">Auto detect</span>
             </div>
             <Switch checked={autoDetect} onCheckedChange={setAutoDetect} className="toggle-switch scale-90" />
@@ -446,7 +446,7 @@ export default function ControlPanel() {
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
-                  <Paintbrush className="size-3.5 text-muted-foreground/60" />
+                  <Paintbrush className="size-3.5 text-muted-foreground/70" />
                   <span className="text-xs font-medium">Brush</span>
                 </div>
                 <div className="flex items-center gap-1.5">

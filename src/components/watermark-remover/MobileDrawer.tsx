@@ -20,6 +20,8 @@ import DownloadPanel from './DownloadPanel'
 import HistoryPanel from './HistoryPanel'
 import StickyCTA from './StickyCTA'
 import BatchPanel from './BatchPanel'
+import ImageInfoPanel from './ImageInfoPanel'
+import ComparisonViewModeSwitcher from './ComparisonViewModeSwitcher'
 import { useAppStore } from '@/lib/store'
 
 /**
@@ -32,7 +34,7 @@ import { useAppStore } from '@/lib/store'
  */
 export default function MobileDrawer() {
   const [isOpen, setIsOpen] = useState(false)
-  const { processedImage, step, isProcessing, mode } = useAppStore()
+  const { processedImage, step, isProcessing, mode, showComparison } = useAppStore()
 
   if (step === 'upload') return null
 
@@ -65,7 +67,15 @@ export default function MobileDrawer() {
           </DrawerHeader>
 
           <div className="flex flex-col gap-3 px-4 pb-4 overflow-y-auto custom-scrollbar max-h-[70vh]">
+            {showComparison && processedImage && (
+              <div className="flex items-center justify-center">
+                <ComparisonViewModeSwitcher />
+              </div>
+            )}
             <ControlPanel />
+
+            {processedImage && step === 'result' && <ImageInfoPanel />}
+
             <CropPanel />
             <ResizePanel />
             <AdjustPanel />
