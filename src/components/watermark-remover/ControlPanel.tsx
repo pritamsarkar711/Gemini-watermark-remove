@@ -1,8 +1,8 @@
 'use client'
 
 import { useCallback, useRef, useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
-import { Eraser, Stamp, Scan, Paintbrush, Loader2, RotateCw, FlipHorizontal, FlipVertical, Undo2, Redo2 } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Eraser, Stamp, Scan, Paintbrush, Loader2, RotateCw, FlipHorizontal, FlipVertical, Undo2, Redo2, ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
@@ -36,6 +36,7 @@ export default function ControlPanel() {
   const [isDrawing, setIsDrawing] = useState(false)
   const [brushSize, setBrushSize] = useState(20)
   const [isTransforming, setIsTransforming] = useState(false)
+  const [isTransformOpen, setIsTransformOpen] = useState(true)
 
   const handleProcess = useCallback(async () => {
     if (!originalImage) return
@@ -215,72 +216,107 @@ export default function ControlPanel() {
     >
       {/* Transform controls */}
       <div className="flex flex-col gap-2 rounded-lg border bg-card/80 p-2.5 shadow-sm">
-        <div className="flex items-center justify-between">
+        <button
+          type="button"
+          onClick={() => setIsTransformOpen((prev) => !prev)}
+          className="flex items-center justify-between cursor-pointer"
+        >
           <span className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider">Transform</span>
-          {hasTransform && (
-            <button
-              onClick={() => setTransformConfig({ rotation: 0, flipH: false, flipV: false })}
-              className="text-[9px] text-muted-foreground/60 hover:text-foreground transition-colors"
+          <div className="flex items-center gap-2">
+            {hasTransform && (
+              <span
+                role="button"
+                tabIndex={0}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setTransformConfig({ rotation: 0, flipH: false, flipV: false })
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.stopPropagation()
+                    setTransformConfig({ rotation: 0, flipH: false, flipV: false })
+                  }
+                }}
+                className="text-[9px] text-muted-foreground/60 hover:text-foreground transition-colors"
+              >
+                Reset
+              </span>
+            )}
+            <ChevronDown
+              className={`size-3 text-muted-foreground/60 transition-transform duration-200 ${
+                isTransformOpen ? 'rotate-180' : 'rotate-0'
+              }`}
+            />
+          </div>
+        </button>
+        <AnimatePresence initial={false}>
+          {isTransformOpen && (
+            <motion.div
+              key="transform-content"
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2, ease: 'easeInOut' }}
+              className="overflow-hidden"
             >
-              Reset
-            </button>
+              <div className="flex items-end gap-1.5">
+                <div className="flex flex-col items-center gap-0.5">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className={`size-7 rounded-lg ${isTransforming ? 'opacity-50' : ''}`}
+                    onClick={() => setTransformConfig({ rotation: (transformConfig.rotation + 90) % 360 })}
+                    disabled={isTransforming}
+                    title="Rotate 90°"
+                    aria-label="Rotate 90 degrees"
+                  >
+                    <RotateCw className="size-3" />
+                  </Button>
+                  <span className="text-[8px] font-medium text-muted-foreground/60">Rotate</span>
+                </div>
+                <div className="flex flex-col items-center gap-0.5">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className={`size-7 rounded-lg ${transformConfig.flipH ? 'bg-primary/10 border-primary/40 ring-1 ring-primary/20' : ''} ${isTransforming ? 'opacity-50' : ''}`}
+                    onClick={() => setTransformConfig({ flipH: !transformConfig.flipH })}
+                    disabled={isTransforming}
+                    title="Flip horizontal"
+                    aria-label="Flip horizontal"
+                  >
+                    <FlipHorizontal className="size-3" />
+                  </Button>
+                  <span className="text-[8px] font-medium text-muted-foreground/60">Flip H</span>
+                </div>
+                <div className="flex flex-col items-center gap-0.5">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className={`size-7 rounded-lg ${transformConfig.flipV ? 'bg-primary/10 border-primary/40 ring-1 ring-primary/20' : ''} ${isTransforming ? 'opacity-50' : ''}`}
+                    onClick={() => setTransformConfig({ flipV: !transformConfig.flipV })}
+                    disabled={isTransforming}
+                    title="Flip vertical"
+                    aria-label="Flip vertical"
+                  >
+                    <FlipVertical className="size-3" />
+                  </Button>
+                  <span className="text-[8px] font-medium text-muted-foreground/60">Flip V</span>
+                </div>
+                {hasTransform && (
+                  <Button
+                    size="sm"
+                    onClick={handleTransform}
+                    disabled={isTransforming}
+                    className="ml-auto h-7 rounded-lg text-[10px] gap-1 shadow-sm"
+                  >
+                    {isTransforming ? <Loader2 className="size-2.5 animate-spin" /> : null}
+                    Apply
+                  </Button>
+                )}
+              </div>
+            </motion.div>
           )}
-        </div>
-        <div className="flex items-end gap-1.5">
-          <div className="flex flex-col items-center gap-0.5">
-            <Button
-              variant="outline"
-              size="icon"
-              className={`size-7 rounded-lg ${isTransforming ? 'opacity-50' : ''}`}
-              onClick={() => setTransformConfig({ rotation: (transformConfig.rotation + 90) % 360 })}
-              disabled={isTransforming}
-              title="Rotate 90°"
-              aria-label="Rotate 90 degrees"
-            >
-              <RotateCw className="size-3" />
-            </Button>
-            <span className="text-[8px] font-medium text-muted-foreground/60">Rotate</span>
-          </div>
-          <div className="flex flex-col items-center gap-0.5">
-            <Button
-              variant="outline"
-              size="icon"
-              className={`size-7 rounded-lg ${transformConfig.flipH ? 'bg-primary/10 border-primary/40 ring-1 ring-primary/20' : ''} ${isTransforming ? 'opacity-50' : ''}`}
-              onClick={() => setTransformConfig({ flipH: !transformConfig.flipH })}
-              disabled={isTransforming}
-              title="Flip horizontal"
-              aria-label="Flip horizontal"
-            >
-              <FlipHorizontal className="size-3" />
-            </Button>
-            <span className="text-[8px] font-medium text-muted-foreground/60">Flip H</span>
-          </div>
-          <div className="flex flex-col items-center gap-0.5">
-            <Button
-              variant="outline"
-              size="icon"
-              className={`size-7 rounded-lg ${transformConfig.flipV ? 'bg-primary/10 border-primary/40 ring-1 ring-primary/20' : ''} ${isTransforming ? 'opacity-50' : ''}`}
-              onClick={() => setTransformConfig({ flipV: !transformConfig.flipV })}
-              disabled={isTransforming}
-              title="Flip vertical"
-              aria-label="Flip vertical"
-            >
-              <FlipVertical className="size-3" />
-            </Button>
-            <span className="text-[8px] font-medium text-muted-foreground/60">Flip V</span>
-          </div>
-          {hasTransform && (
-            <Button
-              size="sm"
-              onClick={handleTransform}
-              disabled={isTransforming}
-              className="ml-auto h-7 rounded-lg text-[10px] gap-1 shadow-sm"
-            >
-              {isTransforming ? <Loader2 className="size-2.5 animate-spin" /> : null}
-              Apply
-            </Button>
-          )}
-        </div>
+        </AnimatePresence>
       </div>
 
       <Tabs

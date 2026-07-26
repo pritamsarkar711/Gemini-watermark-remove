@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useState } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   Sun,
   Contrast,
@@ -11,6 +11,7 @@ import {
   Loader2,
   RotateCcw,
   Droplet,
+  ChevronDown,
 } from 'lucide-react'
 import { Slider } from '@/components/ui/slider'
 import { Button } from '@/components/ui/button'
@@ -79,6 +80,7 @@ export default function AdjustPanel() {
     setIsProcessing,
   } = useAppStore()
   const [isAdjusting, setIsAdjusting] = useState(false)
+  const [isOpen, setIsOpen] = useState(false) // Start collapsed to reduce sidebar crowding
 
   const handleApply = useCallback(async () => {
     if (!originalImage) return
@@ -162,22 +164,49 @@ export default function AdjustPanel() {
       transition={{ duration: 0.3 }}
       className="flex flex-col gap-2.5 rounded-lg border bg-card/80 p-3 shadow-sm transition-all duration-200 hover:bg-card hover:shadow-md hover:border-border"
     >
-      <div className="flex items-center justify-between">
+      <button
+        type="button"
+        onClick={() => setIsOpen((v) => !v)}
+        className="flex items-center justify-between cursor-pointer"
+        aria-expanded={isOpen}
+      >
         <div className="flex items-center gap-1.5">
           <Sparkles className="size-3.5 text-muted-foreground/60" />
-          <span className="text-xs font-semibold">Adjustments</span>
+          <span className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider">Adjustments</span>
         </div>
-        {hasAdjustments && (
-          <button
-            type="button"
-            onClick={handleReset}
-            className="flex items-center gap-1 text-[9px] text-muted-foreground/60 hover:text-foreground transition-colors"
+        <div className="flex items-center gap-2">
+          {hasAdjustments && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); handleReset() }}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === 'Space') { e.stopPropagation(); handleReset() } }}
+              className="flex items-center gap-1 text-[9px] text-muted-foreground/60 hover:text-foreground transition-colors"
+            >
+              <RotateCcw className="size-2.5" />
+              Reset
+            </button>
+          )}
+          <motion.div
+            animate={{ rotate: isOpen ? 0 : -90 }}
+            transition={{ duration: 0.15 }}
+            className="text-muted-foreground/50"
           >
-            <RotateCcw className="size-2.5" />
-            Reset
-          </button>
-        )}
-      </div>
+            <ChevronDown className="size-3.5" />
+          </motion.div>
+        </div>
+      </button>
+
+      {/* Collapsible content */}
+      <AnimatePresence initial={false}>
+        {isOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
+            className="overflow-hidden"
+          >
+            <div className="flex flex-col gap-2.5 pt-1">
 
       {/* Slider adjustments */}
       <div className="flex flex-col gap-2">
@@ -302,6 +331,11 @@ export default function AdjustPanel() {
           </>
         )}
       </Button>
+
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   )
 }

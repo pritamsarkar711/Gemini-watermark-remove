@@ -610,3 +610,125 @@ The Zeminai Watermark & Logo Remover has been significantly enhanced in this rou
 7. **Add image format conversion info**: Show estimated file size before optimization based on selected format/quality.
 
 8. **Persist user preferences**: Use localStorage to persist theme, qualityConfig, and other user preferences across sessions.
+
+---
+Task ID: round4-A
+Agent: crop-tool-agent
+Task: Create crop tool panel and API endpoint
+
+Work Log:
+- Created src/app/api/crop/route.ts
+- Created src/components/watermark-remover/CropPanel.tsx
+
+Stage Summary:
+- Crop API endpoint accepts image + x/y/width/height via FormData, uses sharp extract() to crop, clamps values to image bounds, returns PNG dataUrl + dimensions + size
+- CropPanel component has ratio presets (Free, 1:1, 4:3, 3:2, 16:9, 9:16, 2:3, 3:4), numeric inputs for x/y/width/height, dimension preview, Apply/Reset buttons
+- Ratio locking adjusts width/height to maintain the selected aspect ratio; Free mode allows unconstrained input
+- On Apply, calls /api/crop then updates store via setOriginalImage with 'transform' action for undo/redo support
+- Styling matches AdjustPanel: rounded-lg border bg-card/80 p-3 shadow-sm, framer-motion entry animation
+- ESLint: pass
+
+---
+Task ID: round4-B
+Agent: export-presets-accordion-agent
+Task: Add export presets and collapsible Transform section on mobile
+
+Work Log:
+- Modified src/components/watermark-remover/QualityOptimizer.tsx: Added 4 export preset buttons (Original, Web, Print, Social) at the top of the panel before existing controls. Presets set format/quality/maxWidth/maxHeight all at once. Active preset is visually highlighted with primary ring/border. Added QualityConfig type import and isPresetActive helper function.
+- Modified src/components/watermark-remover/ControlPanel.tsx: Wrapped Transform section content in AnimatePresence with collapsible toggle. Added ChevronDown icon that rotates on toggle. Transform header is now a clickable button with cursor-pointer. Reset button uses stopPropagation to avoid toggling. Added AnimatePresence and ChevronDown imports. Added isTransformOpen state (defaults to true).
+
+Stage Summary:
+- QualityOptimizer now has 4 quick export preset buttons (Original/Web/Print/Social) that apply all config values at once and visually indicate active state
+- ControlPanel Transform section is now collapsible with animated expand/collapse via AnimatePresence + motion.div
+- ChevronDown icon rotates 180deg when open, 0deg when closed
+- Reset button within Transform header uses stopPropagation to avoid accidental toggle
+- ESLint: pass
+
+---
+Task ID: round4-main
+Agent: main-agent
+Task: Optimize inpainting, add crop tool, collapsible sidebar, export presets, final styling
+
+## Current Project Status Description
+
+The Zeminai Watermark & Logo Remover is now a feature-complete image editor with:
+- **Frontend**: 13 React components (Header, UploadArea, ImagePreview, ComparisonSlider, ControlPanel, WatermarkAdder, AdjustPanel, CropPanel, QualityOptimizer, DownloadPanel, HistoryPanel, ShortcutHelp, Footer)
+- **Backend**: 7 API endpoints (/api/remove-watermark, /api/detect-watermark, /api/add-watermark, /api/transform, /api/optimize, /api/adjust, /api/crop)
+- **State Management**: Zustand store with undo/redo/history, adjustConfig, cropConfig (local state)
+- **Performance**: Inpainting engine optimized from O(n²) to O(n log n) with binary min-heap priority queue
+- **UI**: Collapsible sidebar (Transform/Crop/Adjustments all collapsible), export presets, keyboard shortcuts, real-time watermark preview, drag-and-drop re-upload
+- **VLM Ratings**: 8.5/10 across all views (sidebar crowding resolved)
+
+## Current Goals / Completed Modifications / Verification Results
+
+### Performance: Inpainting Algorithm Optimized
+- **Before**: O(n²) linear scan for minimum-distance pixel in processQueue (lines 153-160 in old code)
+- **After**: O(n log n) using a binary min-heap priority queue (MinHeap class)
+- **Implementation**: MinHeap class with push/pop/has operations, bubbleUp/sinkDown for heap property
+- **Impact**: For a 150×150 mask area (22,500 pixels), the old algorithm scanned up to 22,500 elements each iteration. New algorithm does O(log n) per pop/push, reducing from ~500M operations to ~675K operations
+- **Verification**: Watermark removal still works correctly, processing completes in ~1.2s
+
+### New Feature: Crop Tool (CropPanel + /api/crop)
+- **New API endpoint** (`src/app/api/crop/route.ts`): Uses sharp's `extract()` operation to crop
+- Accepts x, y, width, height parameters; clamps to image bounds
+- Returns cropped PNG as dataUrl + width + height + size
+- **New component** (`CropPanel.tsx`): 
+  - 8 ratio presets (Free, 1:1, 4:3, 3:2, 16:9, 9:16, 2:3, 3:4)
+  - 4 numeric inputs (X, Y, W, H) with ratio locking
+  - Dimension preview (original → cropped dims)
+  - Apply/Reset buttons
+  - **Collapsible** (starts collapsed, expands on click with ChevronDown animation)
+- Integrated into page.tsx sidebar between ControlPanel and AdjustPanel
+
+### New Feature: Export Presets in QualityOptimizer
+- Added 4 compact preset buttons: Original (png, 100, 4096×4096), Web (webp, 80, 1920×1080), Print (png, 100, 4096×4096), Social (jpeg, 85, 1200×1200)
+- Active preset visually highlighted with bg-primary/10 ring-1 ring-primary/20
+- Clicking a preset sets all 4 qualityConfig values at once
+- isPresetActive helper compares current config against preset values
+
+### UI Improvement: Collapsible Sidebar Sections
+- **Transform section** (ControlPanel.tsx): Now collapsible with toggle button + ChevronDown animation
+- **Crop section** (CropPanel.tsx): Collapsible, starts collapsed (isOpen = false)
+- **Adjustments section** (AdjustPanel.tsx): Collapsible, starts collapsed (isOpen = false)
+- **History section**: Remains expanded by default (important for workflow tracking)
+- All use AnimatePresence + motion.div with height/opacity animation (0.2s)
+- **VLM confirmed**: "The collapsible sections solve 90% of the density problem without sacrificing discoverability"
+- Rating improved from 7.5 (crowded sidebar) to 8.5 (clean collapsible layout)
+
+### Verification Results
+- **ESLint**: Passes with zero errors and zero warnings
+- **Dev server**: Running cleanly on port 3000, no compilation errors
+- **All API endpoints**: All 7 endpoints return 200
+- **Agent-browser QA**: Upload → Remove watermark → History shows "Watermark removed" → Collapsible Crop/Adjustments expand/collapse → Keyboard shortcuts dialog opens/closes
+- **VLM ratings**: 8.5/10 (sidebar crowding resolved by collapsible pattern)
+- **Processing time**: ~1.2s for watermark removal (800×600 test image)
+
+## Unresolved Issues or Risks
+
+1. **Crop tool has no visual crop overlay on the image**: Currently only numeric inputs. A visual crop rectangle overlay on the ImagePreview would greatly improve UX. (Recommended for next phase)
+
+2. **Logo file in undo/redo**: logoFile File object cannot be serialized into history snapshots. When restoring from undo/redo, logoFile is set to null and needs re-upload. (Pre-existing)
+
+3. **Inpainting could be further optimized**: The neighbor search in the radius loop (lines 220-244) still does O(radius²) per pixel. For large radius values, this could be optimized with spatial indexing. (Minor concern for typical use)
+
+4. **Crop/Adjustments start collapsed**: While this reduces clutter, some users might not discover these features. Consider adding a subtle indicator (e.g., a small icon or badge) when there are active crop/adjustment settings.
+
+5. **Mobile sidebar scrolling**: On mobile, the sidebar is still scrollable but more manageable since Crop and Adjustments are collapsed by default. The scroll behavior could be further improved with smooth snap scrolling.
+
+6. **404s for /index.md and /llms.txt**: The dev log shows 404 responses for these paths. These are Next.js framework routes for documentation. Not a bug, but could be addressed by creating these files or configuring redirects.
+
+## Priority Recommendations for Next Phase
+
+1. **Add visual crop overlay on ImagePreview**: Draw a draggable rectangle on the preview image showing the crop boundary. This is the highest-impact UX improvement for the crop tool.
+
+2. **Add batch processing**: Allow multiple image uploads with queue-based processing.
+
+3. **Add SVG-based Gemini sparkle template**: Create an SVG template of the Gemini sparkle watermark for precise mask matching.
+
+4. **Add image format conversion info**: Show estimated file size before optimization based on selected format/quality.
+
+5. **Persist user preferences**: Use localStorage to persist theme, qualityConfig, and collapsible panel states.
+
+6. **Add subtle feature discovery indicators**: When Crop/Adjustments are collapsed, show a small colored badge or icon if there are pending settings.
+
+7. **Add crop rectangle to comparison slider**: Show the crop boundary overlay on both before/after images in the comparison view.

@@ -13,6 +13,23 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useAppStore } from '@/lib/store'
+import type { QualityConfig } from '@/lib/store'
+
+const presets: { label: string; config: QualityConfig }[] = [
+  { label: 'Original', config: { format: 'png', quality: 100, maxWidth: 4096, maxHeight: 4096 } },
+  { label: 'Web', config: { format: 'webp', quality: 80, maxWidth: 1920, maxHeight: 1080 } },
+  { label: 'Print', config: { format: 'png', quality: 100, maxWidth: 4096, maxHeight: 4096 } },
+  { label: 'Social', config: { format: 'jpeg', quality: 85, maxWidth: 1200, maxHeight: 1200 } },
+]
+
+function isPresetActive(config: QualityConfig, preset: QualityConfig): boolean {
+  return (
+    config.format === preset.format &&
+    config.quality === preset.quality &&
+    config.maxWidth === preset.maxWidth &&
+    config.maxHeight === preset.maxHeight
+  )
+}
 
 export default function QualityOptimizer() {
   const { qualityConfig, setQualityConfig } = useAppStore()
@@ -27,6 +44,25 @@ export default function QualityOptimizer() {
       <div className="flex items-center gap-1.5">
         <Settings2 className="size-3.5 text-muted-foreground/60" />
         <Label className="text-xs font-semibold">Export quality</Label>
+      </div>
+
+      <div className="flex items-center gap-1">
+        {presets.map((preset) => {
+          const active = isPresetActive(qualityConfig, preset.config)
+          return (
+            <button
+              key={preset.label}
+              onClick={() => setQualityConfig(preset.config)}
+              className={`h-6 text-[10px] rounded-md px-2 border transition-colors ${
+                active
+                  ? 'bg-primary/10 border-primary/30 text-primary font-medium ring-1 ring-primary/20'
+                  : 'bg-muted/60 text-muted-foreground hover:bg-accent border-transparent'
+              }`}
+            >
+              {preset.label}
+            </button>
+          )
+        })}
       </div>
 
       <div className="flex items-center justify-between gap-3">

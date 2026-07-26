@@ -9,6 +9,7 @@ import UploadArea from '@/components/watermark-remover/UploadArea'
 import ImagePreview from '@/components/watermark-remover/ImagePreview'
 import ComparisonSlider from '@/components/watermark-remover/ComparisonSlider'
 import ControlPanel from '@/components/watermark-remover/ControlPanel'
+import CropPanel from '@/components/watermark-remover/CropPanel'
 import AdjustPanel from '@/components/watermark-remover/AdjustPanel'
 import QualityOptimizer from '@/components/watermark-remover/QualityOptimizer'
 import DownloadPanel from '@/components/watermark-remover/DownloadPanel'
@@ -258,6 +259,9 @@ export default function Home() {
                   {/* Controls sidebar */}
                   <div className="flex flex-col gap-3 lg:max-h-[calc(100vh-10rem)] lg:overflow-y-auto custom-scrollbar">
                     <ControlPanel />
+
+                    {/* Crop tool — available whenever an image is loaded */}
+                    <CropPanel />
 
                     {/* Image adjustments — available whenever an image is loaded */}
                     <AdjustPanel />

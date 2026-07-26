@@ -92,8 +92,67 @@ export async function inpaintImage(
 }
 
 /**
- * Single inpainting pass using fast marching
+ * Single inpainting pass using fast marching with binary min-heap
+ * Optimized from O(n²) to O(n log n) using a proper priority queue
  */
+
+// ─── Min-Heap Priority Queue ──────────────────────────────────────────────────
+// Stores entries as [pixelIndex, distance] pairs, ordered by distance (min first).
+
+class MinHeap {
+  private heap: [number, number][] = []; // [pixelIndex, distance]
+  private inHeap: Set<number> = new Set(); // fast membership check
+
+  get size(): number {
+    return this.heap.length;
+  }
+
+  has(pixelIndex: number): boolean {
+    return this.inHeap.has(pixelIndex);
+  }
+
+  push(pixelIndex: number, dist: number): void {
+    this.heap.push([pixelIndex, dist]);
+    this.inHeap.add(pixelIndex);
+    this._bubbleUp(this.heap.length - 1);
+  }
+
+  pop(): [number, number] | undefined {
+    if (this.heap.length === 0) return undefined;
+    const top = this.heap[0];
+    const last = this.heap.pop()!;
+    this.inHeap.delete(top[0]);
+    if (this.heap.length > 0) {
+      this.heap[0] = last;
+      this._sinkDown(0);
+    }
+    return top;
+  }
+
+  private _bubbleUp(i: number): void {
+    while (i > 0) {
+      const parent = (i - 1) >> 1;
+      if (this.heap[parent][1] <= this.heap[i][1]) break;
+      [this.heap[parent], this.heap[i]] = [this.heap[i], this.heap[parent]];
+      i = parent;
+    }
+  }
+
+  private _sinkDown(i: number): void {
+    const n = this.heap.length;
+    while (true) {
+      let smallest = i;
+      const left = 2 * i + 1;
+      const right = 2 * i + 2;
+      if (left < n && this.heap[left][1] < this.heap[smallest][1]) smallest = left;
+      if (right < n && this.heap[right][1] < this.heap[smallest][1]) smallest = right;
+      if (smallest === i) break;
+      [this.heap[smallest], this.heap[i]] = [this.heap[i], this.heap[smallest]];
+      i = smallest;
+    }
+  }
+}
+
 async function inpaintPass(
   pixels: Pixel[],
   isMasked: boolean[],
@@ -101,13 +160,14 @@ async function inpaintPass(
   height: number,
   radius: number
 ): Promise<Pixel[]> {
-  const known = new Uint8Array(width * height);
-  const distance = new Float32Array(width * height);
-  const processed = new Uint8Array(width * height);
+  const totalPixels = width * height;
+  const known = new Uint8Array(totalPixels);
+  const distance = new Float32Array(totalPixels);
+  const processed = new Uint8Array(totalPixels);
   const outputPixels: Pixel[] = [...pixels];
 
   // Initialize known/unknown
-  for (let i = 0; i < width * height; i++) {
+  for (let i = 0; i < totalPixels; i++) {
     if (!isMasked[i]) {
       known[i] = 1;
       distance[i] = 0;
@@ -117,8 +177,8 @@ async function inpaintPass(
     }
   }
 
-  // Find initial boundary
-  const boundary: number[] = [];
+  // Find initial boundary and push into min-heap
+  const heap = new MinHeap();
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const idx = y * width + x;
@@ -135,32 +195,18 @@ async function inpaintPass(
           }
         }
         if (hasKnownNeighbor) {
-          boundary.push(idx);
           distance[idx] = 1;
+          heap.push(idx, 1);
         }
       }
     }
   }
 
-  // Sort by distance
-  const processQueue: number[] = [...boundary].sort((a, b) => distance[a] - distance[b]);
-
-  // Process using fast marching
-  const queueSet = new Set(boundary);
-
-  while (processQueue.length > 0) {
-    // Find the pixel with smallest distance
-    let minIdx = 0;
-    let minDist = Infinity;
-    for (let i = 0; i < processQueue.length; i++) {
-      if (distance[processQueue[i]] < minDist) {
-        minDist = distance[processQueue[i]];
-        minIdx = i;
-      }
-    }
-
-    const idx = processQueue.splice(minIdx, 1)[0];
-    queueSet.delete(idx);
+  // Process using fast marching with min-heap (O(n log n) instead of O(n²))
+  while (heap.size > 0) {
+    const entry = heap.pop();
+    if (!entry) break;
+    const idx = entry[0];
 
     // Skip if already processed (can happen if pixel was added multiple times)
     if (processed[idx]) continue;
@@ -207,16 +253,15 @@ async function inpaintPass(
       processed[idx] = 1;
       known[idx] = 1;
 
-      // Update distances of unknown neighbors and add to queue
+      // Update distances of unknown neighbors and push into heap
       for (const [ddx, ddy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
         const nnx = x + ddx;
         const nny = y + ddy;
         if (nnx >= 0 && nnx < width && nny >= 0 && nny < height) {
           const nnIdx = nny * width + nnx;
-          if (!known[nnIdx] && !processed[nnIdx] && !queueSet.has(nnIdx)) {
+          if (!known[nnIdx] && !processed[nnIdx] && !heap.has(nnIdx)) {
             distance[nnIdx] = Math.min(distance[nnIdx], distance[idx] + 1);
-            processQueue.push(nnIdx);
-            queueSet.add(nnIdx);
+            heap.push(nnIdx, distance[nnIdx]);
           }
         }
       }
