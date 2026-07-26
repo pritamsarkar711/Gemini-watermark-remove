@@ -2,22 +2,24 @@
 
 import { useCallback, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Upload, X, Sparkles, Shield, Zap, Eye } from 'lucide-react'
+import { Upload, X, Sparkles, Shield, Zap, Eye, Lock } from 'lucide-react'
 import { useAppStore, type ImageInfo } from '@/lib/store'
 
 const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 const MAX_SIZE = 50 * 1024 * 1024
 
 const TRUST_ITEMS = [
-  { icon: Shield, label: 'Secure' },
-  { icon: Zap, label: 'Instant' },
-  { icon: Eye, label: 'No trace' },
+  { icon: Shield, label: '256-bit SSL' },
+  { icon: Zap, label: 'Under 5s' },
+  { icon: Eye, label: 'Zero residue' },
+  { icon: Lock, label: 'Private' },
 ]
 
 export default function UploadArea() {
   const { setOriginalImage } = useAppStore()
   const [isDragging, setIsDragging] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isReading, setIsReading] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const processFile = useCallback(
@@ -34,27 +36,35 @@ export default function UploadArea() {
         return
       }
 
-      const dataUrl = await new Promise<string>((resolve) => {
-        const reader = new FileReader()
-        reader.onload = () => resolve(reader.result as string)
-        reader.readAsDataURL(file)
-      })
+      setIsReading(true)
+      try {
+        const dataUrl = await new Promise<string>((resolve) => {
+          const reader = new FileReader()
+          reader.onload = () => resolve(reader.result as string)
+          reader.readAsDataURL(file)
+        })
 
-      const img = new Image()
-      img.onload = () => {
-        const imageInfo: ImageInfo = {
-          file,
-          name: file.name,
-          originalName: file.name,
-          width: img.naturalWidth,
-          height: img.naturalHeight,
-          size: file.size,
-          type: file.type,
-          dataUrl,
+        const img = new Image()
+        img.onload = () => {
+          const imageInfo: ImageInfo = {
+            file,
+            name: file.name,
+            originalName: file.name,
+            width: img.naturalWidth,
+            height: img.naturalHeight,
+            size: file.size,
+            type: file.type,
+            dataUrl,
+          }
+          setOriginalImage(imageInfo)
+          setIsReading(false)
         }
-        setOriginalImage(imageInfo)
+        img.onerror = () => setIsReading(false)
+        img.src = dataUrl
+      } catch (err) {
+        console.error('Failed to read file:', err)
+        setIsReading(false)
       }
-      img.src = dataUrl
     },
     [setOriginalImage]
   )
@@ -127,7 +137,7 @@ export default function UploadArea() {
           onDrop={handleDrop}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
-          onClick={() => inputRef.current?.click()}
+          onClick={() => !isReading && inputRef.current?.click()}
           className={`
             group relative flex cursor-pointer flex-col items-center justify-center
             rounded-2xl border-2 border-dashed transition-all duration-300
@@ -136,6 +146,7 @@ export default function UploadArea() {
               ? 'border-primary bg-primary/5 scale-[1.02] upload-area-active shadow-lg shadow-primary/10'
               : 'border-border hover:border-primary/40 hover:bg-muted/30 hover:shadow-sm'
             }
+            ${isReading ? 'pointer-events-none' : ''}
           `}
         >
           <input
@@ -149,30 +160,63 @@ export default function UploadArea() {
           {/* Subtle gradient background */}
           <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-primary/[0.02] via-transparent to-primary/[0.03] opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
-          <motion.div
-            animate={isDragging ? { scale: 1.15, y: -6 } : { scale: 1, y: 0 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-            className="flex flex-col items-center gap-3"
-          >
-            <div className={`
-              flex size-12 items-center justify-center rounded-xl transition-all duration-300
-              ${isDragging
-                ? 'bg-primary/15 shadow-md shadow-primary/20'
-                : 'bg-muted/60 group-hover:bg-muted'
-              }
-            `}>
-              <Upload className={`size-5 transition-colors duration-300 ${isDragging ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground/60'}`} />
-            </div>
+          <AnimatePresence mode="wait">
+            {isReading ? (
+              <motion.div
+                key="loading"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="flex flex-col items-center gap-3"
+              >
+                <div className="flex items-center gap-1.5">
+                  {[0, 1, 2].map((i) => (
+                    <motion.span
+                      key={i}
+                      className="size-2 rounded-full bg-primary"
+                      animate={{ opacity: [0.3, 1, 0.3], scale: [0.85, 1.1, 0.85] }}
+                      transition={{ duration: 1, repeat: Infinity, delay: i * 0.18, ease: 'easeInOut' }}
+                    />
+                  ))}
+                </div>
+                <span className="text-xs font-medium text-muted-foreground/70">Reading image...</span>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="idle"
+                animate={isDragging ? { scale: 1.15, y: -6 } : { scale: 1, y: 0 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                className="flex flex-col items-center gap-3"
+              >
+                <div className={`
+                  flex size-12 items-center justify-center rounded-xl transition-all duration-300
+                  ${isDragging
+                    ? 'bg-primary/15 shadow-md shadow-primary/20'
+                    : 'bg-muted/60 group-hover:bg-muted'
+                  }
+                `}>
+                  <Upload className={`size-5 transition-colors duration-300 ${isDragging ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground/60'}`} />
+                </div>
 
-            <div className="flex flex-col items-center gap-1">
-              <span className="text-sm font-medium text-foreground/80">
-                {isDragging ? 'Release' : 'Drop image'}
-              </span>
-              <span className="text-[11px] text-muted-foreground/60">
-                PNG JPEG WebP up to 50MB
-              </span>
-            </div>
-          </motion.div>
+                <div className="flex flex-col items-center gap-1">
+                  <span className="text-sm font-medium text-foreground/80">
+                    {isDragging ? 'Release' : 'Drop image'}
+                  </span>
+                  {!isDragging && (
+                    <span className="text-[11px] text-muted-foreground/60">
+                      or click to browse
+                    </span>
+                  )}
+                  <div className="mt-1 flex items-center gap-1.5">
+                    <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground/80">PNG</span>
+                    <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground/80">JPEG</span>
+                    <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground/80">WebP</span>
+                    <span className="text-[10px] text-muted-foreground/50">up to 50MB</span>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </motion.div>
 
@@ -181,7 +225,7 @@ export default function UploadArea() {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.4 }}
-        className="flex items-center justify-center gap-4"
+        className="flex flex-wrap items-center justify-center gap-2"
       >
         {TRUST_ITEMS.map((item, i) => (
           <motion.div
@@ -189,7 +233,7 @@ export default function UploadArea() {
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.3, delay: 0.5 + i * 0.1 }}
-            className="flex items-center gap-1.5 rounded-full border bg-card/80 px-3 py-1.5 shadow-sm"
+            className="flex items-center gap-1.5 rounded-full border bg-card/80 px-2.5 py-1.5 shadow-sm"
           >
             <item.icon className="size-3 text-primary/70" />
             <span className="text-[11px] font-medium text-muted-foreground/70">{item.label}</span>

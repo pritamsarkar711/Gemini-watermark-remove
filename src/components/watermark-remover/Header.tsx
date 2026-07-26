@@ -32,11 +32,19 @@ export default function Header() {
       <div className="relative mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6">
         {/* Left: Logo + Title */}
         <div className="flex items-center gap-2.5">
-          <div className="flex size-8 items-center justify-center rounded-lg bg-primary shadow-sm">
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary shadow-sm">
             <Eraser className="size-4 text-primary-foreground" />
           </div>
-          <div className="flex flex-col leading-none">
+          <div className="flex items-center gap-1.5 leading-none">
             <span className="text-base font-semibold tracking-tight">Zeminai</span>
+            {step !== 'upload' && (
+              <motion.span
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="size-1.5 rounded-full bg-green-500 shadow-[0_0_6px_rgba(34,197,94,0.6)]"
+                aria-label="Ready"
+              />
+            )}
             <span className="hidden text-[10px] text-muted-foreground sm:inline-block">Watermark Remover</span>
           </div>
         </div>
@@ -57,7 +65,7 @@ export default function Header() {
                   variant="ghost"
                   size="sm"
                   onClick={reset}
-                  className="h-8 gap-1.5 text-muted-foreground hover:text-foreground"
+                  className="h-8 gap-1.5 text-muted-foreground hover:text-foreground hover:bg-accent/60"
                 >
                   <Plus className="size-3.5" />
                   <span className="hidden sm:inline">New Image</span>

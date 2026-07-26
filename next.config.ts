@@ -7,6 +7,8 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
   reactStrictMode: false,
+  // Hide the Next.js dev tools floating button (production builds never show it)
+  devIndicators: false,
 };
 
 export default nextConfig;

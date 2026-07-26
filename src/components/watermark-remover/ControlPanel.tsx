@@ -60,7 +60,7 @@ export default function ControlPanel() {
         const data = await res.json()
 
         if (data.success) {
-          setProcessedImage(data.result)
+          setProcessedImage(data.result, 'remove-watermark')
           setShowComparison(true)
         }
       } else {
@@ -87,7 +87,7 @@ export default function ControlPanel() {
         const data = await res.json()
 
         if (data.success) {
-          setProcessedImage(data.result)
+          setProcessedImage(data.result, 'add-watermark')
           setShowComparison(true)
         }
       }
@@ -129,7 +129,7 @@ export default function ControlPanel() {
           size: data.result.size,
           dataUrl: resultDataUrl,
         }
-        setOriginalImage(newImageInfo)
+        setOriginalImage(newImageInfo, 'transform')
       }
     } catch (err) {
       console.error('Transform failed:', err)
@@ -211,7 +211,7 @@ export default function ControlPanel() {
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.3 }}
-      className="flex w-full flex-col gap-3"
+      className="flex w-full flex-col gap-4"
     >
       {/* Transform controls */}
       <div className="flex flex-col gap-2 rounded-lg border bg-card/80 p-2.5 shadow-sm">
@@ -226,37 +226,49 @@ export default function ControlPanel() {
             </button>
           )}
         </div>
-        <div className="flex items-center gap-1">
-          <Button
-            variant="outline"
-            size="icon"
-            className="size-7 rounded-lg"
-            onClick={() => setTransformConfig({ rotation: (transformConfig.rotation + 90) % 360 })}
-            disabled={isTransforming}
-            title="Rotate 90°"
-          >
-            <RotateCw className="size-3" />
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            className={`size-7 rounded-lg ${transformConfig.flipH ? 'bg-primary/10 border-primary/40 ring-1 ring-primary/20' : ''}`}
-            onClick={() => setTransformConfig({ flipH: !transformConfig.flipH })}
-            disabled={isTransforming}
-            title="Flip horizontal"
-          >
-            <FlipHorizontal className="size-3" />
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            className={`size-7 rounded-lg ${transformConfig.flipV ? 'bg-primary/10 border-primary/40 ring-1 ring-primary/20' : ''}`}
-            onClick={() => setTransformConfig({ flipV: !transformConfig.flipV })}
-            disabled={isTransforming}
-            title="Flip vertical"
-          >
-            <FlipVertical className="size-3" />
-          </Button>
+        <div className="flex items-end gap-1.5">
+          <div className="flex flex-col items-center gap-0.5">
+            <Button
+              variant="outline"
+              size="icon"
+              className={`size-7 rounded-lg ${isTransforming ? 'opacity-50' : ''}`}
+              onClick={() => setTransformConfig({ rotation: (transformConfig.rotation + 90) % 360 })}
+              disabled={isTransforming}
+              title="Rotate 90°"
+              aria-label="Rotate 90 degrees"
+            >
+              <RotateCw className="size-3" />
+            </Button>
+            <span className="text-[8px] font-medium text-muted-foreground/60">Rotate</span>
+          </div>
+          <div className="flex flex-col items-center gap-0.5">
+            <Button
+              variant="outline"
+              size="icon"
+              className={`size-7 rounded-lg ${transformConfig.flipH ? 'bg-primary/10 border-primary/40 ring-1 ring-primary/20' : ''} ${isTransforming ? 'opacity-50' : ''}`}
+              onClick={() => setTransformConfig({ flipH: !transformConfig.flipH })}
+              disabled={isTransforming}
+              title="Flip horizontal"
+              aria-label="Flip horizontal"
+            >
+              <FlipHorizontal className="size-3" />
+            </Button>
+            <span className="text-[8px] font-medium text-muted-foreground/60">Flip H</span>
+          </div>
+          <div className="flex flex-col items-center gap-0.5">
+            <Button
+              variant="outline"
+              size="icon"
+              className={`size-7 rounded-lg ${transformConfig.flipV ? 'bg-primary/10 border-primary/40 ring-1 ring-primary/20' : ''} ${isTransforming ? 'opacity-50' : ''}`}
+              onClick={() => setTransformConfig({ flipV: !transformConfig.flipV })}
+              disabled={isTransforming}
+              title="Flip vertical"
+              aria-label="Flip vertical"
+            >
+              <FlipVertical className="size-3" />
+            </Button>
+            <span className="text-[8px] font-medium text-muted-foreground/60">Flip V</span>
+          </div>
           {hasTransform && (
             <Button
               size="sm"
@@ -277,11 +289,11 @@ export default function ControlPanel() {
         className="w-full"
       >
         <TabsList className="w-full h-8 rounded-lg">
-          <TabsTrigger value="remove" className="flex-1 gap-1 h-7 text-xs rounded-md">
+          <TabsTrigger value="remove" className="flex-1 gap-1 h-7 text-xs rounded-md data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-none">
             <Eraser className="size-3" />
             Remove
           </TabsTrigger>
-          <TabsTrigger value="add" className="flex-1 gap-1 h-7 text-xs rounded-md">
+          <TabsTrigger value="add" className="flex-1 gap-1 h-7 text-xs rounded-md data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-none">
             <Stamp className="size-3" />
             Add
           </TabsTrigger>
@@ -353,16 +365,16 @@ export default function ControlPanel() {
         size="default"
         onClick={handleProcess}
         disabled={isProcessing || (mode === 'add' && !watermarkConfig.text && !watermarkConfig.logoFile)}
-        className="w-full gap-1.5 rounded-lg font-semibold h-9 shadow-sm"
+        className="cta-button mt-1 w-full gap-1.5 rounded-lg font-semibold h-11 text-sm shadow-md hover:shadow-lg hover:shadow-primary/25 hover:-translate-y-0.5 hover:ring-2 hover:ring-primary/20 transition-all disabled:hover:translate-y-0 disabled:hover:shadow-md disabled:hover:ring-0"
       >
         {isProcessing ? (
           <>
-            <Loader2 className="size-3.5 animate-spin" />
+            <Loader2 className="size-4 animate-spin" />
             Processing
           </>
         ) : (
           <>
-            {mode === 'remove' ? <Eraser className="size-3.5" /> : <Stamp className="size-3.5" />}
+            {mode === 'remove' ? <Eraser className="size-4" /> : <Stamp className="size-4" />}
             {mode === 'remove' ? 'Remove watermark' : 'Apply watermark'}
           </>
         )}

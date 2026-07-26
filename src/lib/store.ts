@@ -99,6 +99,18 @@ export interface TransformConfig {
   flipV: boolean;
 }
 
+export interface AdjustConfig {
+  brightness: number; // 0.5 - 2, 1 = no change
+  contrast: number; // 0 - 2, 1 = no change
+  saturation: number; // 0 - 2, 1 = no change
+  blur: number; // 0 - 10, 0 = no blur
+  sharpen: number; // 0 - 5, 0 = no sharpen
+  hue: number; // -180 to 180, 0 = no change
+  grayscale: boolean;
+  sepia: boolean;
+  invert: boolean;
+}
+
 /**
  * A history snapshot captures the key state at a point in time.
  * Used for undo/redo: history[historyIndex] always represents the current state.
@@ -223,6 +235,18 @@ const defaultTransformConfig: TransformConfig = {
   flipV: false,
 };
 
+const defaultAdjustConfig: AdjustConfig = {
+  brightness: 1,
+  contrast: 1,
+  saturation: 1,
+  blur: 0,
+  sharpen: 0,
+  hue: 0,
+  grayscale: false,
+  sepia: false,
+  invert: false,
+};
+
 const initialSnapshot: HistorySnapshot = {
   originalImage: null,
   processedImage: null,
@@ -239,10 +263,10 @@ interface AppState {
   setStep: (step: ProcessingStep) => void;
 
   originalImage: ImageInfo | null;
-  setOriginalImage: (image: ImageInfo | null) => void;
+  setOriginalImage: (image: ImageInfo | null, action?: LastAction) => void;
 
   processedImage: ProcessedImage | null;
-  setProcessedImage: (image: ProcessedImage | null) => void;
+  setProcessedImage: (image: ProcessedImage | null, action?: LastAction) => void;
 
   mode: WatermarkMode;
   setMode: (mode: WatermarkMode) => void;
@@ -261,6 +285,9 @@ interface AppState {
 
   transformConfig: TransformConfig;
   setTransformConfig: (config: Partial<TransformConfig>) => void;
+
+  adjustConfig: AdjustConfig;
+  setAdjustConfig: (config: Partial<AdjustConfig>) => void;
 
   outputFileName: string;
   setOutputFileName: (name: string) => void;
@@ -290,6 +317,13 @@ interface AppState {
   /** Go forward one step in history. Restores originalImage, processedImage, step, transformConfig, watermarkConfig. */
   redo: () => void;
 
+  /**
+   * Jump to a specific index in the history timeline.
+   * Validates `0 <= index < history.length`; no-ops otherwise.
+   * Restores state from `history[index]` using the same logic as undo/redo.
+   */
+  jumpTo: (index: number) => void;
+
   reset: () => void;
 }
 
@@ -300,7 +334,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   setStep: (step) => set({ step }),
 
   originalImage: null,
-  setOriginalImage: (image) =>
+  setOriginalImage: (image, action) =>
     set((state) => {
       // Truncate any redo future before pushing new state
       const truncatedHistory = state.history.slice(0, state.historyIndex + 1);
@@ -309,7 +343,9 @@ export const useAppStore = create<AppState>((set, get) => ({
       const newOutputFileName = image
         ? image.name.replace(/\.[^.]+$/, "")
         : "";
-      const newLastAction: LastAction | null = image ? "upload" : null;
+      // Use the provided action label, or default to "upload" when an image is
+      // being set, or null when clearing.
+      const newLastAction: LastAction | null = action ?? (image ? "upload" : null);
 
       // Create snapshot of the state AFTER this change
       const newSnapshot: HistorySnapshot = {
@@ -337,12 +373,14 @@ export const useAppStore = create<AppState>((set, get) => ({
     }),
 
   processedImage: null,
-  setProcessedImage: (image) =>
+  setProcessedImage: (image, action) =>
     set((state) => {
       // Truncate any redo future before pushing new state
       const truncatedHistory = state.history.slice(0, state.historyIndex + 1);
 
       const newStep = image ? "result" : "preview";
+      // Use the provided action label, or fall back to the existing lastAction
+      const newLastAction = action ?? state.lastAction;
 
       // Create snapshot of the state AFTER this change
       const newSnapshot: HistorySnapshot = {
@@ -351,7 +389,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         step: newStep,
         transformConfig: { ...state.transformConfig },
         watermarkConfig: createWatermarkConfigSnapshot(state.watermarkConfig),
-        lastAction: state.lastAction,
+        lastAction: newLastAction,
       };
 
       const newHistory = [...truncatedHistory, newSnapshot];
@@ -360,6 +398,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       return {
         processedImage: image,
         step: newStep,
+        lastAction: newLastAction,
         history: newHistory,
         historyIndex: newHistoryIndex,
         canUndo: newHistoryIndex > 0,
@@ -392,6 +431,12 @@ export const useAppStore = create<AppState>((set, get) => ({
   setTransformConfig: (config) =>
     set((state) => ({
       transformConfig: { ...state.transformConfig, ...config },
+    })),
+
+  adjustConfig: defaultAdjustConfig,
+  setAdjustConfig: (config) =>
+    set((state) => ({
+      adjustConfig: { ...state.adjustConfig, ...config },
     })),
 
   outputFileName: "",
@@ -491,6 +536,30 @@ export const useAppStore = create<AppState>((set, get) => ({
       };
     }),
 
+  jumpTo: (index) =>
+    set((state) => {
+      if (index < 0 || index >= state.history.length) return state; // invalid index
+      if (index === state.historyIndex) return state; // no-op: same index
+
+      const snapshot = state.history[index];
+
+      return {
+        originalImage: restoreImageInfo(snapshot.originalImage),
+        processedImage: snapshot.processedImage ? { ...snapshot.processedImage } : null,
+        step: snapshot.step,
+        transformConfig: { ...snapshot.transformConfig },
+        watermarkConfig: restoreWatermarkConfig(snapshot.watermarkConfig),
+        lastAction: snapshot.lastAction,
+        outputFileName: snapshot.originalImage
+          ? snapshot.originalImage.name.replace(/\.[^.]+$/, "")
+          : "",
+        isProcessing: false,
+        historyIndex: index,
+        canUndo: index > 0,
+        canRedo: index < state.history.length - 1,
+      };
+    }),
+
   reset: () =>
     set({
       step: "upload",
@@ -502,6 +571,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       watermarkConfig: defaultWatermarkConfig,
       qualityConfig: defaultQualityConfig,
       transformConfig: defaultTransformConfig,
+      adjustConfig: defaultAdjustConfig,
       outputFileName: "",
       isProcessing: false,
       sliderPosition: 50,

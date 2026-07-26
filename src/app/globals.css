@@ -192,8 +192,49 @@
 
 /* Focus ring style */
 :focus-visible {
-  outline: 2px solid oklch(0.55 0.2 25);
+  outline: 2px solid var(--ring);
   outline-offset: 2px;
+  border-radius: var(--radius);
+}
+
+/* Glass card utility - subtle translucent surface with blur */
+.glass-card {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  background: color-mix(in oklch, var(--card) 70%, transparent);
+  border: 1px solid color-mix(in oklch, var(--border) 50%, transparent);
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+}
+
+/* CTA button utility - gradient background with hover lift effect */
+.cta-button {
+  background-image: linear-gradient(to right, var(--primary), color-mix(in oklch, var(--primary) 90%, transparent));
+  transition: transform 0.2s ease, box-shadow 0.2s ease, ring 0.2s ease;
+}
+.cta-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -5px color-mix(in oklch, var(--primary) 25%, transparent);
+}
+
+/* Shimmer keyframe for loading states */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    color-mix(in oklch, var(--muted) 80%, transparent) 25%,
+    color-mix(in oklch, var(--muted) 60%, transparent) 50%,
+    color-mix(in oklch, var(--muted) 80%, transparent) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite linear;
+}
+
+/* Thicker icon strokes for better visibility */
+.icon-stroke svg {
+  stroke-width: 1.75;
 }
 
 /* Smooth page transitions */

@@ -160,11 +160,13 @@ export default function DownloadPanel() {
       <Button
         size="default"
         onClick={handleDownload}
-        className="w-full gap-1.5 rounded-lg font-semibold h-10 shadow-md"
+        className="cta-button w-full gap-1.5 rounded-lg font-semibold h-11 text-sm shadow-md hover:shadow-lg hover:shadow-primary/25 hover:-translate-y-0.5 hover:ring-2 hover:ring-primary/20 transition-all"
       >
         <Download className="size-4" />
         Download
-        <span className="text-[10px] opacity-60 ml-1">{formatBytes(downloadSize)}</span>
+        <span className="ml-1 rounded-md bg-black/15 px-1.5 py-0.5 text-[10px] font-medium text-primary-foreground/90">
+          {formatBytes(downloadSize)}
+        </span>
       </Button>
     </motion.div>
   )

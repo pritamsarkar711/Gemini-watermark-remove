@@ -22,14 +22,14 @@ export default function QualityOptimizer() {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="flex flex-col gap-2.5 rounded-lg border bg-card/80 p-3 shadow-sm"
+      className="flex flex-col gap-2.5 rounded-lg border bg-card/80 p-3 shadow-sm transition-all duration-200 hover:bg-card hover:shadow-md hover:border-border"
     >
       <div className="flex items-center gap-1.5">
         <Settings2 className="size-3.5 text-muted-foreground/60" />
         <Label className="text-xs font-semibold">Export quality</Label>
       </div>
 
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex items-center justify-between gap-3">
         <span className="text-[10px] text-muted-foreground/50 font-medium">Format</span>
         <Select
           value={qualityConfig.format}
@@ -47,7 +47,7 @@ export default function QualityOptimizer() {
       </div>
 
       {qualityConfig.format !== 'png' && (
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center justify-between gap-3">
           <span className="text-[10px] text-muted-foreground/50 font-medium">Quality</span>
           <Slider
             value={[qualityConfig.quality]}
@@ -61,7 +61,7 @@ export default function QualityOptimizer() {
         </div>
       )}
 
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex items-center justify-between gap-3">
         <span className="text-[10px] text-muted-foreground/50 font-medium">Max width</span>
         <Input
           type="number"
@@ -71,7 +71,7 @@ export default function QualityOptimizer() {
         />
       </div>
 
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex items-center justify-between gap-3">
         <span className="text-[10px] text-muted-foreground/50 font-medium">Max height</span>
         <Input
           type="number"
