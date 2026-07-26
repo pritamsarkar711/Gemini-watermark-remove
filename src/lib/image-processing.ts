@@ -1118,7 +1118,7 @@ async function drawLogoWatermark(
 
 export interface OptimizeOptions {
   quality: number;
-  format: "jpeg" | "png" | "webp";
+  format: "jpeg" | "png" | "webp" | "avif";
   maxWidth: number;
   maxHeight: number;
 }
@@ -1158,6 +1158,9 @@ export async function optimizeImage(
       break;
     case "webp":
       pipeline = pipeline.webp({ quality: options.quality });
+      break;
+    case "avif":
+      pipeline = pipeline.avif({ quality: options.quality });
       break;
   }
 

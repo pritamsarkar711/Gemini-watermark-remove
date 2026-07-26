@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Maximize, Loader2, RotateCcw, Lock, Unlock, ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAppStore, type ResizeConfig } from '@/lib/store'
+import { toast } from '@/hooks/use-toast'
 
 type ResizeMode = ResizeConfig['mode']
 
@@ -143,9 +144,11 @@ export default function ResizePanel() {
           dataUrl: resultDataUrl,
         }
         setOriginalImage(newImageInfo, 'transform')
+        toast({ title: 'Resize applied', description: 'Image has been resized successfully.' })
       }
     } catch (err) {
       console.error('Resize failed:', err)
+      toast({ title: 'Resize failed', description: 'Could not resize image.', variant: 'destructive' })
     } finally {
       setIsResizing(false)
       setIsProcessing(false)

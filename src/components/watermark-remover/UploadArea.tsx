@@ -2,7 +2,7 @@
 
 import { useCallback, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Upload, X, Sparkles, Shield, Zap, Eye, Lock } from 'lucide-react'
+import { Upload, X, Sparkles, Shield, Zap, Eye, Lock, ArrowRight, Scan, Paintbrush } from 'lucide-react'
 import { useAppStore, type ImageInfo } from '@/lib/store'
 
 const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
@@ -253,6 +253,37 @@ export default function UploadArea() {
           >
             <item.icon className="size-3 text-primary/80" />
             <span className="text-[11px] font-semibold text-muted-foreground/80">{item.label}</span>
+          </motion.div>
+        ))}
+      </motion.div>
+
+      {/* How It Works — 3-step visual guide */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.6 }}
+        className="grid grid-cols-3 gap-3 w-full max-w-md"
+      >
+        {[
+          { step: 1, icon: Upload, title: 'Upload', desc: 'Drop your image' },
+          { step: 2, icon: Scan, title: 'Detect', desc: 'AI finds watermark' },
+          { step: 3, icon: Paintbrush, title: 'Remove', desc: 'Seamless cleanup' },
+        ].map((item, i) => (
+          <motion.div
+            key={item.step}
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.3, delay: 0.7 + i * 0.1 }}
+            className="flex flex-col items-center gap-1.5 rounded-lg border bg-card/60 p-3 shadow-sm hover:bg-card/80 hover:shadow-md hover:border-primary/20 transition-all group"
+          >
+            <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 ring-1 ring-primary/15 group-hover:bg-primary/20 group-hover:ring-primary/30 transition-all">
+              <item.icon className="size-4 text-primary/70 group-hover:text-primary transition-colors" />
+            </div>
+            <span className="text-xs font-semibold text-foreground/80 group-hover:text-foreground transition-colors">{item.title}</span>
+            <span className="text-[10px] text-muted-foreground/60">{item.desc}</span>
+            {i < 2 && (
+              <ArrowRight className="hidden sm:block absolute right-0 top-1/2 -translate-y-1/2 text-muted-foreground/30" />
+            )}
           </motion.div>
         ))}
       </motion.div>

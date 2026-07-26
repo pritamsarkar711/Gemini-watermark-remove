@@ -17,11 +17,20 @@ import { useAppStore } from '@/lib/store'
 import type { QualityConfig } from '@/lib/store'
 
 const presets: { label: string; config: QualityConfig }[] = [
-  { label: 'Original', config: { format: 'png', quality: 100, maxWidth: 4096, maxHeight: 4096 } },
+  { label: 'Thumbnail', config: { format: 'jpeg', quality: 70, maxWidth: 150, maxHeight: 150 } },
+  { label: 'Social', config: { format: 'jpeg', quality: 85, maxWidth: 1200, maxHeight: 1200 } },
+  { label: 'HD', config: { format: 'webp', quality: 90, maxWidth: 1920, maxHeight: 1080 } },
   { label: 'Web', config: { format: 'webp', quality: 80, maxWidth: 1920, maxHeight: 1080 } },
   { label: 'Print', config: { format: 'png', quality: 100, maxWidth: 4096, maxHeight: 4096 } },
-  { label: 'Social', config: { format: 'jpeg', quality: 85, maxWidth: 1200, maxHeight: 1200 } },
+  { label: 'Original', config: { format: 'png', quality: 100, maxWidth: 4096, maxHeight: 4096 } },
 ]
+
+const formatDescriptions: Record<string, string> = {
+  png: 'Lossless, larger files',
+  jpeg: 'Lossy, smaller files',
+  webp: 'Modern, best balance',
+  avif: 'Next-gen, smallest',
+}
 
 function isPresetActive(config: QualityConfig, preset: QualityConfig): boolean {
   return (
@@ -174,6 +183,18 @@ export default function QualityOptimizer() {
     savingsDirection = diff <= 0 ? 'down' : 'up'
   }
 
+  // Compression ratio for the visual bar (0 = same size, 100 = maximum compression)
+  // For "up" direction, we show the expansion ratio differently
+  const compressionRatio = savingsDirection === 'down' && savingsPct !== null
+    ? savingsPct
+    : 0
+
+  // Quality gradient color — interpolate from red (10) to green (100)
+  const qualityPercent = ((qualityConfig.quality - 10) / 90) * 100
+
+  // Whether quality slider is visible (only for lossy formats)
+  const showQualitySlider = qualityConfig.format !== 'png'
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -186,7 +207,8 @@ export default function QualityOptimizer() {
         <Label className="text-xs font-semibold">Export quality</Label>
       </div>
 
-      <div className="flex items-center gap-1">
+      {/* Preset chips */}
+      <div className="flex items-center gap-1 flex-wrap">
         {presets.map((preset) => {
           const active = isPresetActive(qualityConfig, preset.config)
           return (
@@ -205,38 +227,59 @@ export default function QualityOptimizer() {
         })}
       </div>
 
+      {/* Format selector with description */}
       <div className="flex items-center justify-between gap-3">
         <span className="text-[10px] text-muted-foreground/50 font-medium">Format</span>
-        <Select
-          value={qualityConfig.format}
-          onValueChange={(v) => setQualityConfig({ format: v as 'jpeg' | 'png' | 'webp' })}
-        >
-          <SelectTrigger className="w-[3.5rem] h-6 text-[10px] rounded-lg">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="png">PNG</SelectItem>
-            <SelectItem value="jpeg">JPEG</SelectItem>
-            <SelectItem value="webp">WebP</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex flex-col items-end gap-0.5">
+          <Select
+            value={qualityConfig.format}
+            onValueChange={(v) => setQualityConfig({ format: v as QualityConfig['format'] })}
+          >
+            <SelectTrigger className="w-[4.5rem] h-6 text-[10px] rounded-lg">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="png">PNG</SelectItem>
+              <SelectItem value="jpeg">JPEG</SelectItem>
+              <SelectItem value="webp">WebP</SelectItem>
+              <SelectItem value="avif">AVIF</SelectItem>
+            </SelectContent>
+          </Select>
+          <span className="text-[9px] text-muted-foreground/40 italic">
+            {formatDescriptions[qualityConfig.format]}
+          </span>
+        </div>
       </div>
 
-      {qualityConfig.format !== 'png' && (
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-[10px] text-muted-foreground/50 font-medium">Quality</span>
-          <Slider
-            value={[qualityConfig.quality]}
-            min={10}
-            max={100}
-            step={1}
-            onValueChange={(v) => setQualityConfig({ quality: v[0] })}
-            className="w-20"
-          />
-          <span className="text-[10px] tabular-nums text-muted-foreground/50 w-5 text-right">{qualityConfig.quality}</span>
+      {/* Quality slider (only for lossy formats) */}
+      {showQualitySlider && (
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-[10px] text-muted-foreground/50 font-medium">Quality</span>
+            <Slider
+              value={[qualityConfig.quality]}
+              min={10}
+              max={100}
+              step={1}
+              onValueChange={(v) => setQualityConfig({ quality: v[0] })}
+              className="w-20"
+            />
+            <span className="text-[10px] tabular-nums text-muted-foreground/50 w-5 text-right">{qualityConfig.quality}</span>
+          </div>
+          {/* Visual quality bar — gradient from red (low) to green (high) */}
+          <div className="relative h-1.5 w-full rounded-full overflow-hidden bg-muted/50">
+            <div
+              className="absolute inset-y-0 left-0 rounded-full transition-all duration-300"
+              style={{
+                width: `${qualityPercent}%`,
+                background: `linear-gradient(to right, #ef4444, #f97316, #eab308, #22c55e)`,
+              }}
+            />
+          </div>
         </div>
       )}
 
+      {/* Max dimensions */}
       <div className="flex items-center justify-between gap-3">
         <span className="text-[10px] text-muted-foreground/50 font-medium">Max width</span>
         <Input
@@ -299,6 +342,66 @@ export default function QualityOptimizer() {
           )}
         </div>
       </div>
+
+      {/* Savings comparison row with visual progress bar */}
+      {estimate && baselineSize > 0 && savingsDirection === 'down' && savingsPct !== null && (
+        <div className="flex flex-col gap-1 rounded-md bg-green-500/5 border border-green-500/10 px-2 py-2">
+          <div className="flex items-center justify-between text-[10px]">
+            <span className="text-green-600/80 dark:text-green-400/80 font-medium">
+              Savings vs original
+            </span>
+            <div className="flex items-center gap-1.5 tabular-nums">
+              <span className="text-muted-foreground/60">{formatBytes(baselineSize)}</span>
+              <ArrowDown className="size-2.5 text-green-600 dark:text-green-400" />
+              <span className="font-semibold text-green-600 dark:text-green-400">
+                {formatBytes(estimate.estimatedSize)}
+              </span>
+            </div>
+          </div>
+          {/* Compression ratio bar */}
+          <div className="relative h-2 w-full rounded-full overflow-hidden bg-green-500/10">
+            <div
+              className="absolute inset-y-0 left-0 rounded-full bg-green-500/40 transition-all duration-500"
+              style={{ width: `${Math.min(compressionRatio, 100)}%` }}
+            />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="text-[8px] font-bold text-green-600 dark:text-green-400 mix-blend-difference">
+                {savingsPct}% smaller
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Expansion warning row */}
+      {estimate && baselineSize > 0 && savingsDirection === 'up' && savingsPct !== null && (
+        <div className="flex flex-col gap-1 rounded-md bg-amber-500/5 border border-amber-500/10 px-2 py-2">
+          <div className="flex items-center justify-between text-[10px]">
+            <span className="text-amber-600/80 dark:text-amber-400/80 font-medium">
+              Larger than original
+            </span>
+            <div className="flex items-center gap-1.5 tabular-nums">
+              <span className="text-muted-foreground/60">{formatBytes(baselineSize)}</span>
+              <ArrowUp className="size-2.5 text-amber-600 dark:text-amber-400" />
+              <span className="font-semibold text-amber-600 dark:text-amber-400">
+                {formatBytes(estimate.estimatedSize)}
+              </span>
+            </div>
+          </div>
+          {/* Expansion ratio bar */}
+          <div className="relative h-2 w-full rounded-full overflow-hidden bg-amber-500/10">
+            <div
+              className="absolute inset-y-0 left-0 rounded-full bg-amber-500/40 transition-all duration-500"
+              style={{ width: `${Math.min(savingsPct, 100)}%` }}
+            />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="text-[8px] font-bold text-amber-600 dark:text-amber-400 mix-blend-difference">
+                {savingsPct}% larger
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
     </motion.div>
   )
 }

@@ -17,6 +17,7 @@ import { Slider } from '@/components/ui/slider'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { useAppStore } from '@/lib/store'
+import { toast } from '@/hooks/use-toast'
 
 interface SliderRowProps {
   icon: React.ElementType
@@ -122,9 +123,11 @@ export default function AdjustPanel() {
           dataUrl: resultDataUrl,
         }
         setOriginalImage(newImageInfo, 'transform')
+        toast({ title: 'Adjustments applied', description: 'Image adjustments have been applied successfully.' })
       }
     } catch (err) {
       console.error('Adjust failed:', err)
+      toast({ title: 'Adjustments failed', description: 'Could not apply adjustments.', variant: 'destructive' })
     } finally {
       setIsAdjusting(false)
       setIsProcessing(false)

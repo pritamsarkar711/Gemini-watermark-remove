@@ -1250,3 +1250,153 @@ The Zeminai Watermark & Logo Remover is a comprehensive, feature-rich image edit
 
 7. **Add watermark opacity preview**: Show a real-time preview of watermark opacity changes before applying.
 
+---
+Task ID: 3-b
+Agent: toast-notification-agent
+Task: Add toast notifications to CropPanel, ResizePanel, AdjustPanel, DownloadPanel
+
+Work Log:
+- Added toast import (`import { toast } from @/hooks/use-toast`) to each component
+- Added success/error toast notifications at appropriate locations
+
+Stage Summary:
+- All 4 panels now have user-facing toast feedback
+
+---
+Task ID: 8
+Agent: quality-optimizer-agent
+Task: Enhance QualityOptimizer with AVIF format, better presets, visual quality bar, and format descriptions
+
+Work Log:
+- Read current QualityOptimizer.tsx, store.ts, image-processing.ts, optimize/route.ts, estimate-size/route.ts, and DownloadPanel.tsx
+- Updated store.ts QualityConfig type: `format: "jpeg" | "png" | "webp" | "avif"`
+- Updated image-processing.ts OptimizeOptions interface and switch case to include avif format
+- Updated optimize/route.ts: added avif to format type cast and mimeType mapping (`image/avif`)
+- Updated estimate-size/route.ts: added avif case in sharp pipeline switch statement
+- Updated DownloadPanel.tsx: added avif extension mapping for download filenames
+- Rewrote QualityOptimizer.tsx with all enhancements:
+  1. Added AVIF as 4th format option in the Select dropdown
+  2. Added format descriptions (PNG: "Lossless, larger files", JPEG: "Lossy, smaller files", WebP: "Modern, best balance", AVIF: "Next-gen, smallest")
+  3. Rearranged presets: Thumbnail (150x150, JPEG, 70), Social (1200x1200, JPEG, 85), HD (1920x1080, WebP, 90), Web (1920x1080, WebP, 80), Print (4096x4096, PNG, 100), Original (4096x4096, PNG, 100)
+  4. Added visual quality bar below the slider — gradient from red (low) to green (high) with smooth transition
+  5. Enhanced savings comparison with visual progress bar showing compression ratio (green bar for savings, amber bar for expansion)
+  6. Maintained consistent compact sidebar styling (sidebar-panel, rounded-lg, bg-card/80, etc.)
+
+Stage Summary:
+- QualityOptimizer now supports 4 formats (PNG, JPEG, WebP, AVIF)
+- 6 export presets available (Thumbnail, Social, HD, Web, Print, Original)
+- Visual quality indicator (gradient bar) added below the quality slider
+- Format descriptions shown as italic hints below the format selector
+- Savings comparison now has a prominent visual progress bar with compression/expansion indicators
+- All backend API routes (optimize, estimate-size) handle avif format correctly
+- DownloadPanel handles avif file extension (.avif)
+- Lint passed with no errors
+
+---
+Task ID: cron-review-2
+Agent: main-agent
+Task: QA testing, styling improvements, and feature additions for Zeminai watermark remover (round 2)
+
+## Current Project Status Assessment
+
+The project is in a stable state with a comprehensive set of features including:
+- Watermark detection & removal with inpainting engine
+- Add watermark (text + logo) with live preview
+- Comparison slider with pixel diff stats
+- Crop, resize, adjust, transform tools
+- Quality optimizer with format selection and export presets
+- History/undo/redo with keyboard shortcuts
+- Dark/light mode toggle
+- Responsive design with sidebar layout
+
+The project compiles successfully and serves pages correctly. The main areas for improvement were:
+1. No user-facing feedback for processing success/failure (only console.error)
+2. No visual processing overlay during watermark removal
+3. No "How It Works" guide on the upload page
+4. Poor mobile experience (long scrollable sidebar below image)
+5. No batch processing capability
+6. Missing AVIF format support
+
+## Completed Modifications
+
+### 1. Toast Notification System (All Panels)
+- Added `toast` import from `@/hooks/use-toast` to ControlPanel, CropPanel, ResizePanel, AdjustPanel, DownloadPanel
+- **ControlPanel**: Success toasts for watermark removal ("Watermark removed"), watermark addition ("Watermark applied"), transform ("Transform applied"), auto-enhance ("Auto enhanced"). Error toasts for each failure case.
+- **CropPanel**: Success toast "Crop applied" / Error toast "Crop failed"
+- **ResizePanel**: Success toast "Resize applied" / Error toast "Resize failed"
+- **AdjustPanel**: Success toast "Adjustments applied" / Error toast "Adjustments failed"
+- **DownloadPanel**: Download toast "Download started", Copy toast "Copied to clipboard", Optimize success toast "Image optimized", Optimize error toast "Optimization failed"
+
+### 2. Processing Overlay
+- Added animated processing overlay to ImagePreview component with spinning border indicator, "Processing" label, and "Your image is being processed..." subtitle
+- Added the same overlay to ComparisonSlider component
+- Overlay uses framer-motion AnimatePresence for smooth enter/exit transitions
+- Semi-transparent bg-background/60 with backdrop-blur-sm
+
+### 3. How It Works Section (Upload Page)
+- Added 3-step visual guide below the trust badges on the upload page
+- Steps: Upload (drop image) → Detect (AI finds watermark) → Remove (seamless cleanup)
+- Each step has an icon in a colored circle, title, and short description
+- Animated entrance with staggered delays (0.7s, 0.8s, 0.9s)
+- Hover effects on each step card
+
+### 4. Mobile Bottom Drawer
+- Created new MobileDrawer component using vaul's Drawer component
+- On mobile screens (below lg), a floating "Edit tools" button appears at bottom-left
+- Clicking it opens a bottom drawer with all sidebar controls
+- Desktop sidebar is now hidden on mobile (hidden lg:flex)
+- MobileDrawer includes: ControlPanel, CropPanel, ResizePanel, AdjustPanel, QualityOptimizer, DownloadPanel, HistoryPanel, BatchPanel, StickyCTA
+
+### 5. Batch Processing Panel
+- Created new BatchPanel component for batch processing multiple images
+- Users can add multiple images via file input (with multiple attribute)
+- Queue shows items with status indicators (pending/processing/done/error)
+- "Process all" button processes all pending images sequentially via remove-watermark API
+- "Download" button downloads all completed results
+- Stats bar shows pending/done/error counts and current processing progress
+- Clear all and remove individual items supported
+- Toast notifications for batch completion
+
+### 6. QualityOptimizer Enhancement (AVIF + Better Presets)
+- Added AVIF as fourth export format (PNG, JPEG, WebP, AVIF)
+- Format descriptions: PNG "Lossless, larger files", JPEG "Lossy, smaller files", WebP "Modern, best balance", AVIF "Next-gen, smallest"
+- 6 presets: Thumbnail, Social, HD, Web, Print, Original
+- Visual quality bar (gradient red→green) below quality slider
+- Enhanced savings comparison with progress bar
+- Updated store.ts QualityConfig type to include "avif"
+- Updated optimize and estimate-size API routes for avif support
+- Updated DownloadPanel for .avif extension
+
+### 7. Styling Polish
+- Added CSS utilities: processing-pulse, step-badge, quality-bar, drawer-handle, format-hint
+- Updated Footer version from v1.0 to v1.1
+- Updated quick download in page.tsx to support avif format extension
+
+## Verification Results
+- Lint: passes cleanly with no errors
+- Dev server: compiles and serves pages successfully (GET / 200 in 5.5s)
+- TypeScript: only pre-existing error in adjust route (sharp.Modulate namespace issue, not from our changes)
+
+## Unresolved Issues & Risks
+
+1. **Agent-browser QA instability**: The Next.js dev server consistently crashes when agent-browser tries to navigate. This appears to be a process management issue in the sandbox environment. Could not perform thorough visual QA with agent-browser.
+
+2. **Pre-existing TypeScript error**: `src/app/api/adjust/route.ts` has a TS2694 error about sharp.Modulate. This was present before our changes and does not affect runtime functionality.
+
+3. **MobileDrawer UX**: The mobile drawer approach (bottom sheet) works but needs testing on real mobile devices. The floating button might overlap with the ShortcutHelp FAB (bottom-right vs bottom-left). Consider adjusting FAB positions for mobile.
+
+4. **BatchPanel**: Currently only supports watermark removal (not watermark addition). Could be enhanced to support both modes and to allow different processing options per image.
+
+5. **AVIF browser support**: AVIF format may not be supported in all browsers. Should consider adding a browser compatibility warning when AVIF is selected.
+
+## Priority Recommendations for Next Phase
+
+1. **Visual QA on real devices**: Perform thorough testing on desktop, tablet, and mobile browsers to verify the MobileDrawer UX, processing overlay animations, and toast positioning.
+
+2. **BatchPanel enhancement**: Add support for watermark addition in batch mode, and allow per-image processing options (auto-detect vs manual mask).
+
+3. **Performance optimization**: The processing overlay uses framer-motion animations which could be heavy on low-end devices. Consider using CSS-only animations for the processing spinner.
+
+4. **Error handling improvement**: Add more descriptive error messages in toast notifications (e.g., include the HTTP status code or server error message).
+
+5. **Accessibility review**: Verify all new components (MobileDrawer, BatchPanel, How It Works) meet WCAG 2.1 AA standards with proper ARIA attributes.

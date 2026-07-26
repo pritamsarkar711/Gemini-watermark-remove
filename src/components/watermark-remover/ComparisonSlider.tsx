@@ -31,7 +31,7 @@ function formatPixelCount(n: number): string {
 }
 
 export default function ComparisonSlider() {
-  const { originalImage, processedImage, sliderPosition, setSliderPosition } = useAppStore()
+  const { originalImage, processedImage, sliderPosition, setSliderPosition, isProcessing } = useAppStore()
   const containerRef = useRef<HTMLDivElement>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [hasPulsed, setHasPulsed] = useState(false)
@@ -258,7 +258,33 @@ export default function ComparisonSlider() {
           </span>
         </div>
 
-        {/* Pixel diff stats badge - top right (below the "After" label to avoid overlap) */}
+        {/* Processing overlay */}
+      <AnimatePresence>
+        {isProcessing && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-background/60 backdrop-blur-sm"
+          >
+            <div className="flex flex-col items-center gap-3 rounded-xl bg-card/90 border shadow-lg px-6 py-4 backdrop-blur-md">
+              <div className="relative size-10">
+                <div className="absolute inset-0 rounded-full border-2 border-muted-foreground/20" />
+                <motion.div
+                  className="absolute inset-0 rounded-full border-2 border-transparent border-t-primary"
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                />
+              </div>
+              <span className="text-sm font-semibold text-foreground">Processing</span>
+              <span className="text-[10px] text-muted-foreground/70">Your image is being processed...</span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Pixel diff stats badge - top right (below the "After" label to avoid overlap) */}
         <div className="pointer-events-none absolute top-9 right-2 z-20">
           <span className="inline-flex items-center gap-1 rounded-full bg-black/60 backdrop-blur-sm px-2 py-0.5 text-[10px] font-medium text-white shadow-sm tabular-nums">
             {diffLoading ? (

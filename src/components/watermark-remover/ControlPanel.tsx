@@ -2,11 +2,12 @@
 
 import { useCallback, useRef, useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Eraser, Stamp, Scan, Paintbrush, Loader2, RotateCw, FlipHorizontal, FlipVertical, ChevronDown, Sparkles } from 'lucide-react'
+import { Eraser, Stamp, Scan, Paintbrush, Loader2, RotateCw, FlipHorizontal, FlipVertical, ChevronDown, Sparkles, CheckCircle2, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { useAppStore } from '@/lib/store'
+import { toast } from '@/hooks/use-toast'
 import WatermarkAdder from './WatermarkAdder'
 
 export default function ControlPanel() {
@@ -60,6 +61,7 @@ export default function ControlPanel() {
         if (data.success) {
           setProcessedImage(data.result, 'remove-watermark')
           setShowComparison(true)
+          showSuccessToast('remove')
         }
       } else {
         formData.append('text', watermarkConfig.text)
@@ -87,14 +89,28 @@ export default function ControlPanel() {
         if (data.success) {
           setProcessedImage(data.result, 'add-watermark')
           setShowComparison(true)
+          showSuccessToast('add')
         }
       }
     } catch (err) {
       console.error('Processing failed:', err)
+      toast({
+        title: 'Processing failed',
+        description: mode === 'remove' ? 'Could not remove watermark. Try again or use manual mask.' : 'Could not apply watermark. Check your settings.',
+        variant: 'destructive',
+      })
     } finally {
       setIsProcessing(false)
     }
   }, [originalImage, mode, autoDetect, maskData, watermarkConfig, setIsProcessing, setProcessedImage, setShowComparison])
+
+  // Show success toast when processing completes
+  const showSuccessToast = useCallback((action: 'remove' | 'add') => {
+    toast({
+      title: action === 'remove' ? 'Watermark removed' : 'Watermark applied',
+      description: action === 'remove' ? 'The watermark has been successfully removed from your image.' : 'The watermark has been added to your image.',
+    })
+  }, [])
 
   // Expose handleProcess to the parent via a ref-less pattern: store it in a
   // module-level variable so the sticky CTA in page.tsx can call it.
@@ -140,9 +156,11 @@ export default function ControlPanel() {
           dataUrl: resultDataUrl,
         }
         setOriginalImage(newImageInfo, 'transform')
+        toast({ title: 'Transform applied', description: 'Image has been rotated/flipped successfully.' })
       }
     } catch (err) {
       console.error('Transform failed:', err)
+      toast({ title: 'Transform failed', description: 'Could not transform image. Try again.', variant: 'destructive' })
     } finally {
       setIsTransforming(false)
     }
@@ -368,9 +386,11 @@ export default function ControlPanel() {
                 dataUrl: resultDataUrl,
               }
               setOriginalImage(newImageInfo, 'transform')
+              toast({ title: 'Auto enhanced', description: 'Image brightness, contrast, and saturation have been improved.' })
             }
           } catch (err) {
             console.error('Auto enhance failed:', err)
+            toast({ title: 'Enhance failed', description: 'Could not auto-enhance image.', variant: 'destructive' })
           } finally {
             setIsAutoEnhancing(false)
             setIsProcessing(false)

@@ -6,6 +6,7 @@ import { Crop, Loader2, RotateCcw, ChevronDown, Eye, EyeOff } from 'lucide-react
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { useAppStore } from '@/lib/store'
+import { toast } from '@/hooks/use-toast'
 
 interface CropRect {
   x: number
@@ -216,9 +217,11 @@ export default function CropPanel() {
           dataUrl: resultDataUrl,
         }
         setOriginalImage(newImageInfo, 'transform')
+        toast({ title: 'Crop applied', description: 'Image has been cropped successfully.' })
       }
     } catch (err) {
       console.error('Crop failed:', err)
+      toast({ title: 'Crop failed', description: 'Could not crop image.', variant: 'destructive' })
     } finally {
       setIsCropping(false)
       setIsProcessing(false)

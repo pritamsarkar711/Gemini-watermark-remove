@@ -89,7 +89,7 @@ export interface WatermarkConfigSnapshot {
 
 export interface QualityConfig {
   quality: number;
-  format: "jpeg" | "png" | "webp";
+  format: "jpeg" | "png" | "webp" | "avif";
   maxWidth: number;
   maxHeight: number;
 }

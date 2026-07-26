@@ -20,12 +20,12 @@ export async function POST(req: NextRequest) {
 
     const result = await optimizeImage(imageBuffer, {
       quality,
-      format: format as "jpeg" | "png" | "webp",
+      format: format as "jpeg" | "png" | "webp" | "avif",
       maxWidth,
       maxHeight,
     });
 
-    const mimeType = format === "jpeg" ? "image/jpeg" : format === "webp" ? "image/webp" : "image/png";
+    const mimeType = format === "jpeg" ? "image/jpeg" : format === "webp" ? "image/webp" : format === "avif" ? "image/avif" : "image/png";
     const dataUrl = bufferToDataUrl(result.buffer, mimeType);
 
     return NextResponse.json({

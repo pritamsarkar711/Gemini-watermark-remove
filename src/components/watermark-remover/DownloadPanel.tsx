@@ -6,6 +6,7 @@ import { Download, FileText, Loader2, Minimize2, Copy, Check, ArrowDown, ArrowUp
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useAppStore } from '@/lib/store'
+import { toast } from '@/hooks/use-toast'
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes}B`
@@ -53,7 +54,7 @@ export default function DownloadPanel() {
     if (!dataUrl) return
 
     const format = qualityConfig.format
-    const ext = format === 'jpeg' ? 'jpg' : format === 'webp' ? 'webp' : 'png'
+    const ext = format === 'jpeg' ? 'jpg' : format === 'webp' ? 'webp' : format === 'avif' ? 'avif' : 'png'
 
     const link = document.createElement('a')
     link.href = dataUrl
@@ -61,6 +62,7 @@ export default function DownloadPanel() {
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
+    toast({ title: 'Download started', description: 'Your image is being downloaded.' })
   }, [optimizedDataUrl, processedImage, outputFileName, qualityConfig.format])
 
   const handleCopyToClipboard = useCallback(async () => {
@@ -77,12 +79,14 @@ export default function DownloadPanel() {
       ])
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
+      toast({ title: 'Copied to clipboard', description: 'Image has been copied to your clipboard.' })
     } catch {
       // Fallback: just copy the dataUrl string
       try {
         await navigator.clipboard.writeText(dataUrl)
         setCopied(true)
         setTimeout(() => setCopied(false), 2000)
+        toast({ title: 'Copied to clipboard', description: 'Image has been copied to your clipboard.' })
       } catch {
         console.error('Copy failed')
       }
@@ -111,9 +115,11 @@ export default function DownloadPanel() {
         setOptimizedDataUrl(data.result.dataUrl)
         setOptimizedSize(data.result.optimizedSize)
         setCompressionRatio(data.result.compressionRatio)
+        toast({ title: 'Image optimized', description: 'Image has been optimized for smaller file size.' })
       }
     } catch (err) {
       console.error('Optimization failed:', err)
+      toast({ title: 'Optimization failed', description: 'Could not optimize image.', variant: 'destructive' })
     } finally {
       setIsOptimizing(false)
     }

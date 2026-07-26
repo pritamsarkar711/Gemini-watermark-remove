@@ -31,7 +31,7 @@ export default function Footer() {
             <span className="hidden sm:inline">Built with care</span>
           </div>
           <span className="text-muted-foreground/40">·</span>
-          <span className="rounded-full border bg-card/60 px-1.5 py-0.5 text-[10px] font-medium tabular-nums">© 2025 v1.0</span>
+          <span className="rounded-full border bg-card/60 px-1.5 py-0.5 text-[10px] font-medium tabular-nums">© 2025 v1.1</span>
         </div>
       </div>
     </footer>

@@ -18,6 +18,8 @@ import HistoryPanel from '@/components/watermark-remover/HistoryPanel'
 import ShortcutHelp from '@/components/watermark-remover/ShortcutHelp'
 import StickyCTA from '@/components/watermark-remover/StickyCTA'
 import Footer from '@/components/watermark-remover/Footer'
+import MobileDrawer from '@/components/watermark-remover/MobileDrawer'
+import BatchPanel from '@/components/watermark-remover/BatchPanel'
 
 export default function Home() {
   const {
@@ -46,7 +48,7 @@ export default function Home() {
   // user should still click the Download button in the sidebar.
   const handleQuickDownload = useCallback(() => {
     if (!processedImage?.dataUrl) return
-    const ext = qualityConfig.format === 'jpeg' ? 'jpg' : qualityConfig.format === 'webp' ? 'webp' : 'png'
+    const ext = qualityConfig.format === 'jpeg' ? 'jpg' : qualityConfig.format === 'webp' ? 'webp' : qualityConfig.format === 'avif' ? 'avif' : 'png'
     const link = document.createElement('a')
     link.href = processedImage.dataUrl
     link.download = `${outputFileName || 'processed'}.${ext}`
@@ -269,8 +271,8 @@ export default function Home() {
                     )}
                   </div>
 
-                  {/* Controls sidebar */}
-                  <div className="flex flex-col gap-3 lg:max-h-[calc(100vh-10rem)] lg:overflow-y-auto custom-scrollbar lg:pr-1">
+                  {/* Controls sidebar — hidden on mobile (accessible via MobileDrawer), visible on lg+ */}
+                  <div className="hidden lg:flex lg:flex-col gap-3 lg:max-h-[calc(100vh-10rem)] lg:overflow-y-auto custom-scrollbar lg:pr-1">
                     <ControlPanel />
 
                     {/* Crop tool — available whenever an image is loaded */}
@@ -297,6 +299,9 @@ export default function Home() {
                     {/* History timeline — always visible in editor mode */}
                     <HistoryPanel />
 
+                    {/* Batch processing panel */}
+                    <BatchPanel />
+
                     {/* Sticky primary CTA — always visible at the bottom of the sidebar */}
                     <StickyCTA />
                   </div>
@@ -308,6 +313,9 @@ export default function Home() {
       </main>
 
       <Footer />
+
+      {/* Mobile bottom drawer for editing tools */}
+      <MobileDrawer />
 
       {/* Keyboard shortcuts help (FAB + dialog) — editor mode only */}
       {isEditor && (

@@ -66,6 +66,7 @@ export default function ImagePreview() {
     cropRect,
     setCropRect,
     isCropOverlayActive,
+    isProcessing,
   } = useAppStore()
   const [zoom, setZoom] = useState(1)
   const [offset, setOffset] = useState({ x: 0, y: 0 })
@@ -560,6 +561,32 @@ export default function ImagePreview() {
             </div>
           </div>
         )}
+
+        {/* Processing overlay — semi-transparent with spinner and text */}
+        <AnimatePresence>
+          {isProcessing && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-background/60 backdrop-blur-sm"
+            >
+              <div className="flex flex-col items-center gap-3 rounded-xl bg-card/90 border shadow-lg px-6 py-4 backdrop-blur-md">
+                <div className="relative size-10">
+                  <div className="absolute inset-0 rounded-full border-2 border-muted-foreground/20" />
+                  <motion.div
+                    className="absolute inset-0 rounded-full border-2 border-transparent border-t-primary"
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                  />
+                </div>
+                <span className="text-sm font-semibold text-foreground">Processing</span>
+                <span className="text-[10px] text-muted-foreground/70">Your image is being processed...</span>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Hint badge: overlay is active but zoom > 1 (overlay hidden) */}
         {isCropOverlayActive && zoom > 1 && (

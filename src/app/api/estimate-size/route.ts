@@ -88,6 +88,9 @@ export async function POST(req: NextRequest) {
       case "webp":
         pipeline = pipeline.webp({ quality });
         break;
+      case "avif":
+        pipeline = pipeline.avif({ quality });
+        break;
       default:
         return NextResponse.json(
           { success: false, error: `Unsupported format: ${format}` },
