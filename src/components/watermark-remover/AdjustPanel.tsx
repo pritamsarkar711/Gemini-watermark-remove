@@ -162,12 +162,12 @@ export default function AdjustPanel() {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="flex flex-col gap-2.5 rounded-lg border bg-card/80 p-3 shadow-sm transition-all duration-200 hover:bg-card hover:shadow-md hover:border-border"
+      className="sidebar-panel flex flex-col gap-2.5 rounded-lg p-3 shadow-sm transition-all duration-200 hover:bg-card hover:shadow-md hover:border-border"
     >
       <button
         type="button"
         onClick={() => setIsOpen((v) => !v)}
-        className="flex items-center justify-between cursor-pointer"
+        className="sidebar-panel-header flex items-center justify-between cursor-pointer"
         aria-expanded={isOpen}
       >
         <div className="flex items-center gap-1.5">
@@ -180,7 +180,7 @@ export default function AdjustPanel() {
               type="button"
               onClick={(e) => { e.stopPropagation(); handleReset() }}
               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === 'Space') { e.stopPropagation(); handleReset() } }}
-              className="flex items-center gap-1 text-[9px] text-muted-foreground/60 hover:text-foreground transition-colors"
+              className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] text-muted-foreground/60 hover:text-foreground hover:bg-accent/60 transition-colors"
             >
               <RotateCcw className="size-2.5" />
               Reset
@@ -287,7 +287,7 @@ export default function AdjustPanel() {
           <Switch
             checked={adjustConfig.grayscale}
             onCheckedChange={(v) => setAdjustConfig({ grayscale: v })}
-            className="scale-75"
+            className="toggle-switch scale-75"
           />
         </div>
         <div className="flex items-center justify-between">
@@ -297,7 +297,7 @@ export default function AdjustPanel() {
           <Switch
             checked={adjustConfig.sepia}
             onCheckedChange={(v) => setAdjustConfig({ sepia: v })}
-            className="scale-75"
+            className="toggle-switch scale-75"
           />
         </div>
         <div className="flex items-center justify-between">
@@ -307,7 +307,7 @@ export default function AdjustPanel() {
           <Switch
             checked={adjustConfig.invert}
             onCheckedChange={(v) => setAdjustConfig({ invert: v })}
-            className="scale-75"
+            className="toggle-switch scale-75"
           />
         </div>
       </div>
@@ -317,7 +317,7 @@ export default function AdjustPanel() {
         size="sm"
         onClick={handleApply}
         disabled={isAdjusting || !hasAdjustments}
-        className="w-full gap-1.5 rounded-lg h-8 text-xs font-medium shadow-sm"
+        className="w-full gap-1.5 rounded-lg h-8 text-xs font-medium shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all"
       >
         {isAdjusting ? (
           <>

@@ -58,13 +58,13 @@ export default function HistoryPanel() {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="flex flex-col rounded-lg border bg-card/80 shadow-sm transition-all duration-200 hover:bg-card hover:shadow-md hover:border-border"
+      className="sidebar-panel flex flex-col rounded-lg shadow-sm transition-all duration-200 hover:bg-card hover:shadow-md hover:border-border"
     >
       {/* Header (click to toggle) */}
       <button
         type="button"
         onClick={() => setIsOpen((v) => !v)}
-        className="flex items-center justify-between gap-2 p-2.5 text-left"
+        className="sidebar-panel-header flex items-center justify-between gap-2 p-2.5 text-left"
         aria-expanded={isOpen}
         aria-controls="history-panel-body"
       >
@@ -115,7 +115,7 @@ export default function HistoryPanel() {
                         onClick={() => jumpTo(originalIndex)}
                         className={`group relative w-full flex items-center gap-2 rounded-md px-2 py-1.5 text-left transition-all ${
                           isCurrent
-                            ? 'bg-primary/10 border-l-2 border-primary'
+                            ? 'bg-primary/10 border-l-[3px] border-primary shadow-[inset_2px_0_8px_-2px_var(--primary)]'
                             : 'border-l-2 border-transparent hover:bg-accent/40'
                         } ${isFuture ? 'opacity-40' : 'opacity-100'}`}
                         aria-current={isCurrent ? 'step' : undefined}

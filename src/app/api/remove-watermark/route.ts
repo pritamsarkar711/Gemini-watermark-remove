@@ -50,6 +50,71 @@ export async function POST(req: NextRequest) {
     const dataUrl = bufferToDataUrl(resultBuffer);
     const info = await getImageInfo(resultBuffer);
 
+    // ─── Pixel difference stats ────────────────────────────────────────────
+    // Compare the original image and the inpainted result on a per-pixel
+    // basis to surface "how much of the image actually changed" to the user.
+    //
+    // A pixel is considered "changed" if any of its RGB channels differs by
+    // more than 3 levels (out of 255) between the original and the result.
+    // The 3-level threshold ignores negligible resampling/rounding noise.
+    //
+    // Both images share the same dimensions (inpaintImage preserves them),
+    // but we defensively resize both to the original's dimensions just in
+    // case the implementation ever changes.
+    let stats = { changedPixels: 0, totalPixels: 0, diffPercentage: 0 };
+    try {
+      const sharp = (await import("sharp")).default;
+      const originalMeta = await sharp(imageBuffer).metadata();
+      const origW = originalMeta.width || 0;
+      const origH = originalMeta.height || 0;
+
+      if (origW > 0 && origH > 0) {
+        // Force both buffers to identical RGBA dimensions for a clean diff.
+        const targetW = origW;
+        const targetH = origH;
+
+        const [origRaw, resultRaw] = await Promise.all([
+          sharp(imageBuffer)
+            .resize(targetW, targetH, { fit: "fill" })
+            .ensureAlpha()
+            .raw()
+            .toBuffer(),
+          sharp(resultBuffer)
+            .resize(targetW, targetH, { fit: "fill" })
+            .ensureAlpha()
+            .raw()
+            .toBuffer(),
+        ]);
+
+        const totalPixels = targetW * targetH;
+        let changedPixels = 0;
+        const len = Math.min(origRaw.length, resultRaw.length);
+        // 4 channels per pixel (RGBA); step by 4.
+        for (let i = 0; i + 3 < len; i += 4) {
+          const dr = Math.abs(origRaw[i] - resultRaw[i]);
+          const dg = Math.abs(origRaw[i + 1] - resultRaw[i + 1]);
+          const db = Math.abs(origRaw[i + 2] - resultRaw[i + 2]);
+          if (dr > 3 || dg > 3 || db > 3) {
+            changedPixels++;
+          }
+        }
+
+        const diffPercentage =
+          totalPixels > 0
+            ? Math.round((changedPixels / totalPixels) * 1000) / 10
+            : 0;
+
+        stats = { changedPixels, totalPixels, diffPercentage };
+      }
+    } catch (statsError) {
+      // Stats are additive metadata — never let a failure here break the
+      // main watermark-removal flow. Log and continue with zeroed stats.
+      console.error(
+        "Diff stats computation failed:",
+        statsError instanceof Error ? statsError.message : statsError
+      );
+    }
+
     return NextResponse.json({
       success: true,
       result: {
@@ -58,6 +123,7 @@ export async function POST(req: NextRequest) {
         height: info.height,
         size: info.size,
       },
+      stats,
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";

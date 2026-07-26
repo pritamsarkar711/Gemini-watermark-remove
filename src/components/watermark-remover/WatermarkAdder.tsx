@@ -1,7 +1,8 @@
 'use client'
 
-import { useCallback, useEffect, useRef } from 'react'
-import { Type, Upload, ImageIcon, RotateCw, Grid3x3 } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Type, Upload, ImageIcon, RotateCw, Grid3x3, ChevronDown } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Slider } from '@/components/ui/slider'
@@ -27,9 +28,10 @@ const PRESET_COLORS = [
 ]
 
 // Preview canvas size constraints (in canvas pixels; CSS scales to container)
-const PREVIEW_MAX_WIDTH = 480
-const PREVIEW_MAX_HEIGHT = 360
-const PREVIEW_PADDING = 20
+// Kept compact so the text/logo controls stay visible without scrolling.
+const PREVIEW_MAX_WIDTH = 360
+const PREVIEW_MAX_HEIGHT = 200
+const PREVIEW_PADDING = 16
 
 /**
  * Compute the (x, y) anchor point for a watermark box at the given position.
@@ -230,27 +232,28 @@ export default function WatermarkAdder() {
     void draw()
   }, [draw])
 
+  const [logoOpen, setLogoOpen] = useState(false)
+
   return (
-    <div className="flex flex-col gap-3">
-      {/* LIVE PREVIEW */}
-      <div className="flex flex-col gap-2 rounded-lg border bg-card/80 p-3 shadow-sm">
-        <div className="flex items-center gap-1.5">
-          <ImageIcon className="size-3.5 text-muted-foreground/60" />
-          <span className="text-xs font-semibold">Live preview</span>
+    <div className="flex flex-col gap-2">
+      {/* LIVE PREVIEW — compact, side-by-side label */}
+      <div className="flex flex-col gap-1.5 rounded-lg border bg-card/80 p-2.5 shadow-sm">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <ImageIcon className="size-3.5 text-muted-foreground/60" />
+            <span className="text-xs font-semibold">Live preview</span>
+          </div>
+          <div className="flex items-center gap-1 rounded-full bg-black/50 px-1.5 py-0.5 backdrop-blur-sm">
+            <span className="relative flex size-1.5">
+              <span className="absolute inline-flex size-full animate-ping rounded-full bg-green-400/70" />
+              <span className="relative inline-flex size-1.5 rounded-full bg-green-400" />
+            </span>
+            <span className="text-[9px] font-medium uppercase tracking-wider text-white">Live</span>
+          </div>
         </div>
-        <div className="relative overflow-hidden rounded-md border bg-muted/20 shadow-inner">
+        <div className="relative overflow-hidden rounded-md border bg-muted/20 shadow-inner" style={{ maxHeight: '200px' }}>
           {originalImage ? (
-            <>
-              <canvas ref={canvasRef} className="block w-full h-auto" />
-              {/* "Live" badge — top-right of canvas */}
-              <div className="absolute top-1.5 right-1.5 flex items-center gap-1 rounded-full bg-black/50 px-1.5 py-0.5 backdrop-blur-sm">
-                <span className="relative flex size-1.5">
-                  <span className="absolute inline-flex size-full animate-ping rounded-full bg-green-400/70" />
-                  <span className="relative inline-flex size-1.5 rounded-full bg-green-400" />
-                </span>
-                <span className="text-[9px] font-medium uppercase tracking-wider text-white">Live</span>
-              </div>
-            </>
+            <canvas ref={canvasRef} className="block w-full h-auto" style={{ maxHeight: '200px', objectFit: 'contain' }} />
           ) : (
             <div className="flex aspect-[2/1] w-full items-center justify-center">
               <div className="flex flex-col items-center gap-1.5 text-muted-foreground/50">
@@ -263,7 +266,7 @@ export default function WatermarkAdder() {
       </div>
 
       {/* Text watermark */}
-      <div className="flex flex-col gap-2.5 rounded-lg border bg-card/80 p-3 shadow-sm">
+      <div className="flex flex-col gap-2 rounded-lg border bg-card/80 p-2.5 shadow-sm">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5">
             <Type className="size-3.5 text-muted-foreground/60" />
@@ -274,7 +277,7 @@ export default function WatermarkAdder() {
             <Switch
               checked={watermarkConfig.shadow}
               onCheckedChange={(v) => setWatermarkConfig({ shadow: v })}
-              className="scale-75"
+              className="scale-75 toggle-switch"
             />
           </div>
         </div>
@@ -362,7 +365,7 @@ export default function WatermarkAdder() {
           <Switch
             checked={watermarkConfig.repeat}
             onCheckedChange={(v) => setWatermarkConfig({ repeat: v })}
-            className="scale-75"
+            className="scale-75 toggle-switch"
           />
         </div>
 
@@ -388,95 +391,127 @@ export default function WatermarkAdder() {
         )}
       </div>
 
-      {/* Logo watermark */}
-      <div className="flex flex-col gap-2.5 rounded-lg border bg-card/80 p-3 shadow-sm">
-        <div className="flex items-center gap-1.5">
-          <ImageIcon className="size-3.5 text-muted-foreground/60" />
-          <Label className="text-xs font-semibold">Logo watermark</Label>
-        </div>
-
-        <div
-          onClick={() => logoInputRef.current?.click()}
-          className="flex cursor-pointer items-center justify-center rounded-lg border border-dashed bg-muted/20 p-3 hover:border-primary/40 hover:bg-primary/5 transition-all shadow-sm"
+      {/* Logo watermark — collapsible to save vertical space */}
+      <div className="flex flex-col gap-2 rounded-lg border bg-card/80 p-2.5 shadow-sm">
+        <button
+          type="button"
+          onClick={() => setLogoOpen((v) => !v)}
+          className="flex items-center justify-between cursor-pointer"
+          aria-expanded={logoOpen}
         >
-          {watermarkConfig.logoFile ? (
-            <div className="flex items-center gap-2">
-              <ImageIcon className="size-3 text-primary/70" />
-              <span className="text-[11px] font-medium text-foreground/70">{watermarkConfig.logoFile.name}</span>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center gap-1.5">
-              <Upload className="size-3.5 text-muted-foreground/60" />
-              <span className="text-[10px] text-muted-foreground/60">Upload logo</span>
-            </div>
-          )}
-        </div>
-
-        <input
-          ref={logoInputRef}
-          type="file"
-          accept="image/*"
-          onChange={handleLogoUpload}
-          className="hidden"
-        />
-
-        {watermarkConfig.logoFile && (
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-[10px] text-muted-foreground/50">Opacity</span>
-              <Slider
-                value={[watermarkConfig.logoOpacity]}
-                min={5}
-                max={100}
-                step={1}
-                onValueChange={(v) => setWatermarkConfig({ logoOpacity: v[0] })}
-                className="w-20"
-              />
-              <span className="text-[10px] tabular-nums text-muted-foreground/50 w-5 text-right">{watermarkConfig.logoOpacity}%</span>
-            </div>
-
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-[10px] text-muted-foreground/50">Size</span>
-              <Slider
-                value={[watermarkConfig.logoSize]}
-                min={20}
-                max={300}
-                step={5}
-                onValueChange={(v) => setWatermarkConfig({ logoSize: v[0] })}
-                className="w-20"
-              />
-              <span className="text-[10px] tabular-nums text-muted-foreground/50 w-6 text-right">{watermarkConfig.logoSize}</span>
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <span className="text-[10px] text-muted-foreground/50 font-medium">Position</span>
-              <div className="grid grid-cols-3 gap-1">
-                {POSITIONS.map((pos) => (
-                  <button
-                    key={pos}
-                    onClick={() => setWatermarkConfig({ logoPosition: pos })}
-                    className={`flex size-7 items-center justify-center rounded-md text-[10px] transition-all shadow-sm ${
-                      watermarkConfig.logoPosition === pos
-                        ? 'bg-primary text-primary-foreground shadow-md'
-                        : 'bg-muted/60 text-muted-foreground hover:bg-accent'
-                  }`}
-                  >
-                    {POS_ICONS[pos]}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setWatermarkConfig({ logoFile: null })}
-              className="self-start h-6 text-[10px] rounded-lg"
-            >
-              Remove logo
-            </Button>
+          <div className="flex items-center gap-1.5">
+            <ImageIcon className="size-3.5 text-muted-foreground/60" />
+            <Label className="text-xs font-semibold">Logo watermark</Label>
+            {watermarkConfig.logoFile && (
+              <span className="ml-1 rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] font-medium text-primary">
+                {watermarkConfig.logoFile.name.length > 12
+                  ? watermarkConfig.logoFile.name.slice(0, 10) + '…'
+                  : watermarkConfig.logoFile.name}
+              </span>
+            )}
           </div>
-        )}
+          <ChevronDown
+            className={`size-3.5 text-muted-foreground/60 transition-transform duration-200 ${logoOpen ? 'rotate-180' : 'rotate-0'}`}
+          />
+        </button>
+
+        <AnimatePresence initial={false}>
+          {logoOpen && (
+            <motion.div
+              key="logo-content"
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2, ease: 'easeInOut' }}
+              className="overflow-hidden"
+            >
+              <div className="flex flex-col gap-2 pt-1">
+                <div
+                  onClick={() => logoInputRef.current?.click()}
+                  className="flex cursor-pointer items-center justify-center rounded-lg border border-dashed bg-muted/20 p-2.5 hover:border-primary/40 hover:bg-primary/5 transition-all shadow-sm"
+                >
+                  {watermarkConfig.logoFile ? (
+                    <div className="flex items-center gap-2">
+                      <ImageIcon className="size-3 text-primary/70" />
+                      <span className="text-[11px] font-medium text-foreground/70">{watermarkConfig.logoFile.name}</span>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-1.5">
+                      <Upload className="size-3.5 text-muted-foreground/60" />
+                      <span className="text-[10px] text-muted-foreground/60">Upload logo</span>
+                    </div>
+                  )}
+                </div>
+
+                <input
+                  ref={logoInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleLogoUpload}
+                  className="hidden"
+                />
+
+                {watermarkConfig.logoFile && (
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[10px] text-muted-foreground/50">Opacity</span>
+                      <Slider
+                        value={[watermarkConfig.logoOpacity]}
+                        min={5}
+                        max={100}
+                        step={1}
+                        onValueChange={(v) => setWatermarkConfig({ logoOpacity: v[0] })}
+                        className="w-20"
+                      />
+                      <span className="text-[10px] tabular-nums text-muted-foreground/50 w-5 text-right">{watermarkConfig.logoOpacity}%</span>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[10px] text-muted-foreground/50">Size</span>
+                      <Slider
+                        value={[watermarkConfig.logoSize]}
+                        min={20}
+                        max={300}
+                        step={5}
+                        onValueChange={(v) => setWatermarkConfig({ logoSize: v[0] })}
+                        className="w-20"
+                      />
+                      <span className="text-[10px] tabular-nums text-muted-foreground/50 w-6 text-right">{watermarkConfig.logoSize}</span>
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-[10px] text-muted-foreground/50 font-medium">Position</span>
+                      <div className="grid grid-cols-3 gap-1">
+                        {POSITIONS.map((pos) => (
+                          <button
+                            key={pos}
+                            onClick={() => setWatermarkConfig({ logoPosition: pos })}
+                            className={`flex size-7 items-center justify-center rounded-md text-[10px] transition-all shadow-sm ${
+                              watermarkConfig.logoPosition === pos
+                                ? 'bg-primary text-primary-foreground shadow-md'
+                                : 'bg-muted/60 text-muted-foreground hover:bg-accent'
+                            }`}
+                          >
+                            {POS_ICONS[pos]}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setWatermarkConfig({ logoFile: null })}
+                      className="self-start h-6 text-[10px] rounded-lg"
+                    >
+                      Remove logo
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   )

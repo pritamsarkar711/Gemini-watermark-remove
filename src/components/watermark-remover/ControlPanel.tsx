@@ -36,7 +36,7 @@ export default function ControlPanel() {
   const [isDrawing, setIsDrawing] = useState(false)
   const [brushSize, setBrushSize] = useState(20)
   const [isTransforming, setIsTransforming] = useState(false)
-  const [isTransformOpen, setIsTransformOpen] = useState(true)
+  const [isTransformOpen, setIsTransformOpen] = useState(false)
 
   const handleProcess = useCallback(async () => {
     if (!originalImage) return
@@ -215,11 +215,11 @@ export default function ControlPanel() {
       className="flex w-full flex-col gap-4"
     >
       {/* Transform controls */}
-      <div className="flex flex-col gap-2 rounded-lg border bg-card/80 p-2.5 shadow-sm">
+      <div className="sidebar-panel flex flex-col gap-2 rounded-lg p-2.5 shadow-sm">
         <button
           type="button"
           onClick={() => setIsTransformOpen((prev) => !prev)}
-          className="flex items-center justify-between cursor-pointer"
+          className="sidebar-panel-header flex items-center justify-between cursor-pointer"
         >
           <span className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider">Transform</span>
           <div className="flex items-center gap-2">
@@ -272,7 +272,7 @@ export default function ControlPanel() {
                   >
                     <RotateCw className="size-3" />
                   </Button>
-                  <span className="text-[8px] font-medium text-muted-foreground/60">Rotate</span>
+                  <span className={`transform-label ${transformConfig.rotation !== 0 ? 'transform-label-active' : ''}`}>Rotate</span>
                 </div>
                 <div className="flex flex-col items-center gap-0.5">
                   <Button
@@ -286,7 +286,7 @@ export default function ControlPanel() {
                   >
                     <FlipHorizontal className="size-3" />
                   </Button>
-                  <span className="text-[8px] font-medium text-muted-foreground/60">Flip H</span>
+                  <span className={`transform-label ${transformConfig.flipH ? 'transform-label-active' : ''}`}>Flip H</span>
                 </div>
                 <div className="flex flex-col items-center gap-0.5">
                   <Button
@@ -300,7 +300,7 @@ export default function ControlPanel() {
                   >
                     <FlipVertical className="size-3" />
                   </Button>
-                  <span className="text-[8px] font-medium text-muted-foreground/60">Flip V</span>
+                  <span className={`transform-label ${transformConfig.flipV ? 'transform-label-active' : ''}`}>Flip V</span>
                 </div>
                 {hasTransform && (
                   <Button
@@ -325,23 +325,23 @@ export default function ControlPanel() {
         className="w-full"
       >
         <TabsList className="w-full h-8 rounded-lg">
-          <TabsTrigger value="remove" className="flex-1 gap-1 h-7 text-xs rounded-md data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-none">
+          <TabsTrigger value="remove" className="flex-1 gap-1 h-7 text-xs rounded-md transition-colors hover:bg-accent/60 data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:shadow-sm data-[state=active]:hover:bg-primary/15">
             <Eraser className="size-3" />
             Remove
           </TabsTrigger>
-          <TabsTrigger value="add" className="flex-1 gap-1 h-7 text-xs rounded-md data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-none">
+          <TabsTrigger value="add" className="flex-1 gap-1 h-7 text-xs rounded-md transition-colors hover:bg-accent/60 data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:shadow-sm data-[state=active]:hover:bg-primary/15">
             <Stamp className="size-3" />
             Add
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="remove" className="mt-3 flex flex-col gap-3">
-          <div className="flex items-center justify-between rounded-lg border bg-card/80 p-2.5 shadow-sm">
+          <div className="sidebar-panel flex items-center justify-between rounded-lg p-2.5 shadow-sm">
             <div className="flex items-center gap-2">
               <Scan className="size-3.5 text-muted-foreground/60" />
               <span className="text-xs font-medium">Auto detect</span>
             </div>
-            <Switch checked={autoDetect} onCheckedChange={setAutoDetect} className="scale-90" />
+            <Switch checked={autoDetect} onCheckedChange={setAutoDetect} className="toggle-switch scale-90" />
           </div>
 
           {!autoDetect && (

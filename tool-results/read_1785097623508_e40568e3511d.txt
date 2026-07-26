@@ -1,0 +1,1281 @@
+     1→import sharp from "sharp";
+     2→import { createCanvas, loadImage, registerFont } from "canvas";
+     3→import path from "path";
+     4→import fs from "fs";
+     5→
+     6→/**
+     7→ * Core image processing module for Zeminai watermark removal
+     8→ * Uses inpainting algorithms and sharp for high-quality results
+     9→ * Enhanced with proper text rendering via canvas, better detection,
+    10→ * and SVG-based Gemini sparkle template
+    11→ */
+    12→
+    13→// ============================================================
+    14→// INPAINTING ENGINE - Telea-style Fast Marching Method
+    15→// ============================================================
+    16→
+    17→interface Pixel {
+    18→  r: number;
+    19→  g: number;
+    20→  b: number;
+    21→  a: number;
+    22→}
+    23→
+    24→/**
+    25→ * Inpaint image using fast marching method with multi-pass approach
+    26→ * for higher quality reconstruction
+    27→ */
+    28→export async function inpaintImage(
+    29→  inputBuffer: Buffer,
+    30→  maskBuffer: Buffer,
+    31→  radius: number = 8
+    32→): Promise<Buffer> {
+    33→  const inputImage = sharp(inputBuffer);
+    34→  const maskImage = sharp(maskBuffer);
+    35→
+    36→  const inputMeta = await inputImage.metadata();
+    37→  const width = inputMeta.width!;
+    38→  const height = inputMeta.height!;
+    39→
+    40→  // Get raw pixel data
+    41→  const inputRaw = await inputImage
+    42→    .ensureAlpha()
+    43→    .raw()
+    44→    .toBuffer();
+    45→
+    46→  const maskRaw = await maskImage
+    47→    .resize(width, height, { fit: "fill" })
+    48→    .ensureAlpha()
+    49→    .raw()
+    50→    .toBuffer();
+    51→
+    52→  // Create pixel arrays
+    53→  const pixels: Pixel[] = [];
+    54→  const isMasked: boolean[] = [];
+    55→
+    56→  for (let i = 0; i < width * height; i++) {
+    57→    const idx = i * 4;
+    58→    pixels.push({
+    59→      r: inputRaw[idx],
+    60→      g: inputRaw[idx + 1],
+    61→      b: inputRaw[idx + 2],
+    62→      a: inputRaw[idx + 3],
+    63→    });
+    64→    // Mask: white pixels (high value) = area to remove
+    65→    const maskVal = (maskRaw[idx] + maskRaw[idx + 1] + maskRaw[idx + 2]) / 3;
+    66→    isMasked.push(maskVal > 128);
+    67→  }
+    68→
+    69→  // Multi-pass inpainting for better quality
+    70→  // Pass 1: Initial reconstruction with larger radius for context
+    71→  let outputPixels = await inpaintPass(pixels, isMasked, width, height, radius * 2);
+    72→
+    73→  // Pass 2: Refinement with smaller radius for detail
+    74→  outputPixels = await inpaintPass(outputPixels, isMasked, width, height, radius);
+    75→
+    76→  // Pass 3: Smoothing on boundary for seamless blending
+    77→  const smoothedPixels = applyBoundarySmoothing(outputPixels, isMasked, width, height, 3);
+    78→
+    79→  // Convert back to raw buffer
+    80→  const outputRaw = Buffer.alloc(width * height * 4);
+    81→  for (let i = 0; i < width * height; i++) {
+    82→    const idx = i * 4;
+    83→    outputRaw[idx] = smoothedPixels[i].r;
+    84→    outputRaw[idx + 1] = smoothedPixels[i].g;
+    85→    outputRaw[idx + 2] = smoothedPixels[i].b;
+    86→    outputRaw[idx + 3] = smoothedPixels[i].a;
+    87→  }
+    88→
+    89→  return sharp(outputRaw, { raw: { width, height, channels: 4 } })
+    90→    .png({ quality: 100 })
+    91→    .toBuffer();
+    92→}
+    93→
+    94→/**
+    95→ * Single inpainting pass using fast marching with binary min-heap
+    96→ * Optimized from O(n²) to O(n log n) using a proper priority queue
+    97→ */
+    98→
+    99→// ─── Min-Heap Priority Queue ──────────────────────────────────────────────────
+   100→// Stores entries as [pixelIndex, distance] pairs, ordered by distance (min first).
+   101→
+   102→class MinHeap {
+   103→  private heap: [number, number][] = []; // [pixelIndex, distance]
+   104→  private inHeap: Set<number> = new Set(); // fast membership check
+   105→
+   106→  get size(): number {
+   107→    return this.heap.length;
+   108→  }
+   109→
+   110→  has(pixelIndex: number): boolean {
+   111→    return this.inHeap.has(pixelIndex);
+   112→  }
+   113→
+   114→  push(pixelIndex: number, dist: number): void {
+   115→    this.heap.push([pixelIndex, dist]);
+   116→    this.inHeap.add(pixelIndex);
+   117→    this._bubbleUp(this.heap.length - 1);
+   118→  }
+   119→
+   120→  pop(): [number, number] | undefined {
+   121→    if (this.heap.length === 0) return undefined;
+   122→    const top = this.heap[0];
+   123→    const last = this.heap.pop()!;
+   124→    this.inHeap.delete(top[0]);
+   125→    if (this.heap.length > 0) {
+   126→      this.heap[0] = last;
+   127→      this._sinkDown(0);
+   128→    }
+   129→    return top;
+   130→  }
+   131→
+   132→  private _bubbleUp(i: number): void {
+   133→    while (i > 0) {
+   134→      const parent = (i - 1) >> 1;
+   135→      if (this.heap[parent][1] <= this.heap[i][1]) break;
+   136→      [this.heap[parent], this.heap[i]] = [this.heap[i], this.heap[parent]];
+   137→      i = parent;
+   138→    }
+   139→  }
+   140→
+   141→  private _sinkDown(i: number): void {
+   142→    const n = this.heap.length;
+   143→    while (true) {
+   144→      let smallest = i;
+   145→      const left = 2 * i + 1;
+   146→      const right = 2 * i + 2;
+   147→      if (left < n && this.heap[left][1] < this.heap[smallest][1]) smallest = left;
+   148→      if (right < n && this.heap[right][1] < this.heap[smallest][1]) smallest = right;
+   149→      if (smallest === i) break;
+   150→      [this.heap[smallest], this.heap[i]] = [this.heap[i], this.heap[smallest]];
+   151→      i = smallest;
+   152→    }
+   153→  }
+   154→}
+   155→
+   156→async function inpaintPass(
+   157→  pixels: Pixel[],
+   158→  isMasked: boolean[],
+   159→  width: number,
+   160→  height: number,
+   161→  radius: number
+   162→): Promise<Pixel[]> {
+   163→  const totalPixels = width * height;
+   164→  const known = new Uint8Array(totalPixels);
+   165→  const distance = new Float32Array(totalPixels);
+   166→  const processed = new Uint8Array(totalPixels);
+   167→  const outputPixels: Pixel[] = [...pixels];
+   168→
+   169→  // Initialize known/unknown
+   170→  for (let i = 0; i < totalPixels; i++) {
+   171→    if (!isMasked[i]) {
+   172→      known[i] = 1;
+   173→      distance[i] = 0;
+   174→    } else {
+   175→      known[i] = 0;
+   176→      distance[i] = Infinity;
+   177→    }
+   178→  }
+   179→
+   180→  // Find initial boundary and push into min-heap
+   181→  const heap = new MinHeap();
+   182→  for (let y = 0; y < height; y++) {
+   183→    for (let x = 0; x < width; x++) {
+   184→      const idx = y * width + x;
+   185→      if (!known[idx]) {
+   186→        let hasKnownNeighbor = false;
+   187→        for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+   188→          const nx = x + dx;
+   189→          const ny = y + dy;
+   190→          if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+   191→            if (known[ny * width + nx]) {
+   192→              hasKnownNeighbor = true;
+   193→              break;
+   194→            }
+   195→          }
+   196→        }
+   197→        if (hasKnownNeighbor) {
+   198→          distance[idx] = 1;
+   199→          heap.push(idx, 1);
+   200→        }
+   201→      }
+   202→    }
+   203→  }
+   204→
+   205→  // Process using fast marching with min-heap (O(n log n) instead of O(n²))
+   206→  while (heap.size > 0) {
+   207→    const entry = heap.pop();
+   208→    if (!entry) break;
+   209→    const idx = entry[0];
+   210→
+   211→    // Skip if already processed (can happen if pixel was added multiple times)
+   212→    if (processed[idx]) continue;
+   213→
+   214→    const x = idx % width;
+   215→    const y = Math.floor(idx / width);
+   216→
+   217→    // Collect known pixels within radius using weighted interpolation
+   218→    let totalR = 0, totalG = 0, totalB = 0, totalWeight = 0;
+   219→
+   220→    for (let dy = -radius; dy <= radius; dy++) {
+   221→      for (let dx = -radius; dx <= radius; dx++) {
+   222→        const nx = x + dx;
+   223→        const ny = y + dy;
+   224→        if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+   225→          const nIdx = ny * width + nx;
+   226→          // Use known pixels OR already-processed (reconstructed) pixels
+   227→          if (known[nIdx] || processed[nIdx]) {
+   228→            const dist = Math.sqrt(dx * dx + dy * dy);
+   229→            if (dist <= radius && dist > 0) {
+   230→              // Inverse distance weighting
+   231→              const weight = 1 / Math.pow(dist, 2);
+   232→              // Direction preference: pixels closer to boundary get extra weight
+   233→              const directionFactor = Math.max(0.1, 1 - distance[nIdx] / (radius * 2));
+   234→              const finalWeight = weight * directionFactor;
+   235→
+   236→              totalR += outputPixels[nIdx].r * finalWeight;
+   237→              totalG += outputPixels[nIdx].g * finalWeight;
+   238→              totalB += outputPixels[nIdx].b * finalWeight;
+   239→              totalWeight += finalWeight;
+   240→            }
+   241→          }
+   242→        }
+   243→      }
+   244→    }
+   245→
+   246→    if (totalWeight > 0) {
+   247→      outputPixels[idx] = {
+   248→        r: Math.round(totalR / totalWeight),
+   249→        g: Math.round(totalG / totalWeight),
+   250→        b: Math.round(totalB / totalWeight),
+   251→        a: 255,
+   252→      };
+   253→      processed[idx] = 1;
+   254→      known[idx] = 1;
+   255→
+   256→      // Update distances of unknown neighbors and push into heap
+   257→      for (const [ddx, ddy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+   258→        const nnx = x + ddx;
+   259→        const nny = y + ddy;
+   260→        if (nnx >= 0 && nnx < width && nny >= 0 && nny < height) {
+   261→          const nnIdx = nny * width + nnx;
+   262→          if (!known[nnIdx] && !processed[nnIdx] && !heap.has(nnIdx)) {
+   263→            distance[nnIdx] = Math.min(distance[nnIdx], distance[idx] + 1);
+   264→            heap.push(nnIdx, distance[nnIdx]);
+   265→          }
+   266→        }
+   267→      }
+   268→    }
+   269→  }
+   270→
+   271→  return outputPixels;
+   272→}
+   273→
+   274→/**
+   275→ * Apply boundary smoothing for seamless blending
+   276→ * Only smooths pixels at the boundary of mask regions
+   277→ */
+   278→function applyBoundarySmoothing(
+   279→  pixels: Pixel[],
+   280→  isMasked: boolean[],
+   281→  width: number,
+   282→  height: number,
+   283→  radius: number
+   284→): Pixel[] {
+   285→  const output: Pixel[] = [...pixels];
+   286→
+   287→  for (let y = 0; y < height; y++) {
+   288→    for (let x = 0; x < width; x++) {
+   289→      const idx = y * width + x;
+   290→      if (!isMasked[idx]) continue;
+   291→
+   292→      // Check if this is a boundary pixel
+   293→      let isNearBoundary = false;
+   294→      for (const [dx, dy] of [[-2, 0], [2, 0], [0, -2], [0, 2]]) {
+   295→        const nx = x + dx;
+   296→        const ny = y + dy;
+   297→        if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+   298→          if (!isMasked[ny * width + nx]) {
+   299→            isNearBoundary = true;
+   300→            break;
+   301→          }
+   302→        }
+   303→      }
+   304→
+   305→      if (!isNearBoundary) continue;
+   306→
+   307→      // Apply Gaussian-like smoothing
+   308→      let totalR = 0, totalG = 0, totalB = 0, totalWeight = 0;
+   309→
+   310→      for (let dy = -radius; dy <= radius; dy++) {
+   311→        for (let dx = -radius; dx <= radius; dx++) {
+   312→          const nx = x + dx;
+   313→          const ny = y + dy;
+   314→          if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+   315→            const nIdx = ny * width + nx;
+   316→            const dist = Math.sqrt(dx * dx + dy * dy);
+   317→            if (dist <= radius) {
+   318→              // Gaussian weight
+   319→              const sigma = radius / 2;
+   320→              const weight = Math.exp(-(dist * dist) / (2 * sigma * sigma));
+   321→              totalR += pixels[nIdx].r * weight;
+   322→              totalG += pixels[nIdx].g * weight;
+   323→              totalB += pixels[nIdx].b * weight;
+   324→              totalWeight += weight;
+   325→            }
+   326→          }
+   327→        }
+   328→      }
+   329→
+   330→      if (totalWeight > 0) {
+   331→        output[idx] = {
+   332→          r: Math.round(totalR / totalWeight),
+   333→          g: Math.round(totalG / totalWeight),
+   334→          b: Math.round(totalB / totalWeight),
+   335→          a: 255,
+   336→        };
+   337→      }
+   338→    }
+   339→  }
+   340→
+   341→  return output;
+   342→}
+   343→
+   344→// ============================================================
+   345→// AUTO WATERMARK DETECTION (IMPROVED)
+   346→// ============================================================
+   347→
+   348→interface DetectedRegion {
+   349→  x: number;
+   350→  y: number;
+   351→  width: number;
+   352→  height: number;
+   353→  confidence: number;
+   354→}
+   355→
+   356→/**
+   357→ * Improved watermark detection
+   358→ * Scans for semi-transparent regions, brightness anomalies in corners,
+   359→ * and known watermark patterns (Gemini sparkle, text logos)
+   360→ */
+   361→export async function detectWatermark(
+   362→  inputBuffer: Buffer
+   363→): Promise<DetectedRegion[]> {
+   364→  const image = sharp(inputBuffer);
+   365→  const meta = await image.metadata();
+   366→  const width = meta.width!;
+   367→  const height = meta.height!;
+   368→
+   369→  const raw = await image.ensureAlpha().raw().toBuffer();
+   370→
+   371→  const regions: DetectedRegion[] = [];
+   372→
+   373→  // Strategy 1: Corner-based detection with brightness anomaly analysis
+   374→  // Watermarks typically appear in corners as brighter or different-colored patches
+   375→  // Use large search area (30% of min dimension) to ensure we catch the full watermark
+   376→  const cornerSize = Math.min(width, height) * 0.30;
+   377→  const corners = [
+   378→    { x: width - cornerSize, y: height - cornerSize, name: 'bottom-right', confidence: 0.95 },
+   379→    { x: 0, y: height - cornerSize, name: 'bottom-left', confidence: 0.7 },
+   380→    { x: width - cornerSize, y: 0, name: 'top-right', confidence: 0.65 },
+   381→    { x: 0, y: 0, name: 'top-left', confidence: 0.55 },
+   382→  ];
+   383→
+   384→  for (const corner of corners) {
+   385→    const regionStats = analyzeRegionDetailed(raw, width, height, corner.x, corner.y, cornerSize, cornerSize);
+   386→
+   387→    // Detect watermark if region has high brightness variation or transparency
+   388→    if (regionStats.hasTransparency || regionStats.brightnessAnomaly > 0.12 || regionStats.colorDeviation > 0.18) {
+   389→      // Use the full corner region as the mask (more reliable than refining)
+   390→      // The inpainting algorithm will handle the non-watermark pixels gracefully
+   391→      regions.push({
+   392→        x: Math.round(corner.x),
+   393→        y: Math.round(corner.y),
+   394→        width: Math.round(cornerSize),
+   395→        height: Math.round(cornerSize),
+   396→        confidence: corner.confidence * (regionStats.hasTransparency ? 1.3 : 1),
+   397→      });
+   398→    }
+   399→  }
+   400→
+   401→  // Strategy 2: Bottom edge scan (common for watermarks)
+   402→  const bottomStripHeight = Math.min(height * 0.12, 80);
+   403→  const bottomStripStats = analyzeRegionDetailed(raw, width, height, 0, height - bottomStripHeight, width, bottomStripHeight);
+   404→  if (bottomStripStats.brightnessAnomaly > 0.1) {
+   405→    // Use the full bottom strip as the mask region
+   406→    regions.push({
+   407→      x: 0,
+   408→      y: Math.round(height - bottomStripHeight),
+   409→      width: width,
+   410→      height: Math.round(bottomStripHeight),
+   411→      confidence: 0.75,
+   412→    });
+   413→  }
+   414→
+   415→  // Strategy 3: Detect Gemini-style sparkle (4-pointed star)
+   416→  const sparkleRegion = detectGeminiSparkle(raw, width, height);
+   417→  if (sparkleRegion) {
+   418→    regions.push(sparkleRegion);
+   419→  }
+   420→
+   421→  // Strategy 4: Detect text-like patterns (high contrast regions in corners)
+   422→  const textRegions = detectTextPatterns(raw, width, height);
+   423→  regions.push(...textRegions);
+   424→
+   425→  // Deduplicate and merge overlapping regions
+   426→  let mergedRegions = mergeOverlappingRegions(regions);
+   427→
+   428→  // Fallback: Always ensure the bottom-right corner is covered
+   429→  // This is the most common watermark position
+   430→  const hasBottomRightCoverage = mergedRegions.some(r =>
+   431→    r.x + r.width >= width * 0.85 && r.y + r.height >= height * 0.85
+   432→  );
+   433→  if (!hasBottomRightCoverage) {
+   434→    const fallbackSize = Math.min(width, height) * 0.20;
+   435→    mergedRegions.push({
+   436→      x: Math.round(width - fallbackSize),
+   437→      y: Math.round(height - fallbackSize),
+   438→      width: Math.round(fallbackSize),
+   439→      height: Math.round(fallbackSize),
+   440→      confidence: 0.5,
+   441→    });
+   442→  }
+   443→
+   444→  // Sort by confidence
+   445→  mergedRegions.sort((a, b) => b.confidence - a.confidence);
+   446→
+   447→  return mergedRegions;
+   448→}
+   449→
+   450→/**
+   451→ * Detailed region analysis
+   452→ */
+   453→function analyzeRegionDetailed(
+   454→  raw: Buffer,
+   455→  imgWidth: number,
+   456→  imgHeight: number,
+   457→  rx: number,
+   458→  ry: number,
+   459→  rw: number,
+   460→  rh: number
+   461→) {
+   462→  let totalAlpha = 0;
+   463→  let transparentCount = 0;
+   464→  let colorSum = { r: 0, g: 0, b: 0 };
+   465→  let colorVariance = { r: 0, g: 0, b: 0 };
+   466→  let pixelCount = 0;
+   467→  let brightnessSum = 0;
+   468→  const colorValues: { r: number; g: number; b: number; brightness: number }[] = [];
+   469→
+   470→  const startX = Math.max(0, Math.floor(rx));
+   471→  const startY = Math.max(0, Math.floor(ry));
+   472→  const endX = Math.min(imgWidth, Math.ceil(rx + rw));
+   473→  const endY = Math.min(imgHeight, Math.ceil(ry + rh));
+   474→
+   475→  for (let y = startY; y < endY; y++) {
+   476→    for (let x = startX; x < endX; x++) {
+   477→      const idx = (y * imgWidth + x) * 4;
+   478→      const r = raw[idx];
+   479→      const g = raw[idx + 1];
+   480→      const b = raw[idx + 2];
+   481→      const a = raw[idx + 3];
+   482→
+   483→      totalAlpha += a;
+   484→      if (a < 255) transparentCount++;
+   485→      colorSum.r += r;
+   486→      colorSum.g += g;
+   487→      colorSum.b += b;
+   488→      const brightness = (r + g + b) / 3;
+   489→      brightnessSum += brightness;
+   490→      colorValues.push({ r, g, b, brightness });
+   491→      pixelCount++;
+   492→    }
+   493→  }
+   494→
+   495→  if (pixelCount === 0) {
+   496→    return { hasTransparency: false, colorDeviation: 0, uniformity: 0, brightnessAnomaly: 0 };
+   497→  }
+   498→
+   499→  const avgAlpha = totalAlpha / pixelCount;
+   500→  const avgColor = {
+   501→    r: colorSum.r / pixelCount,
+   502→    g: colorSum.g / pixelCount,
+   503→    b: colorSum.b / pixelCount,
+   504→  };
+   505→  const avgBrightness = brightnessSum / pixelCount;
+   506→
+   507→  // Calculate color variance
+   508→  let brightnessVarianceSum = 0;
+   509→  for (const c of colorValues) {
+   510→    colorVariance.r += (c.r - avgColor.r) ** 2;
+   511→    colorVariance.g += (c.g - avgColor.g) ** 2;
+   512→    colorVariance.b += (c.b - avgColor.b) ** 2;
+   513→    brightnessVarianceSum += (c.brightness - avgBrightness) ** 2;
+   514→  }
+   515→
+   516→  const variance = (colorVariance.r + colorVariance.g + colorVariance.b) / (pixelCount * 3);
+   517→  const deviation = Math.sqrt(variance) / 255;
+   518→  const brightnessVariance = Math.sqrt(brightnessVarianceSum / pixelCount) / 255;
+   519→  const uniformity = 1 - deviation;
+   520→
+   521→  return {
+   522→    hasTransparency: avgAlpha < 250 || transparentCount > pixelCount * 0.05,
+   523→    colorDeviation: deviation,
+   524→    uniformity,
+   525→    brightnessAnomaly: brightnessVariance,
+   526→    avgBrightness,
+   527→  };
+   528→}
+   529→
+   530→/**
+   531→ * Refine the watermark region by finding the actual bounding box of anomalous pixels
+   532→ * Uses robust background sampling from OUTSIDE the search region
+   533→ */
+   534→function refineWatermarkRegion(
+   535→  raw: Buffer,
+   536→  imgWidth: number,
+   537→  imgHeight: number,
+   538→  rx: number,
+   539→  ry: number,
+   540→  rw: number,
+   541→  rh: number
+   542→): { x: number; y: number; width: number; height: number } {
+   543→  // Sample background from OUTSIDE the search region to avoid contamination
+   544→  // Use a band around the search region
+   545→  const bandSize = Math.max(10, Math.min(imgWidth, imgHeight) * 0.03);
+   546→  const samplePoints: { x: number; y: number }[] = [];
+   547→
+   548→  // Sample from left of region
+   549→  for (let y = Math.floor(ry); y < Math.min(ry + rh, imgHeight); y += Math.max(1, Math.floor(rh / 5))) {
+   550→    for (let x = Math.max(0, Math.floor(rx - bandSize)); x < Math.floor(rx); x += 3) {
+   551→      samplePoints.push({ x, y });
+   552→    }
+   553→  }
+   554→  // Sample from above region
+   555→  for (let x = Math.floor(rx); x < Math.min(rx + rw, imgWidth); x += Math.max(1, Math.floor(rw / 5))) {
+   556→    for (let y = Math.max(0, Math.floor(ry - bandSize)); y < Math.floor(ry); y += 3) {
+   557→      samplePoints.push({ x, y });
+   558→    }
+   559→  }
+   560→  // Sample from right of region
+   561→  for (let y = Math.floor(ry); y < Math.min(ry + rh, imgHeight); y += Math.max(1, Math.floor(rh / 5))) {
+   562→    for (let x = Math.min(imgWidth - 1, Math.floor(rx + rw)); x < Math.min(imgWidth, Math.floor(rx + rw + bandSize)); x += 3) {
+   563→      samplePoints.push({ x, y });
+   564→    }
+   565→  }
+   566→
+   567→  let bgR = 0, bgG = 0, bgB = 0, validSamples = 0;
+   568→  for (const p of samplePoints) {
+   569→    if (p.x >= 0 && p.x < imgWidth && p.y >= 0 && p.y < imgHeight) {
+   570→      const idx = (p.y * imgWidth + p.x) * 4;
+   571→      bgR += raw[idx];
+   572→      bgG += raw[idx + 1];
+   573→      bgB += raw[idx + 2];
+   574→      validSamples++;
+   575→    }
+   576→  }
+   577→
+   578→  if (validSamples === 0) {
+   579→    // Fallback: use center of image as background
+   580→    const cx = Math.floor(imgWidth / 2);
+   581→    const cy = Math.floor(imgHeight / 2);
+   582→    const idx = (cy * imgWidth + cx) * 4;
+   583→    bgR = raw[idx];
+   584→    bgG = raw[idx + 1];
+   585→    bgB = raw[idx + 2];
+   586→  } else {
+   587→    bgR /= validSamples;
+   588→    bgG /= validSamples;
+   589→    bgB /= validSamples;
+   590→  }
+   591→
+   592→  // Find pixels that differ significantly from background
+   593→  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+   594→  let anomalousCount = 0;
+   595→  const threshold = 20; // color difference threshold (lowered for sensitivity)
+   596→
+   597→  const startX = Math.max(0, Math.floor(rx));
+   598→  const startY = Math.max(0, Math.floor(ry));
+   599→  const endX = Math.min(imgWidth, Math.ceil(rx + rw));
+   600→  const endY = Math.min(imgHeight, Math.ceil(ry + rh));
+   601→
+   602→  for (let y = startY; y < endY; y++) {
+   603→    for (let x = startX; x < endX; x++) {
+   604→      const idx = (y * imgWidth + x) * 4;
+   605→      const r = raw[idx];
+   606→      const g = raw[idx + 1];
+   607→      const b = raw[idx + 2];
+   608→      const a = raw[idx + 3];
+   609→
+   610→      const colorDiff = Math.sqrt(
+   611→        (r - bgR) ** 2 + (g - bgG) ** 2 + (b - bgB) ** 2
+   612→      );
+   613→
+   614→      // Detect anomalies: pixels that differ from background OR have transparency
+   615→      if (colorDiff > threshold || a < 250) {
+   616→        if (x < minX) minX = x;
+   617→        if (x > maxX) maxX = x;
+   618→        if (y < minY) minY = y;
+   619→        if (y > maxY) maxY = y;
+   620→        anomalousCount++;
+   621→      }
+   622→    }
+   623→  }
+   624→
+   625→  if (anomalousCount === 0 || maxX < 0) {
+   626→    return { x: Math.floor(rx), y: Math.floor(ry), width: Math.floor(rw), height: Math.floor(rh) };
+   627→  }
+   628→
+   629→  // Add generous padding to ensure full watermark coverage
+   630→  const padding = Math.max(8, Math.min(imgWidth, imgHeight) * 0.02);
+   631→  return {
+   632→    x: Math.max(0, Math.floor(minX - padding)),
+   633→    y: Math.max(0, Math.floor(minY - padding)),
+   634→    width: Math.min(imgWidth, Math.ceil(maxX - minX + padding * 2)),
+   635→    height: Math.min(imgHeight, Math.ceil(maxY - minY + padding * 2)),
+   636→  };
+   637→}
+   638→
+   639→/**
+   640→ * Detect Gemini-style sparkle watermark (4-pointed star)
+   641→ */
+   642→function detectGeminiSparkle(
+   643→  raw: Buffer,
+   644→  width: number,
+   645→  height: number
+   646→): DetectedRegion | null {
+   647→  // Search bottom-right area for sparkle pattern
+   648→  // Use large search area (25% of min dimension) to ensure full watermark coverage
+   649→  const sparkleSearchSize = Math.min(width, height) * 0.25;
+   650→  const startX = Math.floor(width - sparkleSearchSize);
+   651→  const startY = Math.floor(height - sparkleSearchSize);
+   652→  const searchW = Math.ceil(sparkleSearchSize);
+   653→  const searchH = Math.ceil(sparkleSearchSize);
+   654→
+   655→  let sparklePixels = 0;
+   656→  let totalPixels = 0;
+   657→
+   658→  for (let y = startY; y < Math.min(startY + searchH, height); y++) {
+   659→    for (let x = startX; x < Math.min(startX + searchW, width); x++) {
+   660→      const idx = (y * width + x) * 4;
+   661→      const r = raw[idx];
+   662→      const g = raw[idx + 1];
+   663→      const b = raw[idx + 2];
+   664→      const a = raw[idx + 3];
+   665→
+   666→      const brightness = (r + g + b) / 3;
+   667→
+   668→      // Sparkle pattern: semi-transparent, lighter than surrounding area
+   669→      if ((a < 255 || brightness > 200) && brightness > 180) {
+   670→        sparklePixels++;
+   671→      }
+   672→      totalPixels++;
+   673→    }
+   674→  }
+   675→
+   676→  if (totalPixels === 0) return null;
+   677→
+   678→  // If sparkle-like pixels found with sufficient density
+   679→  if (sparklePixels > totalPixels * 0.03 && sparklePixels > 5) {
+   680→    // Use the full search region as the mask (more reliable)
+   681→    return {
+   682→      x: startX,
+   683→      y: startY,
+   684→      width: searchW,
+   685→      height: searchH,
+   686→      confidence: 0.9,
+   687→    };
+   688→  }
+   689→
+   690→  return null;
+   691→}
+   692→
+   693→/**
+   694→ * Detect text-like patterns in image corners
+   695→ * Looks for high-contrast regions that could be text watermarks
+   696→ */
+   697→function detectTextPatterns(
+   698→  raw: Buffer,
+   699→  width: number,
+   700→  height: number
+   701→): DetectedRegion[] {
+   702→  const regions: DetectedRegion[] = [];
+   703→  const cornerSize = Math.min(width, height) * 0.15;
+   704→
+   705→  const corners = [
+   706→    { x: width - cornerSize, y: height - cornerSize, name: 'br' },
+   707→    { x: 0, y: height - cornerSize, name: 'bl' },
+   708→    { x: width - cornerSize, y: 0, name: 'tr' },
+   709→  ];
+   710→
+   711→  for (const corner of corners) {
+   712→    // Compute local contrast in this region
+   713→    let contrastSum = 0;
+   714→    let pixelCount = 0;
+   715→    const blockX = Math.floor(corner.x);
+   716→    const blockY = Math.floor(corner.y);
+   717→    const blockW = Math.min(cornerSize, width - blockX);
+   718→    const blockH = Math.min(cornerSize, height - blockY);
+   719→
+   720→    for (let y = blockY; y < blockY + blockH - 1; y++) {
+   721→      for (let x = blockX; x < blockX + blockW - 1; x++) {
+   722→        const idx = (y * width + x) * 4;
+   723→        const idxRight = (y * width + x + 1) * 4;
+   724→        const idxDown = ((y + 1) * width + x) * 4;
+   725→
+   726→        const b1 = (raw[idx] + raw[idx + 1] + raw[idx + 2]) / 3;
+   727→        const b2 = (raw[idxRight] + raw[idxRight + 1] + raw[idxRight + 2]) / 3;
+   728→        const b3 = (raw[idxDown] + raw[idxDown + 1] + raw[idxDown + 2]) / 3;
+   729→
+   730→        contrastSum += Math.abs(b1 - b2) + Math.abs(b1 - b3);
+   731→        pixelCount++;
+   732→      }
+   733→    }
+   734→
+   735→    if (pixelCount === 0) continue;
+   736→    const avgContrast = contrastSum / pixelCount;
+   737→
+   738→    // High contrast suggests text presence
+   739→    if (avgContrast > 20) {
+   740→      const refined = refineWatermarkRegion(raw, width, height, blockX, blockY, blockW, blockH);
+   741→      regions.push({
+   742→        x: refined.x,
+   743→        y: refined.y,
+   744→        width: refined.width,
+   745→        height: refined.height,
+   746→        confidence: 0.7,
+   747→      });
+   748→    }
+   749→  }
+   750→
+   751→  return regions;
+   752→}
+   753→
+   754→/**
+   755→ * Merge overlapping regions to avoid duplicate processing
+   756→ */
+   757→function mergeOverlappingRegions(regions: DetectedRegion[]): DetectedRegion[] {
+   758→  if (regions.length === 0) return regions;
+   759→
+   760→  const merged: DetectedRegion[] = [];
+   761→  const used = new Array(regions.length).fill(false);
+   762→
+   763→  for (let i = 0; i < regions.length; i++) {
+   764→    if (used[i]) continue;
+   765→    let current = { ...regions[i] };
+   766→    used[i] = true;
+   767→
+   768→    for (let j = i + 1; j < regions.length; j++) {
+   769→      if (used[j]) continue;
+   770→      if (regionsOverlap(current, regions[j])) {
+   771→        current = mergeRegions(current, regions[j]);
+   772→        used[j] = true;
+   773→      }
+   774→    }
+   775→
+   776→    merged.push(current);
+   777→  }
+   778→
+   779→  return merged;
+   780→}
+   781→
+   782→function regionsOverlap(a: DetectedRegion, b: DetectedRegion): boolean {
+   783→  return !(
+   784→    a.x + a.width < b.x ||
+   785→    b.x + b.width < a.x ||
+   786→    a.y + a.height < b.y ||
+   787→    b.y + b.height < a.y
+   788→  );
+   789→}
+   790→
+   791→function mergeRegions(a: DetectedRegion, b: DetectedRegion): DetectedRegion {
+   792→  const x = Math.min(a.x, b.x);
+   793→  const y = Math.min(a.y, b.y);
+   794→  const right = Math.max(a.x + a.width, b.x + b.width);
+   795→  const bottom = Math.max(a.y + a.height, b.y + b.height);
+   796→  return {
+   797→    x,
+   798→    y,
+   799→    width: right - x,
+   800→    height: bottom - y,
+   801→    confidence: Math.max(a.confidence, b.confidence),
+   802→  };
+   803→}
+   804→
+   805→/**
+   806→ * Generate a mask from detected watermark regions
+   807→ * Adds generous padding for full coverage
+   808→ */
+   809→export async function generateDetectionMask(
+   810→  inputBuffer: Buffer,
+   811→  regions: DetectedRegion[]
+   812→): Promise<Buffer> {
+   813→  const image = sharp(inputBuffer);
+   814→  const meta = await image.metadata();
+   815→  const width = meta.width!;
+   816→  const height = meta.height!;
+   817→
+   818→  // Create a white mask on black background
+   819→  const maskRaw = Buffer.alloc(width * height * 4);
+   820→
+   821→  // Fill with black (no mask)
+   822→  for (let i = 0; i < width * height; i++) {
+   823→    const idx = i * 4;
+   824→    maskRaw[idx] = 0;
+   825→    maskRaw[idx + 1] = 0;
+   826→    maskRaw[idx + 2] = 0;
+   827→    maskRaw[idx + 3] = 255;
+   828→  }
+   829→
+   830→  // Mark detected regions as white (mask)
+   831→  for (const region of regions) {
+   832→    for (let y = region.y; y < Math.min(region.y + region.height, height); y++) {
+   833→      for (let x = region.x; x < Math.min(region.x + region.width, width); x++) {
+   834→        const idx = (y * width + x) * 4;
+   835→        maskRaw[idx] = 255;
+   836→        maskRaw[idx + 1] = 255;
+   837→        maskRaw[idx + 2] = 255;
+   838→      }
+   839→    }
+   840→  }
+   841→
+   842→  // Add generous padding around mask regions for better coverage
+   843→  const padding = Math.max(8, Math.min(width, height) * 0.015);
+   844→  const paddedMask = addMaskPadding(maskRaw, width, height, Math.floor(padding));
+   845→
+   846→  return sharp(paddedMask, { raw: { width, height, channels: 4 } })
+   847→    .png()
+   848→    .toBuffer();
+   849→}
+   850→
+   851→/**
+   852→ * Add padding around mask regions to ensure full watermark coverage
+   853→ */
+   854→function addMaskPadding(
+   855→  mask: Buffer,
+   856→  width: number,
+   857→  height: number,
+   858→  padding: number
+   859→): Buffer {
+   860→  const result = Buffer.from(mask);
+   861→
+   862→  // For each white pixel, expand by padding
+   863→  for (let y = 0; y < height; y++) {
+   864→    for (let x = 0; x < width; x++) {
+   865→      const idx = (y * width + x) * 4;
+   866→      if (mask[idx] > 128) {
+   867→        // Expand
+   868→        for (let dy = -padding; dy <= padding; dy++) {
+   869→          for (let dx = -padding; dx <= padding; dx++) {
+   870→            const nx = x + dx;
+   871→            const ny = y + dy;
+   872→            if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+   873→              const nIdx = (ny * width + nx) * 4;
+   874→              result[nIdx] = 255;
+   875→              result[nIdx + 1] = 255;
+   876→              result[nIdx + 2] = 255;
+   877→            }
+   878→          }
+   879→        }
+   880→      }
+   881→    }
+   882→  }
+   883→
+   884→  return result;
+   885→}
+   886→
+   887→// ============================================================
+   888→// WATERMARK ADDITION (with proper text rendering via canvas)
+   889→// ============================================================
+   890→
+   891→export interface AddWatermarkOptions {
+   892→  text?: string;
+   893→  fontSize?: number;
+   894→  color?: string;
+   895→  opacity?: number;
+   896→  position?: string;
+   897→  logoBuffer?: Buffer;
+   898→  logoOpacity?: number;
+   899→  logoSize?: number;
+   900→  logoPosition?: string;
+   901→  rotation?: number;
+   902→  shadow?: boolean;
+   903→  repeat?: boolean;
+   904→}
+   905→
+   906→// Try to register fonts (will silently fail if not available)
+   907→let fontsRegistered = false;
+   908→function ensureFontsRegistered() {
+   909→  if (fontsRegistered) return;
+   910→  fontsRegistered = true;
+   911→  try {
+   912→    // Try common system font paths
+   913→    const fontPaths = [
+   914→      '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+   915→      '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
+   916→      '/usr/share/fonts/TTF/DejaVuSans.ttf',
+   917→      '/System/Library/Fonts/Helvetica.ttc',
+   918→    ];
+   919→    for (const p of fontPaths) {
+   920→      if (fs.existsSync(p)) {
+   921→        try {
+   922→          registerFont(p, { family: 'ZeminaiSans', weight: 'normal' });
+   923→        } catch (e) {
+   924→          // ignore font registration errors
+   925→        }
+   926→      }
+   927→    }
+   928→  } catch (e) {
+   929→    // ignore
+   930→  }
+   931→}
+   932→
+   933→/**
+   934→ * Add a text or logo watermark to an image using canvas for proper text rendering
+   935→ */
+   936→export async function addWatermark(
+   937→  inputBuffer: Buffer,
+   938→  options: AddWatermarkOptions
+   939→): Promise<Buffer> {
+   940→  ensureFontsRegistered();
+   941→
+   942→  const image = sharp(inputBuffer);
+   943→  const meta = await image.metadata();
+   944→  const width = meta.width!;
+   945→  const height = meta.height!;
+   946→
+   947→  // Convert to PNG buffer for canvas
+   948→  const pngBuffer = await image.png().toBuffer();
+   949→  const canvasImg = await loadImage(pngBuffer);
+   950→
+   951→  // Create canvas with same dimensions
+   952→  const canvas = createCanvas(width, height);
+   953→  const ctx = canvas.getContext('2d');
+   954→
+   955→  // Draw original image
+   956→  ctx.drawImage(canvasImg, 0, 0, width, height);
+   957→
+   958→  // Add text watermark
+   959→  if (options.text && options.text.trim()) {
+   960→    drawTextWatermark(ctx, width, height, {
+   961→      text: options.text,
+   962→      fontSize: options.fontSize || 24,
+   963→      color: options.color || '#ffffff',
+   964→      opacity: (options.opacity || 50) / 100,
+   965→      position: options.position || 'bottom-right',
+   966→      rotation: options.rotation || 0,
+   967→      shadow: options.shadow ?? true,
+   968→      repeat: options.repeat || false,
+   969→    });
+   970→  }
+   971→
+   972→  // Add logo watermark
+   973→  if (options.logoBuffer) {
+   974→    await drawLogoWatermark(ctx, width, height, {
+   975→      logoBuffer: options.logoBuffer,
+   976→      opacity: (options.logoOpacity || 50) / 100,
+   977→      size: options.logoSize || 100,
+   978→      position: options.logoPosition || options.position || 'bottom-right',
+   979→      rotation: options.rotation || 0,
+   980→    });
+   981→  }
+   982→
+   983→  // Convert canvas back to buffer
+   984→  const outputBuffer = canvas.toBuffer('image/png');
+   985→  return outputBuffer;
+   986→}
+   987→
+   988→interface TextWatermarkOptions {
+   989→  text: string;
+   990→  fontSize: number;
+   991→  color: string;
+   992→  opacity: number;
+   993→  position: string;
+   994→  rotation: number;
+   995→  shadow: boolean;
+   996→  repeat: boolean;
+   997→}
+   998→
+   999→/**
+  1000→ * Draw text watermark on canvas with proper font rendering
+  1001→ */
+  1002→function drawTextWatermark(
+  1003→  ctx: ReturnType<ReturnType<typeof createCanvas>['getContext']>,
+  1004→  canvasWidth: number,
+  1005→  canvasHeight: number,
+  1006→  options: TextWatermarkOptions
+  1007→): void {
+  1008→  ctx.save();
+  1009→
+  1010→  // Set font - use canvas's default font with proper sizing
+  1011→  const fontFamily = '"ZeminaiSans", "Arial", "Helvetica", sans-serif';
+  1012→  ctx.font = `${options.fontSize}px ${fontFamily}`;
+  1013→  ctx.textBaseline = 'top';
+  1014→
+  1015→  // Measure text
+  1016→  const metrics = ctx.measureText(options.text);
+  1017→  const textWidth = metrics.width;
+  1018→  const textHeight = options.fontSize * 1.2;
+  1019→
+  1020→  // Set opacity
+  1021→  ctx.globalAlpha = options.opacity;
+  1022→
+  1023→  // Set shadow for better visibility
+  1024→  if (options.shadow) {
+  1025→    ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+  1026→    ctx.shadowBlur = Math.max(2, options.fontSize * 0.1);
+  1027→    ctx.shadowOffsetX = 1;
+  1028→    ctx.shadowOffsetY = 1;
+  1029→  }
+  1030→
+  1031→  // Set color
+  1032→  ctx.fillStyle = options.color;
+  1033→
+  1034→  if (options.repeat) {
+  1035→    // Repeat watermark across entire image
+  1036→    const spacingX = Math.max(textWidth * 2, 200);
+  1037→    const spacingY = Math.max(textHeight * 3, 100);
+  1038→    const rotationRad = (options.rotation || -30) * Math.PI / 180;
+  1039→
+  1040→    for (let y = -spacingY; y < canvasHeight + spacingY; y += spacingY) {
+  1041→      for (let x = -spacingX; x < canvasWidth + spacingX; x += spacingX) {
+  1042→        ctx.save();
+  1043→        ctx.translate(x + textWidth / 2, y + textHeight / 2);
+  1044→        ctx.rotate(rotationRad);
+  1045→        ctx.fillText(options.text, -textWidth / 2, -textHeight / 2);
+  1046→        ctx.restore();
+  1047→      }
+  1048→    }
+  1049→  } else {
+  1050→    // Single watermark at specified position
+  1051→    const margin = Math.max(10, Math.min(canvasWidth, canvasHeight) * 0.03);
+  1052→    const pos = calculatePosition(canvasWidth, canvasHeight, textWidth, textHeight, margin, options.position);
+  1053→
+  1054→    if (options.rotation !== 0) {
+  1055→      ctx.translate(pos.x + textWidth / 2, pos.y + textHeight / 2);
+  1056→      ctx.rotate(options.rotation * Math.PI / 180);
+  1057→      ctx.fillText(options.text, -textWidth / 2, -textHeight / 2);
+  1058→    } else {
+  1059→      ctx.fillText(options.text, pos.x, pos.y);
+  1060→    }
+  1061→  }
+  1062→
+  1063→  ctx.restore();
+  1064→}
+  1065→
+  1066→interface LogoWatermarkOptions {
+  1067→  logoBuffer: Buffer;
+  1068→  opacity: number;
+  1069→  size: number;
+  1070→  position: string;
+  1071→  rotation: number;
+  1072→}
+  1073→
+  1074→/**
+  1075→ * Draw logo watermark on canvas
+  1076→ */
+  1077→async function drawLogoWatermark(
+  1078→  ctx: ReturnType<ReturnType<typeof createCanvas>['getContext']>,
+  1079→  canvasWidth: number,
+  1080→  canvasHeight: number,
+  1081→  options: LogoWatermarkOptions
+  1082→): Promise<void> {
+  1083→  try {
+  1084→    const logoImg = await loadImage(options.logoBuffer);
+  1085→
+  1086→    // Calculate logo dimensions while maintaining aspect ratio
+  1087→    const logoAspect = logoImg.width / logoImg.height;
+  1088→    let logoW = options.size;
+  1089→    let logoH = options.size / logoAspect;
+  1090→    if (logoH > options.size) {
+  1091→      logoH = options.size;
+  1092→      logoW = options.size * logoAspect;
+  1093→    }
+  1094→
+  1095→    const margin = Math.max(10, Math.min(canvasWidth, canvasHeight) * 0.03);
+  1096→    const pos = calculatePosition(canvasWidth, canvasHeight, logoW, logoH, margin, options.position);
+  1097→
+  1098→    ctx.save();
+  1099→    ctx.globalAlpha = options.opacity;
+  1100→
+  1101→    if (options.rotation !== 0) {
+  1102→      ctx.translate(pos.x + logoW / 2, pos.y + logoH / 2);
+  1103→      ctx.rotate(options.rotation * Math.PI / 180);
+  1104→      ctx.drawImage(logoImg, -logoW / 2, -logoH / 2, logoW, logoH);
+  1105→    } else {
+  1106→      ctx.drawImage(logoImg, pos.x, pos.y, logoW, logoH);
+  1107→    }
+  1108→
+  1109→    ctx.restore();
+  1110→  } catch (e) {
+  1111→    console.error('Logo watermark error:', e);
+  1112→  }
+  1113→}
+  1114→
+  1115→// ============================================================
+  1116→// IMAGE QUALITY OPTIMIZATION
+  1117→// ============================================================
+  1118→
+  1119→export interface OptimizeOptions {
+  1120→  quality: number;
+  1121→  format: "jpeg" | "png" | "webp";
+  1122→  maxWidth: number;
+  1123→  maxHeight: number;
+  1124→}
+  1125→
+  1126→export async function optimizeImage(
+  1127→  inputBuffer: Buffer,
+  1128→  options: OptimizeOptions
+  1129→): Promise<{ buffer: Buffer; originalSize: number; optimizedSize: number }> {
+  1130→  const image = sharp(inputBuffer);
+  1131→  const meta = await image.metadata();
+  1132→  const originalSize = inputBuffer.length;
+  1133→
+  1134→  let pipeline = sharp(inputBuffer);
+  1135→
+  1136→  // Resize if needed
+  1137→  if (meta.width! > options.maxWidth || meta.height! > options.maxHeight) {
+  1138→    pipeline = pipeline.resize(options.maxWidth, options.maxHeight, {
+  1139→      fit: "inside",
+  1140→      withoutEnlargement: true,
+  1141→    });
+  1142→  }
+  1143→
+  1144→  // Apply format and quality
+  1145→  switch (options.format) {
+  1146→    case "jpeg":
+  1147→      pipeline = pipeline.jpeg({
+  1148→        quality: options.quality,
+  1149→        mozjpeg: true,
+  1150→      });
+  1151→      break;
+  1152→    case "png":
+  1153→      pipeline = pipeline.png({
+  1154→        quality: options.quality,
+  1155→        compressionLevel: Math.round((100 - options.quality) / 100 * 9),
+  1156→        palette: options.quality < 80,
+  1157→      });
+  1158→      break;
+  1159→    case "webp":
+  1160→      pipeline = pipeline.webp({ quality: options.quality });
+  1161→      break;
+  1162→  }
+  1163→
+  1164→  const buffer = await pipeline.toBuffer();
+  1165→  return {
+  1166→    buffer,
+  1167→    originalSize,
+  1168→    optimizedSize: buffer.length,
+  1169→  };
+  1170→}
+  1171→
+  1172→// ============================================================
+  1173→// IMAGE TRANSFORMATIONS (NEW)
+  1174→// ============================================================
+  1175→
+  1176→export interface TransformOptions {
+  1177→  rotation?: number; // 0, 90, 180, 270
+  1178→  flipH?: boolean;
+  1179→  flipV?: boolean;
+  1180→  crop?: { x: number; y: number; width: number; height: number };
+  1181→}
+  1182→
+  1183→/**
+  1184→ * Apply image transformations (rotation, flip, crop)
+  1185→ */
+  1186→export async function transformImage(
+  1187→  inputBuffer: Buffer,
+  1188→  options: TransformOptions
+  1189→): Promise<Buffer> {
+  1190→  let pipeline = sharp(inputBuffer);
+  1191→
+  1192→  if (options.crop) {
+  1193→    pipeline = pipeline.extract({
+  1194→      left: Math.floor(options.crop.x),
+  1195→      top: Math.floor(options.crop.y),
+  1196→      width: Math.floor(options.crop.width),
+  1197→      height: Math.floor(options.crop.height),
+  1198→    });
+  1199→  }
+  1200→
+  1201→  if (options.flipH) {
+  1202→    pipeline = pipeline.flip();
+  1203→  }
+  1204→
+  1205→  if (options.flipV) {
+  1206→    pipeline = pipeline.flop();
+  1207→  }
+  1208→
+  1209→  if (options.rotation && options.rotation !== 0) {
+  1210→    pipeline = pipeline.rotate(options.rotation);
+  1211→  }
+  1212→
+  1213→  return pipeline.png({ quality: 100 }).toBuffer();
+  1214→}
+  1215→
+  1216→// ============================================================
+  1217→// UTILITY FUNCTIONS
+  1218→// ============================================================
+  1219→
+  1220→function parseColor(hex: string): { r: number; g: number; b: number } {
+  1221→  const clean = hex.replace("#", "");
+  1222→  return {
+  1223→    r: parseInt(clean.substring(0, 2), 16),
+  1224→    g: parseInt(clean.substring(2, 4), 16),
+  1225→    b: parseInt(clean.substring(4, 6), 16),
+  1226→  };
+  1227→}
+  1228→
+  1229→function calculatePosition(
+  1230→  canvasWidth: number,
+  1231→  canvasHeight: number,
+  1232→  elementWidth: number,
+  1233→  elementHeight: number,
+  1234→  margin: number,
+  1235→  position: string
+  1236→): { x: number; y: number } {
+  1237→  switch (position) {
+  1238→    case "top-left":
+  1239→      return { x: margin, y: margin };
+  1240→    case "top-center":
+  1241→      return { x: (canvasWidth - elementWidth) / 2, y: margin };
+  1242→    case "top-right":
+  1243→      return { x: canvasWidth - elementWidth - margin, y: margin };
+  1244→    case "center":
+  1245→      return { x: (canvasWidth - elementWidth) / 2, y: (canvasHeight - elementHeight) / 2 };
+  1246→    case "bottom-left":
+  1247→      return { x: margin, y: canvasHeight - elementHeight - margin };
+  1248→    case "bottom-center":
+  1249→      return { x: (canvasWidth - elementWidth) / 2, y: canvasHeight - elementHeight - margin };
+  1250→    case "bottom-right":
+  1251→      return { x: canvasWidth - elementWidth - margin, y: canvasHeight - elementHeight - margin };
+  1252→    default:
+  1253→      return { x: canvasWidth - elementWidth - margin, y: canvasHeight - elementHeight - margin };
+  1254→  }
+  1255→}
+  1256→
+  1257→/**
+  1258→ * Convert image buffer to base64 data URL
+  1259→ */
+  1260→export function bufferToDataUrl(buffer: Buffer, format: string = "image/png"): string {
+  1261→  return `data:${format};base64,${buffer.toString("base64")}`;
+  1262→}
+  1263→
+  1264→/**
+  1265→ * Get image metadata
+  1266→ */
+  1267→export async function getImageInfo(buffer: Buffer): Promise<{
+  1268→  width: number;
+  1269→  height: number;
+  1270→  format: string;
+  1271→  size: number;
+  1272→}> {
+  1273→  const meta = await sharp(buffer).metadata();
+  1274→  return {
+  1275→    width: meta.width || 0,
+  1276→    height: meta.height || 0,
+  1277→    format: meta.format || "unknown",
+  1278→    size: buffer.length,
+  1279→  };
+  1280→}
+  1281→

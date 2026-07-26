@@ -1,7 +1,8 @@
 'use client'
 
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Settings2 } from 'lucide-react'
+import { Settings2, Loader2, ArrowDown, ArrowUp } from 'lucide-react'
 import { Label } from '@/components/ui/label'
 import { Slider } from '@/components/ui/slider'
 import { Input } from '@/components/ui/input'
@@ -31,8 +32,147 @@ function isPresetActive(config: QualityConfig, preset: QualityConfig): boolean {
   )
 }
 
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+/** Convert a dataUrl string into a File so we can POST it as FormData. */
+function dataUrlToFile(dataUrl: string, filename: string): File {
+  const arr = dataUrl.split(',')
+  const mimeMatch = arr[0].match(/data:(.*?);/)
+  const mime = mimeMatch ? mimeMatch[1] : 'image/png'
+  const bstr = atob(arr[1])
+  const n = bstr.length
+  const u8arr = new Uint8Array(n)
+  for (let i = 0; i < n; i++) {
+    u8arr[i] = bstr.charCodeAt(i)
+  }
+  return new File([u8arr], filename, { type: mime })
+}
+
+interface EstimateResult {
+  estimatedSize: number
+  format: string
+  width: number
+  height: number
+}
+
 export default function QualityOptimizer() {
-  const { qualityConfig, setQualityConfig } = useAppStore()
+  const { qualityConfig, setQualityConfig, originalImage, processedImage } = useAppStore()
+
+  // Pick the image we should base the estimate on. Prefer the processed
+  // result (so the estimate reflects what the user will actually download),
+  // but fall back to the original upload when nothing has been processed yet.
+  const sourceDataUrl = processedImage?.dataUrl ?? originalImage?.dataUrl ?? null
+  const sourceFileName = originalImage?.name ?? 'image.png'
+  // The original-size baseline is used for the savings comparison. When a
+  // processed image exists, compare against its size; otherwise compare
+  // against the uploaded file's size.
+  const baselineSize = processedImage?.size ?? originalImage?.size ?? 0
+
+  const [estimate, setEstimate] = useState<EstimateResult | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  // Per-config cache so switching presets or tabbing away and back doesn't
+  // refetch an estimate we already computed.
+  const cacheRef = useRef<Map<string, EstimateResult>>(new Map())
+  // Token so we can ignore stale responses if the user changes config mid-flight.
+  const requestTokenRef = useRef(0)
+
+  const estimateKey = `${qualityConfig.format}-${qualityConfig.quality}-${qualityConfig.maxWidth}-${qualityConfig.maxHeight}`
+
+  const fetchEstimate = useCallback(async () => {
+    if (!sourceDataUrl) {
+      setEstimate(null)
+      return
+    }
+
+    // Serve from cache when possible — makes preset switching instant.
+    const cached = cacheRef.current.get(estimateKey)
+    if (cached) {
+      setEstimate(cached)
+      return
+    }
+
+    const token = ++requestTokenRef.current
+    setIsLoading(true)
+
+    try {
+      // Convert the dataUrl to a File only when we actually need to send it.
+      const file = dataUrlToFile(sourceDataUrl, sourceFileName)
+
+      const formData = new FormData()
+      formData.append('image', file)
+      formData.append('format', qualityConfig.format)
+      formData.append('quality', String(qualityConfig.quality))
+      formData.append('maxWidth', String(qualityConfig.maxWidth))
+      formData.append('maxHeight', String(qualityConfig.maxHeight))
+
+      const res = await fetch('/api/estimate-size', {
+        method: 'POST',
+        body: formData,
+      })
+      const data = await res.json()
+
+      // Ignore the response if a newer request superseded us.
+      if (token !== requestTokenRef.current) return
+
+      if (data.success) {
+        const result: EstimateResult = {
+          estimatedSize: data.estimatedSize,
+          format: data.format,
+          width: data.width,
+          height: data.height,
+        }
+        cacheRef.current.set(estimateKey, result)
+        setEstimate(result)
+      }
+    } catch (err) {
+      console.error('Estimate failed:', err)
+    } finally {
+      if (token === requestTokenRef.current) {
+        setIsLoading(false)
+      }
+    }
+  }, [sourceDataUrl, sourceFileName, estimateKey, qualityConfig])
+
+  // Debounce 500ms after any qualityConfig change, then fetch.
+  useEffect(() => {
+    if (!sourceDataUrl) {
+      setEstimate(null)
+      return
+    }
+
+    // If we already have a cached value for this key, show it immediately.
+    const cached = cacheRef.current.get(estimateKey)
+    if (cached) {
+      setEstimate(cached)
+      return
+    }
+
+    setIsLoading(true)
+    const t = setTimeout(() => {
+      void fetchEstimate()
+    }, 500)
+    return () => clearTimeout(t)
+  }, [estimateKey, sourceDataUrl, fetchEstimate])
+
+  // When the source image itself changes, invalidate the cache because the
+  // underlying pixels are different even if the quality config is the same.
+  useEffect(() => {
+    cacheRef.current.clear()
+    setEstimate(null)
+  }, [sourceDataUrl])
+
+  // Compute savings percentage vs. the baseline (original or processed).
+  let savingsPct: number | null = null
+  let savingsDirection: 'down' | 'up' | null = null
+  if (estimate && baselineSize > 0) {
+    const diff = (estimate.estimatedSize - baselineSize) / baselineSize
+    savingsPct = Math.round(Math.abs(diff) * 100)
+    savingsDirection = diff <= 0 ? 'down' : 'up'
+  }
 
   return (
     <motion.div
@@ -115,6 +255,49 @@ export default function QualityOptimizer() {
           onChange={(e) => setQualityConfig({ maxHeight: Number(e.target.value) || 4096 })}
           className="w-[3.5rem] h-6 text-[10px] px-1.5 rounded-lg"
         />
+      </div>
+
+      {/* Estimated output size row */}
+      <div className="flex items-center justify-between gap-2 rounded-md bg-muted/30 px-2 py-1.5 text-[10px]">
+        <span className="font-medium text-muted-foreground/70">Estimated size</span>
+
+        <div className="flex items-center gap-1.5 tabular-nums">
+          {isLoading && !estimate ? (
+            <>
+              <Loader2 className="size-3 animate-spin text-muted-foreground/60" />
+              <span className="text-muted-foreground/60">Calculating...</span>
+            </>
+          ) : estimate ? (
+            <>
+              <span className="font-semibold text-foreground">
+                {formatBytes(estimate.estimatedSize)}
+              </span>
+              {savingsDirection && savingsPct !== null && (
+                <span
+                  className={`inline-flex items-center gap-0.5 rounded px-1 py-0.5 font-medium ${
+                    savingsDirection === 'down'
+                      ? 'bg-green-500/10 text-green-600 dark:text-green-400'
+                      : 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                  }`}
+                >
+                  {savingsDirection === 'down' ? (
+                    <ArrowDown className="size-2.5" />
+                  ) : (
+                    <ArrowUp className="size-2.5" />
+                  )}
+                  {savingsPct}%
+                </span>
+              )}
+            </>
+          ) : !sourceDataUrl ? (
+            <span className="text-muted-foreground/40">Upload an image</span>
+          ) : (
+            <>
+              <Loader2 className="size-3 animate-spin text-muted-foreground/60" />
+              <span className="text-muted-foreground/60">Calculating...</span>
+            </>
+          )}
+        </div>
       </div>
     </motion.div>
   )

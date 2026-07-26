@@ -2,8 +2,9 @@
 
 import { useCallback, useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Crop, Loader2, RotateCcw, ChevronDown } from 'lucide-react'
+import { Crop, Loader2, RotateCcw, ChevronDown, Eye, EyeOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
 import { useAppStore } from '@/lib/store'
 
 interface CropRect {
@@ -30,18 +31,21 @@ const CROP_RATIOS: CropRatio[] = [
 ]
 
 export default function CropPanel() {
-  const { originalImage, setOriginalImage, setIsProcessing } = useAppStore()
+  const {
+    originalImage,
+    setOriginalImage,
+    setIsProcessing,
+    cropRect,
+    setCropRect,
+    isCropOverlayActive,
+    setCropOverlayActive,
+  } = useAppStore()
   const [isCropping, setIsCropping] = useState(false)
   const [isOpen, setIsOpen] = useState(false) // Start collapsed to reduce sidebar crowding
-  const [selectedRatio, setSelectedRatio] = useState<number | null>(null) // null = Free
-  const [cropRect, setCropRect] = useState<CropRect>({
-    x: 0,
-    y: 0,
-    width: 0,
-    height: 0,
-  })
+  const [selectedRatio, setSelectedRatio] = useState<number | null>(null) // null = Free (UI-only)
 
-  // Initialize crop rect when image changes
+  // Initialize crop rect when image changes (keeps isCropOverlayActive as-is —
+  // never auto-enables the overlay, per task requirements).
   useEffect(() => {
     if (originalImage) {
       setCropRect({
@@ -52,7 +56,18 @@ export default function CropPanel() {
       })
       setSelectedRatio(null)
     }
-  }, [originalImage])
+  }, [originalImage, setCropRect])
+
+  // When the panel opens, default the overlay to ON. When it closes, turn the
+  // overlay OFF (so the image isn't cluttered when the user is done cropping).
+  const handleToggleOpen = useCallback(() => {
+    setIsOpen((v) => {
+      const next = !v
+      // When opening, show the overlay; when closing, hide it.
+      setCropOverlayActive(next)
+      return next
+    })
+  }, [setCropOverlayActive])
 
   const handleRatioChange = useCallback(
     (ratio: number | null) => {
@@ -92,7 +107,7 @@ export default function CropPanel() {
 
       setCropRect({ x: newX, y: newY, width: newW, height: newH })
     },
-    [originalImage]
+    [originalImage, setCropRect]
   )
 
   const updateCropField = useCallback(
@@ -102,68 +117,68 @@ export default function CropPanel() {
       const imgW = originalImage.width
       const imgH = originalImage.height
 
-      setCropRect((prev) => {
-        let next = { ...prev, [field]: Math.max(0, Math.round(value)) }
+      // Compute next rect from the current store value
+      const prev = cropRect
+      let next: CropRect = { ...prev, [field]: Math.max(0, Math.round(value)) }
 
-        // Clamp x and y
-        if (field === 'x') {
-          next.x = Math.min(next.x, imgW - 1)
-        }
-        if (field === 'y') {
-          next.y = Math.min(next.y, imgH - 1)
-        }
+      // Clamp x and y
+      if (field === 'x') {
+        next.x = Math.min(next.x, imgW - 1)
+      }
+      if (field === 'y') {
+        next.y = Math.min(next.y, imgH - 1)
+      }
 
-        // Clamp width and height
+      // Clamp width and height
+      if (field === 'width') {
+        next.width = Math.max(1, Math.min(next.width, imgW - next.x))
+      }
+      if (field === 'height') {
+        next.height = Math.max(1, Math.min(next.height, imgH - next.y))
+      }
+
+      // If a ratio is locked, adjust the other dimension
+      if (selectedRatio !== null) {
         if (field === 'width') {
-          next.width = Math.max(1, Math.min(next.width, imgW - next.x))
+          next.height = Math.max(
+            1,
+            Math.min(Math.round(next.width / selectedRatio), imgH - next.y)
+          )
+          next.width = Math.round(next.height * selectedRatio)
+        } else if (field === 'height') {
+          next.width = Math.max(
+            1,
+            Math.min(Math.round(next.height * selectedRatio), imgW - next.x)
+          )
+          next.height = Math.round(next.width / selectedRatio)
         }
-        if (field === 'height') {
-          next.height = Math.max(1, Math.min(next.height, imgH - next.y))
-        }
-
-        // If a ratio is locked, adjust the other dimension
-        if (selectedRatio !== null) {
-          if (field === 'width') {
-            next.height = Math.max(
-              1,
-              Math.min(Math.round(next.width / selectedRatio), imgH - next.y)
-            )
-            next.width = Math.round(next.height * selectedRatio)
-          } else if (field === 'height') {
-            next.width = Math.max(
-              1,
-              Math.min(Math.round(next.height * selectedRatio), imgW - next.x)
-            )
-            next.height = Math.round(next.width / selectedRatio)
+        // If x or y changed, keep the ratio by adjusting width/height
+        if (field === 'x' || field === 'y') {
+          const maxW = imgW - next.x
+          const maxH = imgH - next.y
+          let w = next.width
+          let h = next.height
+          if (w / h > selectedRatio) {
+            w = Math.round(h * selectedRatio)
+          } else {
+            h = Math.round(w / selectedRatio)
           }
-          // If x or y changed, keep the ratio by adjusting width/height
-          if (field === 'x' || field === 'y') {
-            const maxW = imgW - next.x
-            const maxH = imgH - next.y
-            let w = next.width
-            let h = next.height
-            if (w / h > selectedRatio) {
-              w = Math.round(h * selectedRatio)
-            } else {
-              h = Math.round(w / selectedRatio)
-            }
-            if (w > maxW) {
-              w = maxW
-              h = Math.round(w / selectedRatio)
-            }
-            if (h > maxH) {
-              h = maxH
-              w = Math.round(h * selectedRatio)
-            }
-            next.width = Math.max(1, w)
-            next.height = Math.max(1, h)
+          if (w > maxW) {
+            w = maxW
+            h = Math.round(w / selectedRatio)
           }
+          if (h > maxH) {
+            h = maxH
+            w = Math.round(h * selectedRatio)
+          }
+          next.width = Math.max(1, w)
+          next.height = Math.max(1, h)
         }
+      }
 
-        return next
-      })
+      setCropRect(next)
     },
-    [originalImage, selectedRatio]
+    [originalImage, selectedRatio, cropRect, setCropRect]
   )
 
   const handleApply = useCallback(async () => {
@@ -219,7 +234,7 @@ export default function CropPanel() {
       height: originalImage.height,
     })
     setSelectedRatio(null)
-  }, [originalImage])
+  }, [originalImage, setCropRect])
 
   // Check if crop is different from full image
   const hasCrop =
@@ -241,7 +256,7 @@ export default function CropPanel() {
       {/* Header (clickable toggle) */}
       <button
         type="button"
-        onClick={() => setIsOpen((v) => !v)}
+        onClick={handleToggleOpen}
         className="flex items-center justify-between cursor-pointer"
         aria-expanded={isOpen}
       >
@@ -250,6 +265,39 @@ export default function CropPanel() {
           <span className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider">Crop</span>
         </div>
         <div className="flex items-center gap-2">
+          {/* Show overlay toggle (only meaningful when panel is open) */}
+          {isOpen && (
+            <div
+              role="group"
+              aria-label="Toggle crop overlay"
+              className="flex items-center gap-1"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setCropOverlayActive(!isCropOverlayActive)
+                }}
+                className="flex items-center gap-1 text-[9px] text-muted-foreground/60 hover:text-foreground transition-colors"
+                aria-label={isCropOverlayActive ? 'Hide overlay' : 'Show overlay'}
+              >
+                {isCropOverlayActive ? (
+                  <Eye className="size-2.5" />
+                ) : (
+                  <EyeOff className="size-2.5" />
+                )}
+                <span className="hidden sm:inline">Overlay</span>
+              </button>
+              <Switch
+                checked={isCropOverlayActive}
+                onCheckedChange={(checked) => setCropOverlayActive(checked)}
+                onClick={(e) => e.stopPropagation()}
+                className="scale-75 origin-center"
+                aria-label="Show crop overlay on image"
+              />
+            </div>
+          )}
           {hasCrop && (
             <button
               type="button"

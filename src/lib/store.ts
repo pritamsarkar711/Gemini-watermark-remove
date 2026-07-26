@@ -301,6 +301,15 @@ interface AppState {
   showComparison: boolean;
   setShowComparison: (show: boolean) => void;
 
+  // ─── Crop overlay state (UI-only, not part of history) ────────────────────
+  // Shared between CropPanel (numeric inputs + ratio presets) and ImagePreview
+  // (visual draggable/resizable rectangle overlay).
+  cropRect: { x: number; y: number; width: number; height: number };
+  setCropRect: (rect: { x: number; y: number; width: number; height: number }) => void;
+
+  isCropOverlayActive: boolean;
+  setCropOverlayActive: (active: boolean) => void;
+
   // ─── History / Undo / Redo ──────────────────────────
   history: HistorySnapshot[];
   historyIndex: number;
@@ -451,6 +460,13 @@ export const useAppStore = create<AppState>((set, get) => ({
   showComparison: false,
   setShowComparison: (show) => set({ showComparison: show }),
 
+  // Crop overlay state — UI-only, not persisted into history snapshots.
+  cropRect: { x: 0, y: 0, width: 0, height: 0 },
+  setCropRect: (rect) => set({ cropRect: { ...rect } }),
+
+  isCropOverlayActive: false,
+  setCropOverlayActive: (active) => set({ isCropOverlayActive: active }),
+
   // ─── History / Undo / Redo ──────────────────────────
 
   history: [initialSnapshot],
@@ -576,6 +592,9 @@ export const useAppStore = create<AppState>((set, get) => ({
       isProcessing: false,
       sliderPosition: 50,
       showComparison: false,
+      // Reset crop overlay UI state as well
+      cropRect: { x: 0, y: 0, width: 0, height: 0 },
+      isCropOverlayActive: false,
       // Reset history to initial snapshot
       history: [initialSnapshot],
       historyIndex: 0,

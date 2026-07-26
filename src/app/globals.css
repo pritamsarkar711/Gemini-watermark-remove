@@ -243,3 +243,63 @@
     scroll-behavior: smooth;
   }
 }
+
+/* ─── Sidebar polish utilities (round5-C) ─────────────────────────────────── */
+
+/* Sidebar panel - subtle elevated surface for tool panels */
+.sidebar-panel {
+  background: color-mix(in oklch, var(--card) 85%, transparent);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* Sidebar panel header - clickable hover affordance */
+.sidebar-panel-header {
+  transition: background-color 0.15s ease;
+  border-radius: calc(var(--radius) - 4px);
+  padding: 2px 4px;
+  margin: -2px -4px;
+}
+.sidebar-panel-header:hover {
+  background: color-mix(in oklch, var(--accent) 50%, transparent);
+}
+.sidebar-panel-header:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
+}
+
+/* Sidebar wrapper - subtle background to distinguish from canvas */
+.sidebar-wrapper {
+  background: color-mix(in oklch, var(--muted) 15%, transparent);
+  border-radius: var(--radius);
+  padding: 8px;
+}
+@media (min-width: 1024px) {
+  .sidebar-wrapper {
+    padding: 10px;
+    background: color-mix(in oklch, var(--muted) 20%, transparent);
+    border: 1px solid color-mix(in oklch, var(--border) 60%, transparent);
+  }
+}
+
+/* Transform label - larger and more readable */
+.transform-label {
+  font-size: 10px;
+  font-weight: 500;
+  color: color-mix(in oklch, var(--foreground) 55%, transparent);
+  letter-spacing: 0.01em;
+  margin-top: 2px;
+}
+.transform-label-active {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+/* Toggle switch - brand color but softer than primary red */
+.toggle-switch[data-state="checked"] {
+  background-color: oklch(0.55 0.15 25);
+}
+.toggle-switch[data-state="unchecked"] {
+  background-color: color-mix(in oklch, var(--muted-foreground) 30%, transparent);
+}

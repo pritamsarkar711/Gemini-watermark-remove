@@ -2,15 +2,46 @@
 
 import { useCallback, useRef, useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowLeft, ArrowRight, Maximize2 } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Maximize2, Loader2, GitCompareArrows } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAppStore } from '@/lib/store'
+
+interface DiffStats {
+  changedPixels: number
+  totalPixels: number
+  diffPercentage: number
+}
+
+/** Load an HTMLImageElement from a src URL (data URLs are safe — no taint). */
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => resolve(img)
+    img.onerror = () => reject(new Error('Failed to load image'))
+    img.src = src
+  })
+}
+
+/** Round a large pixel count to a compact human-readable form: 12345 → "12.3K". */
+function formatPixelCount(n: number): string {
+  if (n < 1000) return String(n)
+  if (n < 1_000_000) return `${(n / 1000).toFixed(1)}K`
+  return `${(n / 1_000_000).toFixed(1)}M`
+}
 
 export default function ComparisonSlider() {
   const { originalImage, processedImage, sliderPosition, setSliderPosition } = useAppStore()
   const containerRef = useRef<HTMLDivElement>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [hasPulsed, setHasPulsed] = useState(false)
+
+  // Pixel diff stats — computed client-side from the two dataUrls. We
+  // can't extend the store's ProcessedImage type (a parallel agent owns
+  // store.ts), so we compute the diff here in the component instead.
+  const [diffStats, setDiffStats] = useState<DiffStats | null>(null)
+  const [diffLoading, setDiffLoading] = useState(false)
+  const diffTokenRef = useRef(0)
 
   const updatePosition = useCallback(
     (clientX: number) => {
@@ -89,6 +120,99 @@ export default function ComparisonSlider() {
     return () => clearTimeout(t)
   }, [hasPulsed])
 
+  // Compute pixel diff stats whenever the original or processed image changes.
+  // Inline computation (no Web Worker) — for typical 800×600 images this is
+  // ~480K pixels and finishes in well under 200ms.
+  useEffect(() => {
+    const origUrl = originalImage?.dataUrl
+    const procUrl = processedImage?.dataUrl
+
+    if (!origUrl || !procUrl) {
+      setDiffStats(null)
+      return
+    }
+
+    let cancelled = false
+    const token = ++diffTokenRef.current
+    setDiffLoading(true)
+
+    void (async () => {
+      try {
+        const [origImg, procImg] = await Promise.all([
+          loadImage(origUrl),
+          loadImage(procUrl),
+        ])
+
+        // Use the smaller dimensions so both images fit on a shared canvas.
+        // For the typical watermark-removal flow, both have identical sizes.
+        const w = Math.min(origImg.naturalWidth, procImg.naturalWidth)
+        const h = Math.min(origImg.naturalHeight, procImg.naturalHeight)
+
+        if (w <= 0 || h <= 0) {
+          if (!cancelled && token === diffTokenRef.current) {
+            setDiffStats(null)
+            setDiffLoading(false)
+          }
+          return
+        }
+
+        // Offscreen canvases — never attached to the DOM.
+        const origCanvas = document.createElement('canvas')
+        origCanvas.width = w
+        origCanvas.height = h
+        const origCtx = origCanvas.getContext('2d', { willReadFrequently: true })
+        if (!origCtx) throw new Error('Canvas 2D context unavailable')
+        origCtx.drawImage(origImg, 0, 0, w, h)
+        const origData = origCtx.getImageData(0, 0, w, h).data
+
+        const procCanvas = document.createElement('canvas')
+        procCanvas.width = w
+        procCanvas.height = h
+        const procCtx = procCanvas.getContext('2d', { willReadFrequently: true })
+        if (!procCtx) throw new Error('Canvas 2D context unavailable')
+        procCtx.drawImage(procImg, 0, 0, w, h)
+        const procData = procCtx.getImageData(0, 0, w, h).data
+
+        const totalPixels = w * h
+        let changedPixels = 0
+        const len = Math.min(origData.length, procData.length)
+        // 4 bytes per pixel (RGBA). A pixel is "changed" if any RGB channel
+        // differs by more than 3 levels (out of 255) — this threshold
+        // ignores negligible resampling/rounding noise.
+        for (let i = 0; i + 3 < len; i += 4) {
+          const dr = Math.abs(origData[i] - procData[i])
+          const dg = Math.abs(origData[i + 1] - procData[i + 1])
+          const db = Math.abs(origData[i + 2] - procData[i + 2])
+          if (dr > 3 || dg > 3 || db > 3) {
+            changedPixels++
+          }
+        }
+
+        const diffPercentage =
+          totalPixels > 0
+            ? Math.round((changedPixels / totalPixels) * 1000) / 10
+            : 0
+
+        if (!cancelled && token === diffTokenRef.current) {
+          setDiffStats({ changedPixels, totalPixels, diffPercentage })
+        }
+      } catch (err) {
+        console.error('Pixel diff computation failed:', err)
+        if (!cancelled && token === diffTokenRef.current) {
+          setDiffStats(null)
+        }
+      } finally {
+        if (!cancelled && token === diffTokenRef.current) {
+          setDiffLoading(false)
+        }
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [originalImage?.dataUrl, processedImage?.dataUrl])
+
   if (!originalImage || !processedImage) return null
 
   return (
@@ -134,6 +258,28 @@ export default function ComparisonSlider() {
           </span>
         </div>
 
+        {/* Pixel diff stats badge - top right (below the "After" label to avoid overlap) */}
+        <div className="pointer-events-none absolute top-9 right-2 z-20">
+          <span className="inline-flex items-center gap-1 rounded-full bg-black/60 backdrop-blur-sm px-2 py-0.5 text-[10px] font-medium text-white shadow-sm tabular-nums">
+            {diffLoading ? (
+              <>
+                <Loader2 className="size-2.5 animate-spin" />
+                Analyzing diff...
+              </>
+            ) : diffStats ? (
+              <>
+                <GitCompareArrows className="size-2.5" />
+                {diffStats.diffPercentage}% pixels modified · {formatPixelCount(diffStats.changedPixels)} changed
+              </>
+            ) : (
+              <>
+                <GitCompareArrows className="size-2.5" />
+                Diff unavailable
+              </>
+            )}
+          </span>
+        </div>
+
         {/* Divider line with glow effect */}
         <div
           className="absolute top-0 bottom-0 w-[3px] z-10"
@@ -154,7 +300,7 @@ export default function ComparisonSlider() {
               !hasPulsed
                 ? { boxShadow: [
                     '0 2px 16px rgba(0,0,0,0.4),0 0 0 1px rgba(0,0,0,0.05)',
-                    '0 2px 24px rgba(0,0,0,0.55),0 0 0 4px rgba(255,255,255,0.25)',
+                    '0 2px 24px rgba(0,0,0,0.55),0 0 0 4px rgba(255,255,255,0.24)',
                     '0 2px 16px rgba(0,0,0,0.4),0 0 0 1px rgba(0,0,0,0.05)',
                   ] }
                 : { boxShadow: '0 2px 16px rgba(0,0,0,0.4),0 0 0 1px rgba(0,0,0,0.05)' }

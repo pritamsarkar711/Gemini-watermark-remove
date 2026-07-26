@@ -1,0 +1,735 @@
+     1→---
+     2→Task ID: cron-review-1
+     3→Agent: main-agent
+     4→Task: QA testing, bug fixes, and feature additions for Zeminai watermark remover
+     5→
+     6→## Current Project Status Description
+     7→
+     8→The Zeminai Watermark & Logo Remover is a Next.js 16 application with:
+     9→- Frontend: 9 React components (Header, UploadArea, ImagePreview, ComparisonSlider, ControlPanel, WatermarkAdder, QualityOptimizer, DownloadPanel, Footer)
+    10→- Backend: 5 API endpoints (remove-watermark, detect-watermark, add-watermark, optimize, transform)
+    11→- Image Processing: Custom TypeScript inpainting engine using sharp + canvas
+    12→- State Management: Zustand store
+    13→- UI: Tailwind CSS 4, shadcn/ui, Work Sans font, Framer Motion animations
+    14→
+    15→## Current Goals / Completed Modifications / Verification Results
+    16→
+    17→### Critical Bug Fix: Inpainting Algorithm
+    18→- **Bug**: The inpainting algorithm was not processing boundary pixels. The code marked all boundary pixels as `processed` before they were actually inpainted, causing the `if (processed[idx]) continue` check to skip them. This meant NO masked pixels were being reconstructed.
+    19→- **Fix**: Removed the premature `processed` marking. Now boundary pixels are properly processed first, then their neighbors are added to the queue, and the fast marching method propagates inward correctly.
+    20→- **Verification**: VLM confirmed the watermark is now fully removed with smooth gradient reconstruction. Output pixel values match expected gradient values within ±5 tolerance.
+    21→
+    22→### Improved Watermark Detection
+    23→- Increased corner search area from 18% to 30% of min dimension
+    24→- Increased sparkle search area from 12% to 25% of min dimension
+    25→- Removed unreliable `refineWatermarkRegion` calls that were returning narrow bounding boxes
+    26→- Now uses full corner/sparkle regions as mask for more reliable coverage
+    27→- Added bottom-right corner fallback to always ensure coverage
+    28→- Verification: Detection now correctly identifies watermark at (650, 450, 150, 150) covering the full watermark area
+    29→
+    30→### New Feature: Canvas-Based Text Watermark Rendering
+    31→- Replaced the placeholder rectangle drawing with proper text rendering using the `canvas` package
+    32→- Text is now rendered with actual fonts, proper measurements, and anti-aliasing
+    33→- Added shadow support for better visibility on any background
+    34→- Verification: VLM confirmed "Zeminai" text is clearly visible and legible
+    35→
+    36→### New Feature: Watermark Rotation, Shadow, and Tile/Repeat
+    37→- Added rotation slider (-90° to 90°) for text watermarks
+    38→- Added shadow toggle for text visibility
+    39→- Added tile/repeat mode that covers the entire image with diagonal watermarks
+    40→- Added color preset palette (8 colors) for quick selection
+    41→- Verification: VLM confirmed tile watermark pattern is correctly rendered with rotation
+    42→
+    43→### New Feature: Image Transform Controls
+    44→- Added rotation (90° increments), horizontal flip, and vertical flip
+    45→- Created new `/api/transform` endpoint using sharp's rotate/flip/flop
+    46→- Transform UI in ControlPanel with apply button
+    47→- Verification: API correctly rotates image (800x600 → 600x800) and updates preview
+    48→
+    49→### UI Improvements
+    50→- Added animated hero section with pulsing background effect
+    51→- Added feature badges below upload area (Auto detect, Inpaint, Add mark, Export)
+    52→- Improved upload zone with hover scale animation
+    53→- Added color preset palette in WatermarkAdder
+    54→- All new controls use consistent compact sizing (10px labels, size-7 buttons)
+    55→
+    56→### Verification Results
+    57→- ESLint: Passes with zero errors
+    58→- Dev server: Running cleanly, no compilation errors
+    59→- API tests: All 5 endpoints return correct results
+    60→- VLM verification: Watermark removal, text watermark, tile watermark, and transform all confirmed working
+    61→- Playwright flow test: Upload → Process → Comparison slider → Download button all working
+    62→- Mobile responsive: Verified at 390px viewport
+    63→- Desktop responsive: Verified at 1280px viewport
+    64→
+    65→## Unresolved Issues or Risks
+    66→
+    67→1. **Inpainting performance**: The fast marching algorithm is O(n²) for large masks. For a 150x150 mask area, inpainting takes ~4 seconds. This could be optimized with a priority queue (min-heap) for O(n log n) performance.
+    68→
+    69→2. **Font registration**: The canvas package uses system fonts. The `registerFont` call attempts to find DejaVuSans but may fail silently. In production, a bundled font file should be used for consistent rendering.
+    70→
+    71→3. **Next.js dev tools button**: The "N" floating button seen in screenshots is the Next.js development tools button, not part of the application. It won't appear in production.
+    72→
+    73→## Priority Recommendations for Next Phase
+    74→
+    75→1. **Optimize inpainting performance**: Replace the O(n²) linear search with a binary heap priority queue to handle larger images faster.
+    76→
+    77→2. **Add real-time preview**: Implement client-side canvas preview for watermark addition so users can see changes before applying.
+    78→
+    79→3. **Add SVG-based Gemini sparkle template**: Create an SVG template of the Gemini sparkle watermark for precise mask matching.
+    80→
+    81→4. **Add undo/redo functionality**: Allow users to revert transformations and reprocessing.
+    82→
+    83→5. **Add batch processing**: Allow multiple images to be processed at once.
+    84→
+    85→6. **Add keyboard shortcuts**: Ctrl+Z for undo, Ctrl+S for download, etc.
+    86→
+    87→7. **Improve mobile touch interactions**: The comparison slider and brush canvas need better touch event handling on mobile devices.
+    88→
+    89→---
+    90→
+    91→## Task ID: 3-b
+    92→Agent: header-agent
+    93→Task: Update Header component with dark mode toggle and enhanced design
+    94→
+    95→### Changes Made
+    96→
+    97→#### Header.tsx (`src/components/watermark-remover/Header.tsx`)
+    98→- Added dark/light mode toggle button using Sun/Moon icons from lucide-react
+    99→- Integrated `useTheme` hook from `next-themes` for theme switching
+   100→- Used `useSyncExternalStore` to detect client-side mounting (avoids ESLint `set-state-in-effect` error)
+   101→- Added animated icon transitions (rotate) when toggling between dark/light modes
+   102→- Enhanced header design:
+   103→  - Subtle gradient background (`bg-gradient-to-b from-muted/40 to-transparent`) with `backdrop-blur-md`
+   104→  - Logo pill with `rounded-lg bg-primary` and shadow
+   105→  - "Watermark Remover" subtitle text next to logo (hidden on mobile, shown on `sm:`)
+   106→  - Subtle bottom border with gradient effect (`from-transparent via-border to-transparent`)
+   107→  - Sticky positioning (`sticky top-0 z-50`) maintained
+   108→- Added "New Image" button with Plus icon when in editor mode (`step !== 'upload'`)
+   109→  - Animated appearance/disappearance with `AnimatePresence`
+   110→  - Responsive: icon-only on mobile, icon + label on `sm:` and up
+   111→- Removed unused `RotateCcw` import (replaced with `Plus` for "New Image" button)
+   112→- Header height increased from h-12 to h-14 for better spacing
+   113→
+   114→#### layout.tsx (`src/app/layout.tsx`)
+   115→- Wrapped children with `ThemeProvider` from `next-themes`
+   116→- Configuration: `attribute="class"`, `defaultTheme="system"`, `enableSystem`, `disableTransitionOnChange`
+   117→- `Toaster` also wrapped inside `ThemeProvider` for consistent theming
+   118→
+   119→### Verification
+   120→- ESLint: Passes with zero errors
+   121→- Dev server: Running cleanly, no compilation errors
+   122→
+   123→---
+   124→
+   125→## Task ID: 3-a
+   126→Agent: store-agent
+   127→Task: Update Zustand store with undo/redo functionality and history tracking
+   128→
+   129→### Changes Made
+   130→
+   131→#### store.ts (`src/lib/store.ts`)
+   132→
+   133→**New Types:**
+   134→- `LastAction`: Union type tracking operations ("upload" | "remove-watermark" | "add-watermark" | "transform" | "optimize" | "reset")
+   135→- `ImageInfoSnapshot`: Serializable snapshot of ImageInfo (excludes `File` object, keeps dataUrl + metadata)
+   136→- `WatermarkConfigSnapshot`: Serializable snapshot of WatermarkConfig (excludes `logoFile` File object, keeps all other fields)
+   137→- `HistorySnapshot`: Combined snapshot type storing { originalImage, processedImage, step, transformConfig, watermarkConfig, lastAction }
+   138→
+   139→**New State Fields:**
+   140→- `history: HistorySnapshot[]` — Array of state snapshots for undo/redo navigation. Initialized with `[initialSnapshot]`.
+   141→- `historyIndex: number` — Current position in history. Always points to the snapshot representing the current state. Initialized to `0`.
+   142→- `lastAction: LastAction | null` — Tracks what the last operation was. Initialized to `null`.
+   143→- `canUndo: boolean` — Computed from `historyIndex > 0`. Updated on every history change.
+   144→- `canRedo: boolean` — Computed from `historyIndex < history.length - 1`. Updated on every history change.
+   145→
+   146→**New Methods:**
+   147→- `pushHistory(action?: LastAction)` — Pushes a snapshot of the current state to history. Truncates any redo entries beyond `historyIndex`. Updates `canUndo`/`canRedo`.
+   148→- `undo()` — Decrements `historyIndex`, restores state from `history[newIndex]`. Restores: originalImage (reconstructing File from dataUrl), processedImage, step, transformConfig, watermarkConfig (logoFile set to null), lastAction, outputFileName, isProcessing (set to false).
+   149→- `redo()` — Increments `historyIndex`, restores state from `history[newIndex]`. Same restoration logic as undo.
+   150→
+   151→**Helper Functions (private, not exported):**
+   152→- `createImageInfoSnapshot()` — Strips File object from ImageInfo, producing ImageInfoSnapshot
+   153→- `createWatermarkConfigSnapshot()` — Strips logoFile from WatermarkConfig, producing WatermarkConfigSnapshot
+   154→- `dataUrlToFile()` — Reconstructs a File object from dataUrl + filename + mimeType (using atob + Uint8Array)
+   155→- `restoreImageInfo()` — Reconstructs full ImageInfo from ImageInfoSnapshot by creating File from dataUrl
+   156→- `restoreWatermarkConfig()` — Reconstructs WatermarkConfig from WatermarkConfigSnapshot (logoFile = null)
+   157→- `createSnapshotFromState()` — Creates a complete HistorySnapshot from the current AppState
+   158→
+   159→**Modified Existing Methods:**
+   160→- `setOriginalImage(image)` — Now automatically pushes to history before making the change. Truncates redo future. Creates snapshot of the state AFTER the change (including the new image). Sets `lastAction: "upload"` when image is set, `null` when cleared.
+   161→- `setProcessedImage(image)` — Now automatically pushes to history before making the change. Truncates redo future. Creates snapshot of the state AFTER the change (including the new processedImage).
+   162→- `reset()` — Now also resets history state: `history: [initialSnapshot]`, `historyIndex: 0`, `lastAction: null`, `canUndo: false`, `canRedo: false`.
+   163→
+   164→**Undo/Redo Design:**
+   165→- Standard pattern: `history[historyIndex]` always represents the current state.
+   166→- When a new action modifies state, the state AFTER the change is pushed as a new snapshot, and `historyIndex` advances.
+   167→- Undo restores `history[historyIndex - 1]`, decrementing `historyIndex`.
+   168→- Redo restores `history[historyIndex + 1]`, incrementing `historyIndex`.
+   169→- Any new action truncates the redo future (entries after `historyIndex`).
+   170→- Shallow cloning of ProcessedImage and TransformConfig in snapshots to prevent shared-reference mutations.
+   171→
+   172→**Known Limitation:**
+   173→- `WatermarkConfig.logoFile` (File object) cannot be serialized into history snapshots. When restoring from history, `logoFile` is set to `null`. Users who undo/redo after applying a logo watermark will lose the logo file reference and need to re-upload it.
+   174→
+   175→**All existing functionality preserved:** All original types, state fields, and setter methods remain intact. No breaking changes to existing component imports or usage.
+   176→
+   177→### Verification
+   178→- ESLint: Passes with zero errors
+   179→- Dev server: Running cleanly, no compilation errors after store update
+   180→- All 10 component files referencing `useAppStore` continue to work (no field removals or type changes to existing exports)
+   181→
+   182→---
+   183→Task ID: cron-review-2
+   184→Agent: main-agent
+   185→Task: Comprehensive UI polish, new features, and accessibility improvements
+   186→
+   187→## Current Project Status Description
+   188→
+   189→The Zeminai Watermark & Logo Remover has been significantly enhanced with:
+   190→- Frontend: 9 React components, all updated with improved styling, accessibility, and new features
+   191→- Backend: 5 API endpoints (unchanged, all working)
+   192→- State Management: Zustand store with undo/redo/history tracking
+   193→- New Features: Dark mode, undo/redo with keyboard shortcuts, copy-to-clipboard, image info bar, comparison slider keyboard support, animated comparison labels
+   194→- UI: Tailwind CSS 4, shadcn/ui, Work Sans font, Framer Motion animations, next-themes dark mode
+   195→- VLM Rating: Improved from 7.5/10 to 8/10
+   196→
+   197→## Current Goals / Completed Modifications / Verification Results
+   198→
+   199→### New Feature: Dark Mode Toggle
+   200→- Added Sun/Moon icon toggle in Header using next-themes
+   201→- ThemeProvider wrapped in layout.tsx with system preference detection
+   202→- Animated icon transitions (rotate) between light/dark modes
+   203→- Hydration-safe mounting using useSyncExternalStore
+   204→- Verified: Dark mode renders correctly with proper color scheme
+   205→
+   206→### New Feature: Undo/Redo with Keyboard Shortcuts
+   207→- Added undo/redo buttons in page.tsx (appear when canUndo/canRedo)
+   208→- Keyboard shortcuts: Ctrl+Z for undo, Ctrl+Y for redo
+   209→- Store has full history tracking with snapshot/restore mechanism
+   210→- Verified: Undo goes back to preview state, Redo restores processed result
+   211→
+   212→### New Feature: Copy to Clipboard
+   213→- Added Copy button in DownloadPanel using ClipboardItem API
+   214→- Shows "Copied" feedback with Check icon for 2 seconds
+   215→- Fallback to copy dataUrl string if blob copy fails
+   216→
+   217→### New Feature: Image Info Bar
+   218→- Added info bar above image preview showing: filename, dimensions, format, size
+   219→- Compact badge-style labels with background highlighting
+   220→- Uses ImageIcon from lucide-react for visual hierarchy
+   221→
+   222→### Enhanced: Comparison Slider
+   223→- Added keyboard support (arrow keys to adjust slider position)
+   224→- Animated Before/After labels that fade based on slider position
+   225→- Enhanced divider line with gradient glow effect
+   226→- Pill-shaped handle with hover/tap scale animations
+   227→- Better backdrop for zoom controls
+   228→
+   229→### Enhanced: Upload Area
+   230→- Larger hero section with bigger icon and bolder title
+   231→- Trust badges (Secure, Instant, No trace) with shield/zap/eye icons
+   232→- Better file format description ("PNG JPEG WebP up to 50MB")
+   233→- Enhanced hover state with gradient background
+   234→
+   235→### Enhanced: Control Panel
+   236→- Uppercase tracking labels for Transform section
+   237→- Rounded-lg styling on all buttons and cards
+   238→- Better active state indicators for flip buttons (ring + shadow)
+   239→- More descriptive action labels ("Remove watermark" / "Apply watermark")
+   240→
+   241→### Enhanced: Footer
+   242→- Three-column layout (brand, description, credits)
+   243→- Gradient background from-muted/30 to transparent
+   244→- Better text contrast (muted-foreground/50-60 instead of /30-40)
+   245→- Heart icon with primary/50 color
+   246→
+   247→### Accessibility: Text Contrast Improvements
+   248→- Increased all secondary text opacity from /30-40 to /50-60
+   249→- Fixed muted-foreground/40 → /60 for important labels
+   250→- Fixed muted-foreground/30 → /50 for descriptions
+   251→- Addressed VLM feedback about WCAG AA contrast failures
+   252→
+   253→### QA Testing Results
+   254→- ESLint: Passes with zero errors and zero warnings
+   255→- Dev server: Running cleanly, no compilation errors
+   256→- Agent-browser: Full flow tested (upload → process → comparison → undo → redo → download → copy)
+   257→- VLM rating: 8/10 (up from 7.5/10)
+   258→- Desktop (1280x800): Verified working
+   259→- Mobile (390x844): Verified working
+   260→- Dark mode: Verified working
+   261→- Keyboard shortcuts: Verified working
+   262→
+   263→## Unresolved Issues or Risks
+   264→
+   265→1. **Inpainting performance**: The fast marching algorithm is O(n²) for large masks. Could be optimized with a priority queue (min-heap) for O(n log n) performance.
+   266→
+   267→2. **Logo file in undo/redo**: The `logoFile` File object cannot be serialized into history snapshots. When restoring from undo/redo, logoFile is set to null and needs re-upload.
+   268→
+   269→3. **VLM suggestions not yet addressed**: Make "Remove watermark" CTA button slightly larger/more prominent, add more specificity to trust badges (e.g., "256-bit SSL" instead of just "Secure"), improve icon style consistency.
+   270→
+   271→## Priority Recommendations for Next Phase
+   272→
+   273→1. **Optimize inpainting performance**: Replace the O(n²) linear search with a binary heap priority queue.
+   274→
+   275→2. **Add real-time watermark preview**: Implement client-side canvas preview for watermark addition so users can see changes before applying.
+   276→
+   277→3. **Make CTA button more prominent**: Slightly larger or with more visual weight.
+   278→
+   279→4. **Enhance trust badges**: Add more specificity (e.g., "Processed in <5s", "Files auto-deleted").
+   280→
+   281→5. **Add batch processing**: Allow multiple images to be processed at once.
+   282→
+   283→6. **Add SVG-based Gemini sparkle template**: Create an SVG template for precise mask matching.
+   284→
+   285→7. **Add drag-and-drop re-upload**: Allow users to drop a new image in the editor to replace current one.
+   286→
+   287→---
+   288→Task ID: cron-3-A
+   289→Agent: styling-polish-agent
+   290→Task: Polish existing UI components based on VLM feedback
+   291→
+   292→Work Log:
+   293→- src/app/globals.css: Added 4 new utility classes/styles:
+   294→  * `.glass-card` - translucent backdrop-blur surface using color-mix() with var(--card)/var(--border) for dark-mode-safe rendering
+   295→  * `.cta-button` - gradient background utility using var(--primary) with hover lift (translateY(-2px) + colored shadow)
+   296→  * `.animate-shimmer` - keyframe-based loading shimmer animation using muted color tokens
+   297→  * `.icon-stroke svg { stroke-width: 1.75 }` - thicker icon strokes for better visibility
+   298→  * Updated `:focus-visible` to use `var(--ring)` and add `border-radius: var(--radius)` for consistent themed focus rings
+   299→- src/components/watermark-remover/ComparisonSlider.tsx:
+   300→  * Added drop shadow `drop-shadow-[0_2px_8px_rgba(0,0,0,0.45)]` + white ring `ring-1 ring-white` on slider handle for visibility on both dark/light images
+   301→  * Bumped instructional text opacity `/50` → `/70` and Original/Result labels `/60` → `/80` for better contrast
+   302→  * Bumped Before label `bg-black/50` → `bg-black/70`, After label `bg-primary/50` → `bg-primary/70`, both labels `text-white/80` → `text-white` with ring-1 ring-white/10
+   303→  * Added hover state on slider container: `hover:shadow-md hover:ring-1 hover:ring-inset hover:ring-primary/20`
+   304→  * Added pulse animation on the handle that runs for ~3.5s on first render to indicate interactivity (using framer-motion boxShadow animation), stops once user interacts
+   305→  * Added "Compare" badge pill at top center with Maximize2 icon
+   306→  * Added aria-label attributes on slider handle for accessibility
+   307→- src/components/watermark-remover/ControlPanel.tsx:
+   308→  * Increased outer container gap `gap-3` → `gap-4` for more breathing room between Transform panel and Tabs
+   309→  * Added `mt-1` to CTA button for breathing room above it
+   310→  * Made CTA button more prominent: `h-9` → `h-11`, added `cta-button` class (gradient + lift), `text-sm`, icon `size-3.5` → `size-4`, hover lift `hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/25`, glow ring `hover:ring-2 hover:ring-primary/20`, and `disabled:hover:` overrides to neutralize lift when disabled
+   311→  * Added visible labels below each transform icon (Rotate, Flip H, Flip V) as 8px text - restructured the button row from `flex items-center gap-1` to `flex items-end gap-1.5` with each button wrapped in a column containing the button + label
+   312→  * Added explicit `opacity-50` class on transform buttons when `isTransforming` (in addition to default disabled styles) for stronger disabled state
+   313→  * Added aria-label attributes on all transform buttons for accessibility
+   314→  * Made selected tab visually distinct: added `data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-none` to both TabsTrigger components (overriding default background)
+   315→- src/components/watermark-remover/UploadArea.tsx:
+   316→  * Replaced trust badges: 'Secure' → '256-bit SSL', 'Instant' → 'Under 5s', 'No trace' → 'Zero residue'
+   317→  * Added 4th badge: { icon: Lock, label: 'Private' } (imported Lock from lucide-react)
+   318→  * Changed trust badge container from `gap-4` to `flex-wrap gap-2` so 4 badges wrap nicely on mobile (390px) and stay compact on larger screens
+   319→  * Added "or click to browse" subtitle below "Drop image" (hidden during drag state)
+   320→  * Added loading dots animation: 3 pulsing primary-colored circles with staggered delays + "Reading image..." text, shown while FileReader is reading the file (tracked via new `isReading` state)
+   321→  * Replaced plain "PNG JPEG WebP up to 50MB" text with styled pill badges: `<span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground/80">PNG</span>` × 3 + "up to 50MB" text
+   322→  * Made upload zone click disabled during reading via `pointer-events-none` class
+   323→  * Wrapped the inner content in AnimatePresence to crossfade between idle and reading states
+   324→- src/components/watermark-remover/Header.tsx:
+   325→  * Fixed vertical alignment: changed logo column from `flex flex-col leading-none` to `flex items-center gap-1.5 leading-none` so "Zeminai", status dot, and subtitle are aligned horizontally on the same baseline (single line layout, not stacked)
+   326→  * Added `shrink-0` to logo icon container to prevent shrinking
+   327→  * Added green status indicator dot (`bg-green-500` with `shadow-[0_0_6px_rgba(34,197,94,0.6)]` glow) next to "Zeminai" text, shown only when `step !== 'upload'` (editor mode = ready), animated with motion scale/opacity entrance
+   328→  * Added `hover:bg-accent/60` to "New Image" button for stronger hover affordance
+   329→- src/components/watermark-remover/ImagePreview.tsx:
+   330→  * Added hover effect on image info bar: `transition-colors duration-200 hover:bg-card` (bg-card/80 → bg-card)
+   331→  * Increased badge text size `text-[10px]` → `text-[11px]` and bumped muted-foreground `/50` → `/60`
+   332→  * Added subtle gradient overlay at the bottom of image container: `<div className="pointer-events-none absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-black/30 to-transparent" />` to improve zoom control visibility
+   333→  * Added empty state placeholder: when `!originalImage`, shows a dashed-border container with ImageIcon + "No image loaded" text
+   334→- src/components/watermark-remover/Footer.tsx:
+   335→  * Added keyboard shortcut hints in the center column: `<kbd>Ctrl+Z</kbd> Undo · <kbd>?</kbd> Help` with a Keyboard icon
+   336→  * Bumped all muted-foreground opacities from `/60` → `/70` and `/50` → `/70` for better contrast
+   337→  * Added "v1.0" version tag on the right, styled as a small pill with border and bg-card/60 background
+   338→  * Imported Keyboard icon from lucide-react
+   339→- src/components/watermark-remover/QualityOptimizer.tsx:
+   340→  * Added hover effect on panel: `transition-all duration-200 hover:bg-card hover:shadow-md hover:border-border`
+   341→  * Increased gap between label and control on all 4 rows from `gap-2` → `gap-3`
+   342→- src/components/watermark-remover/DownloadPanel.tsx:
+   343→  * Made download button more prominent: `h-10` → `h-11`, added `cta-button` class (gradient + hover lift), `hover:shadow-lg hover:shadow-primary/25 hover:-translate-y-0.5 hover:ring-2 hover:ring-primary/20 transition-all`, text-sm
+   344→  * Improved file size badge: changed from plain `text-[10px] opacity-60` text to a styled pill `rounded-md bg-black/15 px-1.5 py-0.5 text-[10px] font-medium text-primary-foreground/90` for better visual hierarchy
+   345→
+   346→Stage Summary:
+   347→- All 9 listed files modified with targeted polish improvements
+   348→- All existing functionality preserved (no behavior changes, only styling/UX polish)
+   349→- Responsive design maintained - tested mentally at 390px (mobile: trust badges wrap, footer shortcut hints hidden on mobile via `hidden sm:flex`, "New Image" label hidden on mobile, "Built with care" hidden on mobile)
+   350→- Dark mode compatibility maintained - all new colors use CSS variables (--primary, --card, --border, --ring, --muted) via color-mix() or Tailwind opacity modifiers, ensuring automatic theme adaptation
+   351→- New utility classes (.glass-card, .cta-button, .animate-shimmer, .icon-stroke) are reusable across the codebase
+   352→- CTA button gradient + hover lift pattern is consistent between ControlPanel and DownloadPanel via shared `.cta-button` class
+   353→- ESLint status: pass (zero errors, zero warnings)
+   354→- TypeScript: no errors in src/ (only pre-existing errors in unrelated examples/ and skills/ directories)
+   355→- Dev server: running on port 3000, page renders successfully (HTTP 200), all new content visible in rendered HTML (verified trust badges, "or click to browse", pill badges, footer shortcut hints, v1.0 tag)
+   356→
+   357→Known issues / notes:
+   358→- The `Button` import in ComparisonSlider.tsx and `Github` import in Footer.tsx remain unused (was the case in original files too). ESLint config has `no-unused-vars` disabled so this does not cause errors; left as-is to avoid unnecessary import churn.
+   359→- The pulse animation on the comparison slider handle uses framer-motion's boxShadow keyframe animation which may briefly add a visible glow ring around the handle for ~3.5 seconds after the slider first appears. This is intentional per the task spec ("pulse the handle on first render") and stops once the user clicks/touches the slider.
+   360→- The `cta-button` CSS class includes both a `background-image: linear-gradient(...)` and `transition` properties. When applied to a Button component that also has `disabled:opacity-50` from the base variants, the gradient still renders but at 50% opacity, which is the intended disabled look.
+   361→
+   362→---
+   363→Task ID: cron-3-B
+   364→Agent: realtime-preview-agent
+   365→Task: Add real-time watermark preview canvas in WatermarkAdder
+   366→
+   367→Work Log:
+   368→- src/components/watermark-remover/WatermarkAdder.tsx:
+   369→  * Added `useEffect` to the React imports (alongside existing `useCallback`, `useRef`).
+   370→  * Added `originalImage` and `processedImage` to the `useAppStore()` destructure so the preview can render against the latest base image (prefers `processedImage` when present, falls back to `originalImage`).
+   371→  * Added two new top-level helper functions:
+   372→    - `getPositionCoords(position, canvasW, canvasH, textW, textH, padding)` — computes the (x, y) anchor for any of the 7 watermark positions. `y` is returned as the BOTTOM of the box (consistent with `textBaseline = 'bottom'` and `drawImage(x, y - h)` for logos). Includes a defensive `default` case.
+   373→    - `loadImage(src)` — promise-based wrapper around `new Image()` that resolves on `onload` and rejects on `onerror`. Sets `crossOrigin = 'anonymous'` defensively.
+   374→  * Added three module-level constants: `PREVIEW_MAX_WIDTH = 480`, `PREVIEW_MAX_HEIGHT = 360`, `PREVIEW_PADDING = 20`.
+   375→  * Added two new refs:
+   376→    - `canvasRef` (HTMLCanvasElement) — the live preview canvas.
+   377→    - `drawTokenRef` (number) — monotonic token used to cancel superseded draws when the user changes config rapidly (each draw checks `drawTokenRef.current !== token` after each `await` and bails out if a newer draw has started).
+   378→  * Added a `draw` `useCallback` that:
+   379→    1. Increments the draw token, then early-returns if `canvasRef` is null or `getContext('2d')` fails.
+   380→    2. Picks the base image (`processedImage ?? originalImage`); if neither is set, clears the canvas to a blank 480x360 state and returns.
+   381→    3. `await loadImage(baseImage.dataUrl)`, then computes a downscale-only fit scale (`min(maxW/imgW, maxH/imgH, 1)`), sets `canvas.width` / `canvas.height`, clears, and `drawImage`s the base.
+   382→    4. Text watermark branch (only when `text.trim()` is non-empty):
+   383→       - `ctx.save()`, sets `globalAlpha = opacity/100`, font = `${scaledFontSize}px 'Work Sans', system-ui, sans-serif`, `fillStyle = color`, `textBaseline = 'bottom'`.
+   384→       - Optional shadow: `shadowColor = rgba(0,0,0,0.55)`, `shadowBlur = max(2, fontSize/4)`, offsets `(1, 1)`.
+   385→       - Repeat mode: translates to canvas center, applies rotation, then fills a staggered grid of text instances spanning `±canvas diagonal` so the rotated viewport is fully covered. Every other row is offset by `stepX/2` for a diagonal-tile feel.
+   386→       - Single-position mode: uses `getPositionCoords`, translates to the text's visual center, rotates, then `fillText` at `(-textW/2, textH/2)` so the rotation pivots around the text center.
+   387→       - `ctx.restore()` resets state for the logo pass.
+   388→    5. Logo watermark branch (only when `logoFile` is set):
+   389→       - `URL.createObjectURL(logoFile)`, `await loadImage(logoUrl)`, with `try/finally` revoking the URL.
+   390→       - Computes `logoW = logoSize * scale`, `logoH = logoW * aspect`.
+   391→       - `ctx.save()`, sets `globalAlpha = logoOpacity/100`, uses `getPositionCoords(logoPosition, ...)`, then `drawImage(logoImg, x, y - logoH, logoW, logoH)`.
+   392→       - If the logo fails to decode, silently skips (caught) so the rest of the preview still renders.
+   393→    6. Base image load failure: catches, resets canvas to blank 480x360.
+   394→  * `draw` deps array explicitly lists all 14 reactive inputs: `originalImage`, `processedImage`, and the 12 watermark config fields (`text`, `color`, `fontSize`, `opacity`, `position`, `rotation`, `shadow`, `repeat`, `logoFile`, `logoOpacity`, `logoSize`, `logoPosition`). Refs are intentionally omitted.
+   395→  * `useEffect(() => { void draw() }, [draw])` triggers a redraw whenever `draw` (and thus any of its deps) changes.
+   396→  * Added a new "Live preview" panel at the TOP of the component (above the existing Text watermark and Logo watermark panels):
+   397→    - Card styling consistent with the existing panels: `rounded-lg border bg-card/80 p-3 shadow-sm`.
+   398→    - Header row with `ImageIcon` + "Live preview" label (matches the visual language of the existing Text/Logo panel headers).
+   399→    - Canvas container: `relative overflow-hidden rounded-md border bg-muted/20 shadow-inner`.
+   400→    - When `originalImage` exists: renders `<canvas ref={canvasRef} className="block w-full h-auto" />` plus a "Live" badge absolutely positioned at `top-1.5 right-1.5`. The badge is a `bg-black/50 backdrop-blur-sm` pill containing a pulsing green dot (a `relative` solid `bg-green-400` dot with an `animate-ping` `bg-green-400/70` overlay) and the uppercase "Live" label.
+   401→    - When no `originalImage`: renders an `aspect-[2/1]` placeholder with `ImageIcon` + "Upload an image first" text in `muted-foreground/50`.
+   402→  * All existing controls (Text watermark panel, Logo watermark panel) are completely unchanged — same JSX, same handlers, same Tailwind classes.
+   403→
+   404→Stage Summary:
+   405→- Real-time canvas preview is now rendered at the top of WatermarkAdder. Any change to text, color, fontSize, opacity, position, rotation, shadow, repeat, logoFile, logoOpacity, logoSize, or logoPosition triggers an immediate redraw via the `useEffect → useCallback(draw)` chain.
+   406→- Preview uses `processedImage.dataUrl` when available (so users preview against the post-removal result) and falls back to `originalImage.dataUrl`.
+   407→- Canvas is sized to fit the image inside 480×360 (downscale-only; never upscales), then displayed responsively via `w-full h-auto`.
+   408→- Text watermarks support both single-position (with rotation pivoting around the text center) and tile/repeat mode (diagonal staggered grid spanning the canvas diagonal). Shadow is rendered with a sensible blur proportional to font size.
+   409→- Logo watermarks are loaded via `URL.createObjectURL` + `loadImage`, drawn at `logoPosition` with `logoSize`-scaled width and `logoOpacity` alpha. Object URLs are revoked in a `finally` block to avoid leaks.
+   410→- Cancellation token (`drawTokenRef`) ensures that if the user changes config rapidly, only the most recent draw touches the canvas — earlier in-flight draws bail out after their first `await`.
+   411→- "Live" badge with pulsing green dot overlaid on the top-right of the canvas provides at-a-glance indication that the preview is reactive.
+   412→- Empty state ("Upload an image first") shown when no `originalImage` is set.
+   413→- All existing functionality preserved: every Text/Logo control still calls `setWatermarkConfig` exactly as before. No new files created. No other files modified.
+   414→- ESLint status: pass (zero errors, zero warnings; `bun run lint` exits 0)
+   415→- TypeScript: WatermarkAdder.tsx compiles cleanly (the only `tsc` errors are pre-existing ones in unrelated `examples/` and `skills/` directories).
+   416→- No known issues. One minor note: the preview is intentionally a *representative* rendering (font sizes are scaled to the preview resolution, and the tile/rotation layout is a client-side approximation) — the server-side `/api/add-watermark` endpoint remains the source of truth for the final applied watermark; the preview is for UX guidance only.
+   417→
+   418→---
+   419→Task ID: cron-3-C
+   420→Agent: history-shortcut-agent
+   421→Task: Add HistoryPanel and ShortcutHelp components, integrate into page.tsx
+   422→
+   423→Work Log:
+   424→- src/lib/store.ts:
+   425→  * Added `jumpTo: (index: number) => void` to the `AppState` interface (with JSDoc explaining validation, no-op on same index, and same restoration logic as undo/redo).
+   426→  * Implemented `jumpTo` in the store: validates `0 <= index < history.length` and `index !== historyIndex` (returns `state` unchanged otherwise), then restores `originalImage` (via `restoreImageInfo`), `processedImage`, `step`, `transformConfig`, `watermarkConfig` (via `restoreWatermarkConfig`), `lastAction`, recomputes `outputFileName` from the snapshot's `originalImage.name`, sets `isProcessing: false`, and updates `historyIndex`/`canUndo`/`canRedo` exactly as `undo`/`redo` do. Existing `undo`, `redo`, `pushHistory`, `reset`, and all setters are untouched.
+   427→- src/components/watermark-remover/HistoryPanel.tsx (NEW):
+   428→  * Imports `useState` from React, `motion`/`AnimatePresence` from framer-motion, the seven required lucide icons (`Upload`, `Eraser`, `Stamp`, `RotateCw`, `Settings2`, `RotateCcw`, `Circle`) plus `History` (aliased as `HistoryIcon`), `Trash2`, and `ChevronDown`.
+   429→  * Imports `useAppStore` and the `LastAction` type from `@/lib/store`.
+   430→  * Defines an `ACTION_META` record mapping every `LastAction` value (plus an `'initial'` key for the `null` case) to `{ label, Icon }`. Labels: "Image uploaded", "Watermark removed", "Watermark added", "Image transformed", "Quality optimized", "Editor reset", "Initial state". A `getActionMeta(action)` helper resolves `null` → `'initial'`.
+   431→  * Component reads `history`, `historyIndex`, `jumpTo`, `reset` from the store and tracks an `isOpen` `useState` (default `true`).
+   432→  * Renders a card-styled container (`rounded-lg border bg-card/80 shadow-sm hover:bg-card hover:shadow-md`) consistent with the rest of the sidebar.
+   433→  * Header is a `<button>` toggling `isOpen`; shows the `HistoryIcon` + "History" label (uppercase, muted) + a count badge (`{actionCount} action(s)`) where `actionCount = history.length - 1` (excludes the initial state). A `ChevronDown` rotates -90° when collapsed via framer-motion.
+   434→  * Body uses `AnimatePresence` for smooth height/opacity collapse. Contains a `<ul>` with `max-h-64 overflow-y-auto custom-scrollbar` (scrollable when long). The list is the reversed `history` array (newest first) but each entry retains its `originalIndex` so the `#` label still reflects chronological position (`originalIndex + 1`).
+   435→  * Each list item is a `<button onClick={() => jumpTo(originalIndex)}>` rendering the action's `Icon` (sized `size-3.5`, `text-primary` when current, `text-muted-foreground/60 group-hover:text-foreground` otherwise), the human-readable `label` (truncated), and a `#{stepNumber}` in mono.
+   436→  * Current entry (`originalIndex === historyIndex`) is highlighted with `bg-primary/10 border-l-2 border-primary`; future entries (`originalIndex > historyIndex`) are dimmed with `opacity-40`. Hover state on non-current entries is `hover:bg-accent/40`. An `aria-current="step"` is set on the current entry.
+   437→  * Footer row: a `"{historyIndex + 1} / {history.length}"` position counter on the left, and a "Clear history" button (Trash2 icon) on the right that calls `reset()` and is disabled when `history.length <= 1` (only initial state present).
+   438→- src/components/watermark-remover/ShortcutHelp.tsx (NEW):
+   439→  * Imports `HelpCircle` from lucide-react and the shadcn `Dialog` primitives (`Dialog`, `DialogContent`, `DialogDescription`, `DialogHeader`, `DialogTitle`) from `@/components/ui/dialog`.
+   440→  * Defines a `Shortcut` interface (`{ keys: string[]; label: string }`) and a `ShortcutGroup` interface (`{ title: string; items: Shortcut[] }`).
+   441→  * Defines `SHORTCUT_GROUPS` constant — three groups:
+   442→    - "General": Ctrl+Z (undo), Ctrl+Y (redo), Ctrl+Shift+Z (redo alt), Ctrl+S (download), Ctrl+C (copy), ? (open help), Esc (close dialogs).
+   443→    - "Editing": R (rotate), H (flip H), V (flip V), 1 (Remove mode), 2 (Add mode).
+   444→    - "View": ← (slider left), → (slider right).
+   445→  * Component accepts controlled `open`/`onOpenChange` props plus an optional `showFab` (defaults `true`).
+   446→  * FAB: a `fixed bottom-4 right-4 z-40` round button (size-10) with `bg-card/90 backdrop-blur-md` and `HelpCircle` icon; hover lifts slightly and brightens. Has `aria-label` and `title="Keyboard shortcuts (?)"`.
+   447→  * Dialog: uses `<Dialog open={open} onOpenChange={onOpenChange}>`. Title row shows `HelpCircle` (in `text-primary`) + "Keyboard Shortcuts". Description: "Speed up your workflow with these shortcuts. Available in the editor view."
+   448→  * Content area: `max-h-[60vh] overflow-y-auto custom-scrollbar`, maps over `SHORTCUT_GROUPS`. Each group has an uppercase tracked header (`text-[10px] text-muted-foreground/60`) and a `<dl>` of rows. Each row is `flex justify-between` with the label (`<dt>`) on the left and a `<dd>` on the right containing the keycaps joined by `+` separators. Each keycap is a `<kbd className="bg-muted border rounded px-1.5 py-0.5 text-[10px] font-mono shadow-sm">`.
+   449→  * Footer: border-top + centered text "Press ? anytime to open this dialog" with a styled `<kbd>?` inline.
+   450→- src/app/page.tsx:
+   451→  * Added imports: `useState`, `useCallback` (alongside existing `useEffect`); `HistoryPanel` and `ShortcutHelp` from `@/components/watermark-remover/`.
+   452→  * Extended the `useAppStore` destructure to also pull `setTransformConfig`, `transformConfig`, `setMode`, `outputFileName`, `qualityConfig` (for the new keyboard handlers and quick-download logic).
+   453→  * Added `const [showHelp, setShowHelp] = useState(false)`.
+   454→  * Added `handleQuickDownload` `useCallback` — mirrors DownloadPanel's download logic but always uses `processedImage.dataUrl` (no optimization layer, since that's local state in DownloadPanel which we cannot touch). Uses `outputFileName` and `qualityConfig.format` for the file extension.
+   455→  * Added `handleQuickCopy` `useCallback` — fetches the `processedImage.dataUrl` as a blob, writes it via `navigator.clipboard.write` with `ClipboardItem`; falls back to `navigator.clipboard.writeText(dataUrl)` on failure; logs on total failure.
+   456→  * Rewrote the keyboard `useEffect` to handle (in order): Ctrl+Z (undo), Ctrl+Y / Ctrl+Shift+Z (redo), Ctrl+S (prevent default + `handleQuickDownload`), Ctrl+C (only when not typing in input/textarea/contenteditable AND `window.getSelection()?.toString()` is empty AND `processedImage.dataUrl` exists — otherwise lets native copy win), Escape (closes help if open), then — after skipping typing targets and any modifier keys — `?` (opens help, editor mode only), `R`/`r` (rotate +90), `H`/`h` (toggle flipH), `V`/`v` (toggle flipV), `1` (setMode 'remove'), `2` (setMode 'add'). All single-letter/number shortcuts are gated on `step !== 'upload'`. The effect's dependency array lists every reactive value used (`undo`, `redo`, `handleQuickDownload`, `handleQuickCopy`, `showHelp`, `step`, `setTransformConfig`, `transformConfig`, `setMode`, `processedImage`).
+   457→  * Added `const isEditor = step !== 'upload'`.
+   458→  * Rendered `<HistoryPanel />` in the controls sidebar, AFTER the conditional `{processedImage && step === 'result' && (...)}` block (so it's always visible in editor mode, not just on the result step).
+   459→  * Rendered `{isEditor && <ShortcutHelp open={showHelp} onOpenChange={setShowHelp} />}` after `<Footer />` (so the FAB and dialog only mount in editor mode).
+   460→  * Existing undo/redo bar, upload flow, AnimatePresence transitions, and grid layout are all unchanged.
+   461→
+   462→Stage Summary:
+   463→- New HistoryPanel renders a vertical timeline of every history snapshot (newest at top) with per-action icons, human-readable labels, chronological `#N` markers, current-position highlighting (`bg-primary/10 border-l-2 border-primary`), future-state dimming (`opacity-40`), a count badge, a position counter, and a "Clear history" button that calls `reset()`. The body is scrollable (`max-h-64 overflow-y-auto custom-scrollbar`) and the whole panel is collapsible via the header button with a smooth framer-motion height/opacity animation.
+   464→- New ShortcutHelp renders a `fixed bottom-4 right-4 z-40` FAB (HelpCircle icon, card-on-blur background) plus a controlled shadcn Dialog. The dialog groups 14 shortcuts into "General", "Editing", and "View" categories with styled `<kbd>` keycaps joined by `+` separators, and a footer reminding the user that `?` reopens it.
+   465→- New `jumpTo(index)` store method lets the HistoryPanel (or any caller) jump to any history entry in one call — validates bounds, no-ops on the current index, and reuses the same state-restoration logic as `undo`/`redo`.
+   466→- page.tsx now wires up the `?` (open help), `Esc` (close help), `Ctrl+S` (quick download of the processed image, preventing the browser's native save), `Ctrl+C` (quick clipboard copy of the processed image, but only when no text is selected so native copy still wins for selected text), `R` (rotate +90), `H` (flip H), `V` (flip V), `1` (Remove mode), and `2` (Add mode) shortcuts. All single-key shortcuts skip when the user is typing in an input/textarea/contenteditable or when a non-shift modifier is held. `?` and the editor shortcuts are gated on `step !== 'upload'`. The pre-existing Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z behavior is preserved exactly.
+   467→- Ctrl+S and Ctrl+C use the raw `processedImage.dataUrl` (bypassing the optional optimization layer that lives as local state in DownloadPanel, which we cannot modify). The Download button in the sidebar remains the source of truth for the optimized output; the keyboard shortcuts are a convenience for the current processed image. This trade-off is documented in a code comment above `handleQuickDownload`.
+   468→- The `←`/`→` comparison-slider shortcuts documented in the help dialog are already implemented inside `ComparisonSlider.tsx` (its own `useEffect` keydown handler), so no new handler was added in page.tsx — preventing double-stepping.
+   469→- ESLint status: pass (zero errors, zero warnings; `bun run lint` exits 0).
+   470→- TypeScript status: pass for all `src/` files. The only `tsc --noEmit` errors are pre-existing ones in unrelated `examples/` and `skills/` directories (socket.io / image-edit / stock-analysis-skill), unchanged by this task.
+   471→- Known issues / trade-offs:
+   472→  * Ctrl+S/Ctrl+C download/copy the *current* processed image only — they do NOT pick up the optional `optimizedDataUrl` produced by clicking the "Optimize" button in DownloadPanel (that state is internal to DownloadPanel and the task forbade modifying other component files). If the user has clicked Optimize, they should still use the sidebar Download button to get the optimized file. The keyboard shortcuts are convenience shortcuts for the raw processed output.
+   473→  * The `?` shortcut requires a US-layout `Shift+/` keystroke (i.e. `e.key === '?'`); on layouts where `?` is unshifted or mapped elsewhere, the FAB button remains available as a fallback.
+   474→  * The HistoryPanel's "Clear history" button calls `reset()`, which fully resets the editor (not just the history array) — consistent with how the existing "New Image" header button works. This matches the task spec ("Clear history" button at the bottom (calls `reset()`)).
+   475→
+   476→---
+   477→Task ID: cron-review-3
+   478→Agent: main-agent
+   479→Task: Comprehensive QA, bug fixes, and major feature additions for Zeminai watermark remover
+   480→
+   481→## Current Project Status Description
+   482→
+   483→The Zeminai Watermark & Logo Remover has been significantly enhanced in this round with:
+   484→- **Frontend**: 11 React components (added HistoryPanel, ShortcutHelp, AdjustPanel)
+   485→- **Backend**: 6 API endpoints (added /api/adjust for image adjustments)
+   486→- **State Management**: Zustand store extended with adjustConfig + jumpTo method
+   487→- **New Features**: Real-time watermark preview, drag-and-drop re-upload, history timeline, keyboard shortcuts help, image adjustments (brightness/contrast/saturation/blur/sharpen/hue/grayscale/sepia/invert), Next.js dev indicator hidden
+   488→- **UI Polish**: Prominent CTA buttons, enhanced trust badges, micro-animations, better focus rings, glass-card/cta-button utility classes, slider handle shadow
+   489→- **VLM Ratings**: 8.5/10 across all views (home, editor, dark mode, mobile) — up from 7.5/10 editor baseline
+   490→
+   491→## Current Goals / Completed Modifications / Verification Results
+   492→
+   493→### Critical Bug Fix: History Action Labels
+   494→- **Bug**: History panel was showing "Image uploaded" for all entries because `setProcessedImage` used `state.lastAction` instead of accepting an action parameter.
+   495→- **Fix**: 
+   496→  - Modified `setProcessedImage(image, action?)` to accept an optional action parameter
+   497→  - Modified `setOriginalImage(image, action?)` similarly for transform operations
+   498→  - Updated ControlPanel to pass `'remove-watermark'`, `'add-watermark'`, and `'transform'` action labels
+   499→- **Verification**: History panel now correctly shows "Watermark removed #3", "Image uploaded #2", "Initial state #1" after a remove-watermark operation.
+   500→
+   501→### New Feature: Image Adjustments (AdjustPanel + /api/adjust)
+   502→- **New API endpoint** (`src/app/api/adjust/route.ts`): Uses sharp's `modulate`, `linear`, `blur`, `sharpen`, `grayscale`, `recomb`, `negate` operations
+   503→- **Adjustable parameters**: brightness (0.5-2), contrast (0-2), saturation (0-2), hue (-180 to 180), blur (0-10), sharpen (0-5), grayscale toggle, sepia toggle, invert toggle
+   504→- **New component** (`AdjustPanel.tsx`): 6 sliders + 3 toggles + Apply button + Reset button
+   505→- **Store integration**: Added `AdjustConfig` interface, `adjustConfig` state, `setAdjustConfig` method
+   506→- **Verification**: API returns 200, applies all adjustments correctly, integrated into editor sidebar
+   507→
+   508→### New Feature: Real-Time Watermark Preview (WatermarkAdder)
+   509→- Added a live preview canvas at the top of the WatermarkAdder component
+   510→- Updates instantly as user changes any watermark config (text, color, size, opacity, position, rotation, repeat, shadow, logo)
+   511→- Uses cancellation token to prevent race conditions when user types fast
+   512→- Shows "Live" badge with pulsing green dot in top-right
+   513→- Shows "Upload an image first" placeholder when no image loaded
+   514→- **Verification**: VLM confirmed "Live Preview Implementation: 9/10 — best-in-class pattern for image editors"
+   515→
+   516→### New Feature: History Panel (HistoryPanel.tsx)
+   517→- Collapsible timeline showing all operations (newest first)
+   518→- Each entry shows: action icon, human-readable label, #N index
+   519→- Current state highlighted with `bg-primary/10 border-l-2 border-primary`
+   520→- Future states dimmed with `opacity-40`
+   521→- Click any entry to jump to that state (uses new `jumpTo(index)` store method)
+   522→- "Clear history" button at bottom (calls `reset()`)
+   523→- Scrollable list with `max-h-64 overflow-y-auto custom-scrollbar`
+   524→- **Verification**: Correctly shows "1 action" → "2 actions" after remove-watermark; click on past entry jumps state
+   525→
+   526→### New Feature: Keyboard Shortcuts Help Modal (ShortcutHelp.tsx)
+   527→- Floating action button (FAB) at bottom-right with HelpCircle icon
+   528→- Modal dialog with 14 shortcuts grouped into 3 categories: General, Editing, View
+   529→- Styled `<kbd>` keycaps joined by `+` separators
+   530→- Triggered by `?` key (editor mode only)
+   531→- Closed by `Esc` key
+   532→- **Verification**: FAB visible in editor, dialog opens on click or `?` press, closes on Esc
+   533→
+   534→### New Feature: Extended Keyboard Shortcuts
+   535→- `Ctrl+S` → Download result (prevents browser save)
+   536→- `Ctrl+C` → Copy result to clipboard (only when no text selected)
+   537→- `?` → Open shortcuts help
+   538→- `Esc` → Close dialogs
+   539→- `R` → Rotate image 90°
+   540→- `H` → Flip horizontal
+   541→- `V` → Flip vertical
+   542→- `1` → Switch to Remove mode
+   543→- `2` → Switch to Add mode
+   544→- All single-key shortcuts gated on `step !== 'upload'` and skipped when typing in input/textarea
+   545→- Existing Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z preserved
+   546→
+   547→### New Feature: Drag-and-Drop Re-Upload (ImagePreview)
+   548→- Added drag event handlers to image container
+   549→- When user drags an image file over the preview, shows a "Drop to replace" overlay with primary color tint, dashed border, UploadCloud icon
+   550→- On drop, validates file type (PNG/JPEG/WebP) and size (max 50MB), then replaces the current image
+   551→- Resets zoom/pan when new image loads
+   552→- **Verification**: Drag-and-drop overlay appears on drag over, image replaces on drop
+   553→
+   554→### New Feature: Hide Next.js Dev Indicator
+   555→- Added `devIndicators: false` to `next.config.ts`
+   556→- Removes the floating "N" button that appeared in dev mode (VLM noted this as confusing)
+   557→- **Verification**: Snapshot no longer shows "Open Next.js Dev Tools" button
+   558→
+   559→### UI Polish: Styling Improvements (by subagent cron-3-A)
+   560→- **ComparisonSlider**: Drop shadow + white ring on slider handle, contrast bumps for instructional text/labels, hover ring on slider container, animated pulse on handle for first 3.5s, "Compare" badge pill at top center
+   561→- **ControlPanel**: Outer gap-3→gap-4, mt-1 on CTA, CTA enlarged h-9→h-11 with gradient/lift/glow/icon size-4/text-sm, visible Rotate/Flip H/Flip V labels under each transform icon, explicit opacity-50 disabled state, selected tab uses bg-primary/10 text-primary
+   562→- **UploadArea**: Trust badges replaced with specific labels (256-bit SSL, Under 5s, Zero residue) + added 4th "Private" badge with Lock icon. Added "or click to browse" hint, loading dots animation during FileReader read, and styled PNG/JPEG/WebP pill badges
+   563→- **Header**: Fixed vertical alignment (single-line layout with items-center), added green status dot next to "Zeminai" in editor mode, hover:bg-accent/60 on "New Image" button
+   564→- **ImagePreview**: Hover effect on info bar, larger badge text, bottom gradient overlay for zoom control contrast, empty state placeholder
+   565→- **Footer**: Added keyboard shortcut hints (Ctrl+Z Undo · ? Help) with Keyboard icon, bumped contrast /60→/70, added "v1.0" version pill
+   566→- **QualityOptimizer**: Added hover effect, increased label/control gap gap-2→gap-3
+   567→- **DownloadPanel**: Download button upgraded to h-11 + cta-button gradient + lift/glow, file size badge restyled as rounded-md bg-black/15 pill
+   568→- **globals.css**: Added 4 new utility classes: .glass-card, .cta-button, .animate-shimmer, .icon-stroke. Upgraded :focus-visible to use var(--ring) + var(--radius) for themed focus rings
+   569→
+   570→### Verification Results
+   571→- **ESLint**: Passes with zero errors and zero warnings
+   572→- **Dev server**: Running cleanly on port 3000, no compilation errors, all routes return 200
+   573→- **Agent-browser flow test**: Upload → Remove watermark → History shows correct labels → ? opens shortcuts dialog → Esc closes → switch to Add mode → live preview visible
+   574→- **VLM ratings**:
+   575→  - Home page: 8.5/10 (was 8.5)
+   576→  - Editor (light): 8.5/10 (was 7.5 — major improvement)
+   577→  - Editor (dark): 8.5/10 (was 8.5)
+   578→  - Mobile: 8.5/10 (was 8.5)
+   579→  - Add mode with live preview: 8.5/10
+   580→- **All API endpoints tested**: /api/remove-watermark, /api/detect-watermark, /api/add-watermark, /api/transform, /api/optimize, /api/adjust (new) — all return 200
+   581→
+   582→## Unresolved Issues or Risks
+   583→
+   584→1. **Live preview is approximate**: Client-side canvas preview uses scaled font sizes and is a UX guide only. The server-side /api/add-watermark remains the source of truth for the final applied watermark.
+   585→
+   586→2. **Logo file in undo/redo**: The `logoFile` File object cannot be serialized into history snapshots. When restoring from undo/redo, logoFile is set to null and needs re-upload. (Pre-existing issue, not introduced this round.)
+   587→
+   588→3. **Inpainting performance**: The fast marching algorithm is O(n²) for large masks. Could be optimized with a binary heap priority queue for O(n log n) performance. (Pre-existing, not addressed this round.)
+   589→
+   590→4. **Mobile sidebar density**: On mobile, the sidebar (ControlPanel + AdjustPanel + QualityOptimizer + DownloadPanel + HistoryPanel) can get long. The lg:max-h-[calc(100vh-10rem)] lg:overflow-y-auto only kicks in on large screens. Mobile users need to scroll the entire page.
+   591→
+   592→5. **Ctrl+S/Ctrl+C bypass optimization**: The quick download/copy shortcuts in page.tsx operate on the raw processedImage.dataUrl and bypass the optional optimization layer (which is local state in DownloadPanel.tsx). The sidebar Download button remains the source of truth for the optimized output.
+   593→
+   594→6. **Mobile touch on comparison slider**: The slider touch handling works but could be smoother on iOS. The `touchmove` event is registered as passive which is good for performance but means we can't preventDefault if needed.
+   595→
+   596→## Priority Recommendations for Next Phase
+   597→
+   598→1. **Optimize inpainting performance**: Replace the O(n²) linear search with a binary heap priority queue (min-heap) for O(n log n) performance on large mask areas.
+   599→
+   600→2. **Add batch processing**: Allow users to upload and process multiple images at once. Could add a separate /batch route or a queue in the existing flow.
+   601→
+   602→3. **Add crop tool**: Implement a visual crop tool with draggable handles on the image preview.
+   603→
+   604→4. **Add SVG-based Gemini sparkle template**: Create an SVG template of the Gemini sparkle watermark for precise mask matching during detection.
+   605→
+   606→5. **Improve mobile sidebar**: Consider a tabbed or accordion layout for mobile to reduce scrolling. Could use the existing shadcn Accordion component.
+   607→
+   608→6. **Add export presets**: Add quick export presets (e.g., "Web optimized", "Print quality", "Social media") to the QualityOptimizer.
+   609→
+   610→7. **Add image format conversion info**: Show estimated file size before optimization based on selected format/quality.
+   611→
+   612→8. **Persist user preferences**: Use localStorage to persist theme, qualityConfig, and other user preferences across sessions.
+   613→
+   614→---
+   615→Task ID: round4-A
+   616→Agent: crop-tool-agent
+   617→Task: Create crop tool panel and API endpoint
+   618→
+   619→Work Log:
+   620→- Created src/app/api/crop/route.ts
+   621→- Created src/components/watermark-remover/CropPanel.tsx
+   622→
+   623→Stage Summary:
+   624→- Crop API endpoint accepts image + x/y/width/height via FormData, uses sharp extract() to crop, clamps values to image bounds, returns PNG dataUrl + dimensions + size
+   625→- CropPanel component has ratio presets (Free, 1:1, 4:3, 3:2, 16:9, 9:16, 2:3, 3:4), numeric inputs for x/y/width/height, dimension preview, Apply/Reset buttons
+   626→- Ratio locking adjusts width/height to maintain the selected aspect ratio; Free mode allows unconstrained input
+   627→- On Apply, calls /api/crop then updates store via setOriginalImage with 'transform' action for undo/redo support
+   628→- Styling matches AdjustPanel: rounded-lg border bg-card/80 p-3 shadow-sm, framer-motion entry animation
+   629→- ESLint: pass
+   630→
+   631→---
+   632→Task ID: round4-B
+   633→Agent: export-presets-accordion-agent
+   634→Task: Add export presets and collapsible Transform section on mobile
+   635→
+   636→Work Log:
+   637→- Modified src/components/watermark-remover/QualityOptimizer.tsx: Added 4 export preset buttons (Original, Web, Print, Social) at the top of the panel before existing controls. Presets set format/quality/maxWidth/maxHeight all at once. Active preset is visually highlighted with primary ring/border. Added QualityConfig type import and isPresetActive helper function.
+   638→- Modified src/components/watermark-remover/ControlPanel.tsx: Wrapped Transform section content in AnimatePresence with collapsible toggle. Added ChevronDown icon that rotates on toggle. Transform header is now a clickable button with cursor-pointer. Reset button uses stopPropagation to avoid toggling. Added AnimatePresence and ChevronDown imports. Added isTransformOpen state (defaults to true).
+   639→
+   640→Stage Summary:
+   641→- QualityOptimizer now has 4 quick export preset buttons (Original/Web/Print/Social) that apply all config values at once and visually indicate active state
+   642→- ControlPanel Transform section is now collapsible with animated expand/collapse via AnimatePresence + motion.div
+   643→- ChevronDown icon rotates 180deg when open, 0deg when closed
+   644→- Reset button within Transform header uses stopPropagation to avoid accidental toggle
+   645→- ESLint: pass
+   646→
+   647→---
+   648→Task ID: round4-main
+   649→Agent: main-agent
+   650→Task: Optimize inpainting, add crop tool, collapsible sidebar, export presets, final styling
+   651→
+   652→## Current Project Status Description
+   653→
+   654→The Zeminai Watermark & Logo Remover is now a feature-complete image editor with:
+   655→- **Frontend**: 13 React components (Header, UploadArea, ImagePreview, ComparisonSlider, ControlPanel, WatermarkAdder, AdjustPanel, CropPanel, QualityOptimizer, DownloadPanel, HistoryPanel, ShortcutHelp, Footer)
+   656→- **Backend**: 7 API endpoints (/api/remove-watermark, /api/detect-watermark, /api/add-watermark, /api/transform, /api/optimize, /api/adjust, /api/crop)
+   657→- **State Management**: Zustand store with undo/redo/history, adjustConfig, cropConfig (local state)
+   658→- **Performance**: Inpainting engine optimized from O(n²) to O(n log n) with binary min-heap priority queue
+   659→- **UI**: Collapsible sidebar (Transform/Crop/Adjustments all collapsible), export presets, keyboard shortcuts, real-time watermark preview, drag-and-drop re-upload
+   660→- **VLM Ratings**: 8.5/10 across all views (sidebar crowding resolved)
+   661→
+   662→## Current Goals / Completed Modifications / Verification Results
+   663→
+   664→### Performance: Inpainting Algorithm Optimized
+   665→- **Before**: O(n²) linear scan for minimum-distance pixel in processQueue (lines 153-160 in old code)
+   666→- **After**: O(n log n) using a binary min-heap priority queue (MinHeap class)
+   667→- **Implementation**: MinHeap class with push/pop/has operations, bubbleUp/sinkDown for heap property
+   668→- **Impact**: For a 150×150 mask area (22,500 pixels), the old algorithm scanned up to 22,500 elements each iteration. New algorithm does O(log n) per pop/push, reducing from ~500M operations to ~675K operations
+   669→- **Verification**: Watermark removal still works correctly, processing completes in ~1.2s
+   670→
+   671→### New Feature: Crop Tool (CropPanel + /api/crop)
+   672→- **New API endpoint** (`src/app/api/crop/route.ts`): Uses sharp's `extract()` operation to crop
+   673→- Accepts x, y, width, height parameters; clamps to image bounds
+   674→- Returns cropped PNG as dataUrl + width + height + size
+   675→- **New component** (`CropPanel.tsx`): 
+   676→  - 8 ratio presets (Free, 1:1, 4:3, 3:2, 16:9, 9:16, 2:3, 3:4)
+   677→  - 4 numeric inputs (X, Y, W, H) with ratio locking
+   678→  - Dimension preview (original → cropped dims)
+   679→  - Apply/Reset buttons
+   680→  - **Collapsible** (starts collapsed, expands on click with ChevronDown animation)
+   681→- Integrated into page.tsx sidebar between ControlPanel and AdjustPanel
+   682→
+   683→### New Feature: Export Presets in QualityOptimizer
+   684→- Added 4 compact preset buttons: Original (png, 100, 4096×4096), Web (webp, 80, 1920×1080), Print (png, 100, 4096×4096), Social (jpeg, 85, 1200×1200)
+   685→- Active preset visually highlighted with bg-primary/10 ring-1 ring-primary/20
+   686→- Clicking a preset sets all 4 qualityConfig values at once
+   687→- isPresetActive helper compares current config against preset values
+   688→
+   689→### UI Improvement: Collapsible Sidebar Sections
+   690→- **Transform section** (ControlPanel.tsx): Now collapsible with toggle button + ChevronDown animation
+   691→- **Crop section** (CropPanel.tsx): Collapsible, starts collapsed (isOpen = false)
+   692→- **Adjustments section** (AdjustPanel.tsx): Collapsible, starts collapsed (isOpen = false)
+   693→- **History section**: Remains expanded by default (important for workflow tracking)
+   694→- All use AnimatePresence + motion.div with height/opacity animation (0.2s)
+   695→- **VLM confirmed**: "The collapsible sections solve 90% of the density problem without sacrificing discoverability"
+   696→- Rating improved from 7.5 (crowded sidebar) to 8.5 (clean collapsible layout)
+   697→
+   698→### Verification Results
+   699→- **ESLint**: Passes with zero errors and zero warnings
+   700→- **Dev server**: Running cleanly on port 3000, no compilation errors
+   701→- **All API endpoints**: All 7 endpoints return 200
+   702→- **Agent-browser QA**: Upload → Remove watermark → History shows "Watermark removed" → Collapsible Crop/Adjustments expand/collapse → Keyboard shortcuts dialog opens/closes
+   703→- **VLM ratings**: 8.5/10 (sidebar crowding resolved by collapsible pattern)
+   704→- **Processing time**: ~1.2s for watermark removal (800×600 test image)
+   705→
+   706→## Unresolved Issues or Risks
+   707→
+   708→1. **Crop tool has no visual crop overlay on the image**: Currently only numeric inputs. A visual crop rectangle overlay on the ImagePreview would greatly improve UX. (Recommended for next phase)
+   709→
+   710→2. **Logo file in undo/redo**: logoFile File object cannot be serialized into history snapshots. When restoring from undo/redo, logoFile is set to null and needs re-upload. (Pre-existing)
+   711→
+   712→3. **Inpainting could be further optimized**: The neighbor search in the radius loop (lines 220-244) still does O(radius²) per pixel. For large radius values, this could be optimized with spatial indexing. (Minor concern for typical use)
+   713→
+   714→4. **Crop/Adjustments start collapsed**: While this reduces clutter, some users might not discover these features. Consider adding a subtle indicator (e.g., a small icon or badge) when there are active crop/adjustment settings.
+   715→
+   716→5. **Mobile sidebar scrolling**: On mobile, the sidebar is still scrollable but more manageable since Crop and Adjustments are collapsed by default. The scroll behavior could be further improved with smooth snap scrolling.
+   717→
+   718→6. **404s for /index.md and /llms.txt**: The dev log shows 404 responses for these paths. These are Next.js framework routes for documentation. Not a bug, but could be addressed by creating these files or configuring redirects.
+   719→
+   720→## Priority Recommendations for Next Phase
+   721→
+   722→1. **Add visual crop overlay on ImagePreview**: Draw a draggable rectangle on the preview image showing the crop boundary. This is the highest-impact UX improvement for the crop tool.
+   723→
+   724→2. **Add batch processing**: Allow multiple image uploads with queue-based processing.
+   725→
+   726→3. **Add SVG-based Gemini sparkle template**: Create an SVG template of the Gemini sparkle watermark for precise mask matching.
+   727→
+   728→4. **Add image format conversion info**: Show estimated file size before optimization based on selected format/quality.
+   729→
+   730→5. **Persist user preferences**: Use localStorage to persist theme, qualityConfig, and collapsible panel states.
+   731→
+   732→6. **Add subtle feature discovery indicators**: When Crop/Adjustments are collapsed, show a small colored badge or icon if there are pending settings.
+   733→
+   734→7. **Add crop rectangle to comparison slider**: Show the crop boundary overlay on both before/after images in the comparison view.
+   735→
