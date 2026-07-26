@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
 
 export type ProcessingStep = "upload" | "preview" | "processing" | "result";
 
@@ -109,6 +110,23 @@ export interface AdjustConfig {
   grayscale: boolean;
   sepia: boolean;
   invert: boolean;
+}
+
+/**
+ * A reusable watermark preset. When applied, the preset's config values
+ * override the corresponding fields in `watermarkConfig`.
+ * `logoFile` is intentionally excluded (File objects cannot be serialized).
+ */
+export interface WatermarkPreset {
+  id: string;
+  label: string;
+  text: string;
+  fontSize: number;
+  color: string;
+  opacity: number;
+  rotation: number;
+  shadow: boolean;
+  repeat: boolean;
 }
 
 /**
@@ -247,6 +265,81 @@ const defaultAdjustConfig: AdjustConfig = {
   invert: false,
 };
 
+/**
+ * Built-in watermark preset templates. Users can click a preset chip in the
+ * WatermarkAdder to apply a pre-configured text watermark (text + size +
+ * color + opacity + rotation + shadow + repeat). Custom user presets are
+ * stored in `customPresets` in the store and merged with these at render time.
+ */
+export const BUILT_IN_PRESETS: WatermarkPreset[] = [
+  {
+    id: "copyright",
+    label: "© 2025",
+    text: "© 2025 Zeminai",
+    fontSize: 28,
+    color: "#ffffff",
+    opacity: 80,
+    rotation: 0,
+    shadow: true,
+    repeat: false,
+  },
+  {
+    id: "draft",
+    label: "DRAFT",
+    text: "DRAFT",
+    fontSize: 48,
+    color: "#ff4444",
+    opacity: 35,
+    rotation: -30,
+    shadow: false,
+    repeat: true,
+  },
+  {
+    id: "confidential",
+    label: "CONFIDENTIAL",
+    text: "CONFIDENTIAL",
+    fontSize: 36,
+    color: "#ff4444",
+    opacity: 45,
+    rotation: -30,
+    shadow: true,
+    repeat: true,
+  },
+  {
+    id: "sample",
+    label: "SAMPLE",
+    text: "SAMPLE",
+    fontSize: 42,
+    color: "#888888",
+    opacity: 50,
+    rotation: -30,
+    shadow: false,
+    repeat: true,
+  },
+  {
+    id: "do-not-copy",
+    label: "DO NOT COPY",
+    text: "DO NOT COPY",
+    fontSize: 32,
+    color: "#000000",
+    opacity: 40,
+    rotation: -25,
+    shadow: true,
+    repeat: true,
+  },
+  {
+    id: "zeminai",
+    label: "Zeminai",
+    text: "Zeminai",
+    fontSize: 24,
+    color: "#ffffff",
+    opacity: 60,
+    rotation: 0,
+    shadow: true,
+    repeat: false,
+  },
+];
+
 const initialSnapshot: HistorySnapshot = {
   originalImage: null,
   processedImage: null,
@@ -310,6 +403,17 @@ interface AppState {
   isCropOverlayActive: boolean;
   setCropOverlayActive: (active: boolean) => void;
 
+  // ─── User presets ──────────────────────────────────────────────────────
+  // Custom watermark presets saved by the user (in addition to BUILT_IN_PRESETS).
+  // Persisted to localStorage so they survive page reloads.
+  customPresets: WatermarkPreset[];
+  /** Add a new custom preset. If a preset with the same id exists, it is replaced. */
+  addCustomPreset: (preset: WatermarkPreset) => void;
+  /** Remove a custom preset by id. Built-in presets cannot be removed. */
+  removeCustomPreset: (id: string) => void;
+  /** Apply a preset to the current watermarkConfig (text + style fields). logoFile is preserved. */
+  applyPreset: (preset: WatermarkPreset) => void;
+
   // ─── History / Undo / Redo ──────────────────────────
   history: HistorySnapshot[];
   historyIndex: number;
@@ -338,7 +442,9 @@ interface AppState {
 
 // ─── Store Implementation ────────────────────────────────────────────────────
 
-export const useAppStore = create<AppState>((set, get) => ({
+export const useAppStore = create<AppState>()(
+  persist(
+    (set, get) => ({
   step: "upload",
   setStep: (step) => set({ step }),
 
@@ -466,6 +572,36 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   isCropOverlayActive: false,
   setCropOverlayActive: (active) => set({ isCropOverlayActive: active }),
+
+  // ─── User presets ──────────────────────────────────────────────────────
+  customPresets: [],
+  addCustomPreset: (preset) =>
+    set((state) => {
+      // Replace if id exists, otherwise append
+      const exists = state.customPresets.some((p) => p.id === preset.id);
+      const next = exists
+        ? state.customPresets.map((p) => (p.id === preset.id ? preset : p))
+        : [...state.customPresets, preset];
+      return { customPresets: next };
+    }),
+  removeCustomPreset: (id) =>
+    set((state) => ({
+      customPresets: state.customPresets.filter((p) => p.id !== id),
+    })),
+  applyPreset: (preset) =>
+    set((state) => ({
+      watermarkConfig: {
+        ...state.watermarkConfig,
+        text: preset.text,
+        fontSize: preset.fontSize,
+        color: preset.color,
+        opacity: preset.opacity,
+        rotation: preset.rotation,
+        shadow: preset.shadow,
+        repeat: preset.repeat,
+        // logoFile and logo* fields are intentionally preserved
+      },
+    })),
 
   // ─── History / Undo / Redo ──────────────────────────
 
@@ -602,4 +738,27 @@ export const useAppStore = create<AppState>((set, get) => ({
       canUndo: false,
       canRedo: false,
     }),
-}));
+    }),
+    {
+      name: "zeminai-preferences",
+      storage: createJSONStorage(() => localStorage),
+      // Only persist user preferences — never persist images, history, or
+      // transient processing state (those would blow past the ~5MB localStorage
+      // quota and would also leak the previous session's image into a new visit).
+      partialize: (state) => ({
+        qualityConfig: state.qualityConfig,
+        transformConfig: state.transformConfig,
+        watermarkConfig: {
+          // Persist style preferences but NOT the logoFile (File cannot serialize)
+          ...state.watermarkConfig,
+          logoFile: null,
+        },
+        adjustConfig: state.adjustConfig,
+        customPresets: state.customPresets,
+        autoDetect: state.autoDetect,
+        mode: state.mode,
+      }),
+      version: 1,
+    }
+  )
+);

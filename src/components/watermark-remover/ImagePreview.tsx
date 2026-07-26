@@ -400,12 +400,13 @@ export default function ImagePreview() {
         className="flex w-full flex-col gap-2"
       >
         <div
-          className="flex items-center justify-center rounded-xl border border-dashed bg-muted/20"
+          className="dot-grid-bg flex items-center justify-center rounded-xl border border-dashed bg-muted/20"
           style={{ minHeight: '240px', maxHeight: '55vh' }}
         >
           <div className="flex flex-col items-center gap-2 text-muted-foreground/50">
             <ImageIcon className="size-8" />
             <span className="text-xs font-medium">No image loaded</span>
+            <span className="text-[10px] text-muted-foreground/40">Drag and drop or use the upload area</span>
           </div>
         </div>
       </motion.div>

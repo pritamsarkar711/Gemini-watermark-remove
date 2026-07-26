@@ -303,3 +303,41 @@
 .toggle-switch[data-state="unchecked"] {
   background-color: color-mix(in oklch, var(--muted-foreground) 30%, transparent);
 }
+
+/* ─── Empty-state dot grid pattern ────────────────────────────────────────── */
+/* Subtle radial-dot pattern used on empty canvas / drop zones for a more
+   polished "placeholder" feel than a plain muted background. */
+.dot-grid-bg {
+  background-image: radial-gradient(
+    circle,
+    color-mix(in oklch, var(--muted-foreground) 25%, transparent) 1px,
+    transparent 1px
+  );
+  background-size: 16px 16px;
+  background-position: 0 0;
+}
+.dot-grid-bg-dense {
+  background-image: radial-gradient(
+    circle,
+    color-mix(in oklch, var(--muted-foreground) 20%, transparent) 1px,
+    transparent 1px
+  );
+  background-size: 12px 12px;
+}
+
+/* ─── Sticky CTA polish ───────────────────────────────────────────────────── */
+/* The sticky primary action button at the sidebar bottom. Uses a subtle
+   top-to-bottom fade so scrolling content appears to slide under it. */
+.sticky-cta-wrapper {
+  position: sticky;
+  bottom: 0;
+  z-index: 20;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    color-mix(in oklch, var(--background) 60%, transparent) 30%,
+    var(--background) 100%
+  );
+  padding-top: 12px;
+  margin-top: auto;
+}

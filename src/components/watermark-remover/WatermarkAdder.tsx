@@ -9,6 +9,7 @@ import { Slider } from '@/components/ui/slider'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { useAppStore, type WatermarkPosition } from '@/lib/store'
+import PresetBar from './PresetBar'
 
 const POSITIONS: WatermarkPosition[] = [
   'top-left', 'top-center', 'top-right',
@@ -236,6 +237,11 @@ export default function WatermarkAdder() {
 
   return (
     <div className="flex flex-col gap-2">
+      {/* PRESETS — quick-apply watermark templates */}
+      <div className="flex flex-col gap-1.5 rounded-lg border bg-card/80 p-2.5 shadow-sm">
+        <PresetBar />
+      </div>
+
       {/* LIVE PREVIEW — compact, side-by-side label */}
       <div className="flex flex-col gap-1.5 rounded-lg border bg-card/80 p-2.5 shadow-sm">
         <div className="flex items-center justify-between">

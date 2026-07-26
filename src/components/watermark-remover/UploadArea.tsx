@@ -199,7 +199,7 @@ export default function UploadArea() {
                 </div>
 
                 <div className="flex flex-col items-center gap-1">
-                  <span className="text-sm font-medium text-foreground/80">
+                  <span className="text-base font-semibold text-foreground">
                     {isDragging ? 'Release' : 'Drop image'}
                   </span>
                   {!isDragging && (
@@ -207,10 +207,10 @@ export default function UploadArea() {
                       or click to browse
                     </span>
                   )}
-                  <div className="mt-1 flex items-center gap-1.5">
-                    <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground/80">PNG</span>
-                    <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground/80">JPEG</span>
-                    <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground/80">WebP</span>
+                  <div className="mt-1 flex flex-wrap items-center justify-center gap-1.5">
+                    <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground/80">PNG</span>
+                    <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground/80">JPEG</span>
+                    <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground/80">WebP</span>
                     <span className="text-[10px] text-muted-foreground/50">up to 50MB</span>
                   </div>
                 </div>
@@ -220,12 +220,12 @@ export default function UploadArea() {
         </div>
       </motion.div>
 
-      {/* Trust badges */}
+      {/* Trust badges — 2x2 grid on mobile, single row on sm+ */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.4 }}
-        className="flex flex-wrap items-center justify-center gap-2"
+        className="grid grid-cols-2 gap-2 w-full sm:flex sm:flex-wrap sm:items-center sm:justify-center"
       >
         {TRUST_ITEMS.map((item, i) => (
           <motion.div
@@ -233,7 +233,7 @@ export default function UploadArea() {
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.3, delay: 0.5 + i * 0.1 }}
-            className="flex items-center gap-1.5 rounded-full border bg-card/80 px-2.5 py-1.5 shadow-sm"
+            className="flex items-center justify-center gap-1.5 rounded-full border bg-card/80 px-2.5 py-1.5 shadow-sm"
           >
             <item.icon className="size-3 text-primary/70" />
             <span className="text-[11px] font-medium text-muted-foreground/70">{item.label}</span>

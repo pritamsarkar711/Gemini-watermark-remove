@@ -2,7 +2,7 @@
 
 import { useCallback, useRef, useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Eraser, Stamp, Scan, Paintbrush, Loader2, RotateCw, FlipHorizontal, FlipVertical, Undo2, Redo2, ChevronDown } from 'lucide-react'
+import { Eraser, Stamp, Scan, Paintbrush, Loader2, RotateCw, FlipHorizontal, FlipVertical, ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
@@ -26,10 +26,6 @@ export default function ControlPanel() {
     transformConfig,
     setTransformConfig,
     setOriginalImage,
-    canUndo,
-    canRedo,
-    undo,
-    redo,
   } = useAppStore()
 
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -98,6 +94,18 @@ export default function ControlPanel() {
       setIsProcessing(false)
     }
   }, [originalImage, mode, autoDetect, maskData, watermarkConfig, setIsProcessing, setProcessedImage, setShowComparison])
+
+  // Expose handleProcess to the parent via a ref-less pattern: store it in a
+  // module-level variable so the sticky CTA in page.tsx can call it.
+  // We use a simple approach: store the latest handler on the window object
+  // under a known key. This avoids prop drilling and context complexity.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    ;(window as unknown as { __zeminaiProcess?: () => void }).__zeminaiProcess = handleProcess
+    return () => {
+      delete (window as unknown as { __zeminaiProcess?: () => void }).__zeminaiProcess
+    }
+  }, [handleProcess])
 
   // Handle image transformation
   const handleTransform = useCallback(async () => {
@@ -396,25 +404,6 @@ export default function ControlPanel() {
           <WatermarkAdder />
         </TabsContent>
       </Tabs>
-
-      <Button
-        size="default"
-        onClick={handleProcess}
-        disabled={isProcessing || (mode === 'add' && !watermarkConfig.text && !watermarkConfig.logoFile)}
-        className="cta-button mt-1 w-full gap-1.5 rounded-lg font-semibold h-11 text-sm shadow-md hover:shadow-lg hover:shadow-primary/25 hover:-translate-y-0.5 hover:ring-2 hover:ring-primary/20 transition-all disabled:hover:translate-y-0 disabled:hover:shadow-md disabled:hover:ring-0"
-      >
-        {isProcessing ? (
-          <>
-            <Loader2 className="size-4 animate-spin" />
-            Processing
-          </>
-        ) : (
-          <>
-            {mode === 'remove' ? <Eraser className="size-4" /> : <Stamp className="size-4" />}
-            {mode === 'remove' ? 'Remove watermark' : 'Apply watermark'}
-          </>
-        )}
-      </Button>
     </motion.div>
   )
 }

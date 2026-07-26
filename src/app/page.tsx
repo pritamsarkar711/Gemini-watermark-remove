@@ -15,6 +15,7 @@ import QualityOptimizer from '@/components/watermark-remover/QualityOptimizer'
 import DownloadPanel from '@/components/watermark-remover/DownloadPanel'
 import HistoryPanel from '@/components/watermark-remover/HistoryPanel'
 import ShortcutHelp from '@/components/watermark-remover/ShortcutHelp'
+import StickyCTA from '@/components/watermark-remover/StickyCTA'
 import Footer from '@/components/watermark-remover/Footer'
 
 export default function Home() {
@@ -32,6 +33,8 @@ export default function Home() {
     setMode,
     outputFileName,
     qualityConfig,
+    isCropOverlayActive,
+    setCropOverlayActive,
   } = useAppStore()
 
   const [showHelp, setShowHelp] = useState(false)
@@ -159,6 +162,13 @@ export default function Home() {
         setMode('add')
         return
       }
+
+      // ── C: toggle crop overlay ─────────────────────────────────────────
+      if (e.key === 'c' || e.key === 'C') {
+        e.preventDefault()
+        setCropOverlayActive(!isCropOverlayActive)
+        return
+      }
     }
 
     window.addEventListener('keydown', handleKeyDown)
@@ -174,6 +184,8 @@ export default function Home() {
     transformConfig,
     setMode,
     processedImage,
+    isCropOverlayActive,
+    setCropOverlayActive,
   ])
 
   const isEditor = step !== 'upload'
@@ -257,7 +269,7 @@ export default function Home() {
                   </div>
 
                   {/* Controls sidebar */}
-                  <div className="flex flex-col gap-3 lg:max-h-[calc(100vh-10rem)] lg:overflow-y-auto custom-scrollbar">
+                  <div className="flex flex-col gap-3 lg:max-h-[calc(100vh-10rem)] lg:overflow-y-auto custom-scrollbar lg:pr-1">
                     <ControlPanel />
 
                     {/* Crop tool — available whenever an image is loaded */}
@@ -280,6 +292,9 @@ export default function Home() {
 
                     {/* History timeline — always visible in editor mode */}
                     <HistoryPanel />
+
+                    {/* Sticky primary CTA — always visible at the bottom of the sidebar */}
+                    <StickyCTA />
                   </div>
                 </div>
               </motion.div>

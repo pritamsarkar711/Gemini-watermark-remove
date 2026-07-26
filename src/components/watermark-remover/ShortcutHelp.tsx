@@ -42,6 +42,7 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
       { keys: ['R'], label: 'Rotate image 90°' },
       { keys: ['H'], label: 'Flip horizontal' },
       { keys: ['V'], label: 'Flip vertical' },
+      { keys: ['C'], label: 'Toggle crop overlay' },
       { keys: ['1'], label: 'Switch to Remove mode' },
       { keys: ['2'], label: 'Switch to Add mode' },
     ],
