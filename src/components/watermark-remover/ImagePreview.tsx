@@ -2,7 +2,7 @@
 
 import { useRef, useState, useCallback } from 'react'
 import { motion } from 'framer-motion'
-import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-react'
+import { ZoomIn, ZoomOut, RotateCcw, ImageIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAppStore } from '@/lib/store'
 
@@ -10,6 +10,10 @@ function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes}B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)}KB`
   return `${(bytes / (1024 * 1024)).toFixed(1)}MB`
+}
+
+function formatType(type: string): string {
+  return type.replace('image/', '').toUpperCase()
 }
 
 export default function ImagePreview() {
@@ -80,10 +84,22 @@ export default function ImagePreview() {
       initial={{ opacity: 0, scale: 0.98 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.3 }}
-      className="flex w-full flex-col gap-1"
+      className="flex w-full flex-col gap-2"
     >
+      {/* Image info bar */}
+      <div className="flex items-center gap-2 rounded-lg border bg-card/80 px-3 py-1.5 shadow-sm">
+        <ImageIcon className="size-3.5 text-primary/70" />
+        <span className="text-xs font-semibold">{originalImage.name}</span>
+        <div className="flex items-center gap-2 ml-auto text-[10px] text-muted-foreground/50">
+          <span className="rounded bg-muted px-1.5 py-0.5 font-medium">{originalImage.width} x {originalImage.height}</span>
+          <span className="rounded bg-muted px-1.5 py-0.5 font-medium">{formatType(originalImage.type)}</span>
+          <span className="rounded bg-muted px-1.5 py-0.5 font-medium">{formatSize(originalImage.size)}</span>
+        </div>
+      </div>
+
+      {/* Image container */}
       <div
-        className="relative overflow-hidden rounded-lg border bg-muted/20"
+        className="relative overflow-hidden rounded-xl border bg-muted/20 shadow-sm"
         onWheel={handleWheel}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
@@ -103,24 +119,24 @@ export default function ImagePreview() {
           />
         </div>
 
-        {/* Zoom controls */}
-        <div className="absolute bottom-2 right-2 flex items-center gap-0.5">
+        {/* Zoom controls - pill shaped */}
+        <div className="absolute bottom-2 right-2 flex items-center gap-0.5 rounded-lg bg-black/40 px-1 py-0.5 backdrop-blur-sm shadow-md">
           <Button
-            variant="secondary"
+            variant="ghost"
             size="icon"
-            className="size-7 rounded-md shadow-sm text-xs"
+            className="size-6 rounded-md text-white/70 hover:text-white hover:bg-white/10"
             onClick={handleZoomOut}
             disabled={zoom <= 1}
           >
             <ZoomOut className="size-3" />
           </Button>
-          <span className="min-w-[2.5rem] text-center text-[10px] font-medium text-muted-foreground/60">
+          <span className="min-w-[2.5rem] text-center text-[10px] font-medium text-white/60">
             {Math.round(zoom * 100)}%
           </span>
           <Button
-            variant="secondary"
+            variant="ghost"
             size="icon"
-            className="size-7 rounded-md shadow-sm text-xs"
+            className="size-6 rounded-md text-white/70 hover:text-white hover:bg-white/10"
             onClick={handleZoomIn}
             disabled={zoom >= 5}
           >
@@ -128,21 +144,15 @@ export default function ImagePreview() {
           </Button>
           {zoom > 1 && (
             <Button
-              variant="secondary"
+              variant="ghost"
               size="icon"
-              className="size-7 rounded-md shadow-sm text-xs"
+              className="size-6 rounded-md text-white/70 hover:text-white hover:bg-white/10"
               onClick={handleResetZoom}
             >
               <RotateCcw className="size-3" />
             </Button>
           )}
         </div>
-      </div>
-
-      {/* Image info - very minimal */}
-      <div className="flex items-center justify-between text-[10px] text-muted-foreground/40 px-1">
-        <span>{originalImage.width} x {originalImage.height}</span>
-        <span>{formatSize(originalImage.size)}</span>
       </div>
     </motion.div>
   )

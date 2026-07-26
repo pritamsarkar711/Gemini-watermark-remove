@@ -2,7 +2,7 @@
 
 import { useCallback, useRef, useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Eraser, Stamp, Scan, Paintbrush, Loader2, RotateCw, FlipHorizontal, FlipVertical } from 'lucide-react'
+import { Eraser, Stamp, Scan, Paintbrush, Loader2, RotateCw, FlipHorizontal, FlipVertical, Undo2, Redo2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
@@ -26,6 +26,10 @@ export default function ControlPanel() {
     transformConfig,
     setTransformConfig,
     setOriginalImage,
+    canUndo,
+    canRedo,
+    undo,
+    redo,
   } = useAppStore()
 
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -113,7 +117,6 @@ export default function ControlPanel() {
       const data = await res.json()
 
       if (data.success) {
-        // Update the original image with transformed version
         const resultDataUrl = data.result.dataUrl
         const resultBlob = await fetch(resultDataUrl).then((r) => r.blob())
         const resultFile = new File([resultBlob], originalImage.name, { type: 'image/png' })
@@ -210,14 +213,14 @@ export default function ControlPanel() {
       transition={{ duration: 0.3 }}
       className="flex w-full flex-col gap-3"
     >
-      {/* Transform controls - always visible */}
-      <div className="flex flex-col gap-2 rounded-md border bg-card p-2.5">
+      {/* Transform controls */}
+      <div className="flex flex-col gap-2 rounded-lg border bg-card/80 p-2.5 shadow-sm">
         <div className="flex items-center justify-between">
-          <span className="text-[10px] font-medium text-muted-foreground/60">Transform</span>
+          <span className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider">Transform</span>
           {hasTransform && (
             <button
               onClick={() => setTransformConfig({ rotation: 0, flipH: false, flipV: false })}
-              className="text-[9px] text-muted-foreground/40 hover:text-foreground"
+              className="text-[9px] text-muted-foreground/60 hover:text-foreground transition-colors"
             >
               Reset
             </button>
@@ -227,27 +230,30 @@ export default function ControlPanel() {
           <Button
             variant="outline"
             size="icon"
-            className="size-7"
+            className="size-7 rounded-lg"
             onClick={() => setTransformConfig({ rotation: (transformConfig.rotation + 90) % 360 })}
             disabled={isTransforming}
+            title="Rotate 90°"
           >
             <RotateCw className="size-3" />
           </Button>
           <Button
             variant="outline"
             size="icon"
-            className={`size-7 ${transformConfig.flipH ? 'bg-primary/10 border-primary/40' : ''}`}
+            className={`size-7 rounded-lg ${transformConfig.flipH ? 'bg-primary/10 border-primary/40 ring-1 ring-primary/20' : ''}`}
             onClick={() => setTransformConfig({ flipH: !transformConfig.flipH })}
             disabled={isTransforming}
+            title="Flip horizontal"
           >
             <FlipHorizontal className="size-3" />
           </Button>
           <Button
             variant="outline"
             size="icon"
-            className={`size-7 ${transformConfig.flipV ? 'bg-primary/10 border-primary/40' : ''}`}
+            className={`size-7 rounded-lg ${transformConfig.flipV ? 'bg-primary/10 border-primary/40 ring-1 ring-primary/20' : ''}`}
             onClick={() => setTransformConfig({ flipV: !transformConfig.flipV })}
             disabled={isTransforming}
+            title="Flip vertical"
           >
             <FlipVertical className="size-3" />
           </Button>
@@ -256,7 +262,7 @@ export default function ControlPanel() {
               size="sm"
               onClick={handleTransform}
               disabled={isTransforming}
-              className="ml-auto h-7 text-[10px] gap-1"
+              className="ml-auto h-7 rounded-lg text-[10px] gap-1 shadow-sm"
             >
               {isTransforming ? <Loader2 className="size-2.5 animate-spin" /> : null}
               Apply
@@ -270,22 +276,22 @@ export default function ControlPanel() {
         onValueChange={(v) => setMode(v as 'remove' | 'add')}
         className="w-full"
       >
-        <TabsList className="w-full h-8">
-          <TabsTrigger value="remove" className="flex-1 gap-1 h-7 text-xs">
+        <TabsList className="w-full h-8 rounded-lg">
+          <TabsTrigger value="remove" className="flex-1 gap-1 h-7 text-xs rounded-md">
             <Eraser className="size-3" />
             Remove
           </TabsTrigger>
-          <TabsTrigger value="add" className="flex-1 gap-1 h-7 text-xs">
+          <TabsTrigger value="add" className="flex-1 gap-1 h-7 text-xs rounded-md">
             <Stamp className="size-3" />
             Add
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="remove" className="mt-3 flex flex-col gap-3">
-          <div className="flex items-center justify-between rounded-md border bg-card p-2.5">
+          <div className="flex items-center justify-between rounded-lg border bg-card/80 p-2.5 shadow-sm">
             <div className="flex items-center gap-2">
-              <Scan className="size-3.5 text-muted-foreground" />
-              <span className="text-xs font-medium">Auto</span>
+              <Scan className="size-3.5 text-muted-foreground/60" />
+              <span className="text-xs font-medium">Auto detect</span>
             </div>
             <Switch checked={autoDetect} onCheckedChange={setAutoDetect} className="scale-90" />
           </div>
@@ -299,11 +305,11 @@ export default function ControlPanel() {
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
-                  <Paintbrush className="size-3.5 text-muted-foreground" />
-                  <span className="text-xs">Brush</span>
+                  <Paintbrush className="size-3.5 text-muted-foreground/60" />
+                  <span className="text-xs font-medium">Brush</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] text-muted-foreground/50">{brushSize}</span>
+                  <span className="text-[10px] text-muted-foreground/50">{brushSize}px</span>
                   <input
                     type="range"
                     min="5"
@@ -315,7 +321,7 @@ export default function ControlPanel() {
                 </div>
               </div>
 
-              <div className="relative overflow-hidden rounded-md border bg-muted/30">
+              <div className="relative overflow-hidden rounded-lg border bg-muted/30">
                 <canvas
                   ref={canvasRef}
                   className="w-full cursor-crosshair"
@@ -330,9 +336,9 @@ export default function ControlPanel() {
                 variant="outline"
                 size="sm"
                 onClick={clearMask}
-                className="self-start h-7 text-xs"
+                className="self-start h-7 text-xs rounded-lg"
               >
-                Clear
+                Clear mask
               </Button>
             </motion.div>
           )}
@@ -347,7 +353,7 @@ export default function ControlPanel() {
         size="default"
         onClick={handleProcess}
         disabled={isProcessing || (mode === 'add' && !watermarkConfig.text && !watermarkConfig.logoFile)}
-        className="w-full gap-1.5 rounded-lg font-semibold h-9"
+        className="w-full gap-1.5 rounded-lg font-semibold h-9 shadow-sm"
       >
         {isProcessing ? (
           <>
@@ -357,7 +363,7 @@ export default function ControlPanel() {
         ) : (
           <>
             {mode === 'remove' ? <Eraser className="size-3.5" /> : <Stamp className="size-3.5" />}
-            {mode === 'remove' ? 'Remove' : 'Apply'}
+            {mode === 'remove' ? 'Remove watermark' : 'Apply watermark'}
           </>
         )}
       </Button>

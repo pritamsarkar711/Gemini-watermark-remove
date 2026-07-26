@@ -22,20 +22,20 @@ export default function QualityOptimizer() {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="flex flex-col gap-2.5 rounded-md border bg-card p-3"
+      className="flex flex-col gap-2.5 rounded-lg border bg-card/80 p-3 shadow-sm"
     >
       <div className="flex items-center gap-1.5">
-        <Settings2 className="size-3.5 text-muted-foreground" />
-        <Label className="text-xs font-medium">Quality</Label>
+        <Settings2 className="size-3.5 text-muted-foreground/60" />
+        <Label className="text-xs font-semibold">Export quality</Label>
       </div>
 
       <div className="flex items-center justify-between gap-2">
-        <span className="text-[10px] text-muted-foreground/50">Format</span>
+        <span className="text-[10px] text-muted-foreground/50 font-medium">Format</span>
         <Select
           value={qualityConfig.format}
           onValueChange={(v) => setQualityConfig({ format: v as 'jpeg' | 'png' | 'webp' })}
         >
-          <SelectTrigger className="w-[3.5rem] h-6 text-[10px]">
+          <SelectTrigger className="w-[3.5rem] h-6 text-[10px] rounded-lg">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -48,7 +48,7 @@ export default function QualityOptimizer() {
 
       {qualityConfig.format !== 'png' && (
         <div className="flex items-center justify-between gap-2">
-          <span className="text-[10px] text-muted-foreground/50">Quality</span>
+          <span className="text-[10px] text-muted-foreground/50 font-medium">Quality</span>
           <Slider
             value={[qualityConfig.quality]}
             min={10}
@@ -62,22 +62,22 @@ export default function QualityOptimizer() {
       )}
 
       <div className="flex items-center justify-between gap-2">
-        <span className="text-[10px] text-muted-foreground/50">Max W</span>
+        <span className="text-[10px] text-muted-foreground/50 font-medium">Max width</span>
         <Input
           type="number"
           value={qualityConfig.maxWidth}
           onChange={(e) => setQualityConfig({ maxWidth: Number(e.target.value) || 4096 })}
-          className="w-[3.5rem] h-6 text-[10px] px-1.5"
+          className="w-[3.5rem] h-6 text-[10px] px-1.5 rounded-lg"
         />
       </div>
 
       <div className="flex items-center justify-between gap-2">
-        <span className="text-[10px] text-muted-foreground/50">Max H</span>
+        <span className="text-[10px] text-muted-foreground/50 font-medium">Max height</span>
         <Input
           type="number"
           value={qualityConfig.maxHeight}
           onChange={(e) => setQualityConfig({ maxHeight: Number(e.target.value) || 4096 })}
-          className="w-[3.5rem] h-6 text-[10px] px-1.5"
+          className="w-[3.5rem] h-6 text-[10px] px-1.5 rounded-lg"
         />
       </div>
     </motion.div>

@@ -85,3 +85,201 @@ The Zeminai Watermark & Logo Remover is a Next.js 16 application with:
 6. **Add keyboard shortcuts**: Ctrl+Z for undo, Ctrl+S for download, etc.
 
 7. **Improve mobile touch interactions**: The comparison slider and brush canvas need better touch event handling on mobile devices.
+
+---
+
+## Task ID: 3-b
+Agent: header-agent
+Task: Update Header component with dark mode toggle and enhanced design
+
+### Changes Made
+
+#### Header.tsx (`src/components/watermark-remover/Header.tsx`)
+- Added dark/light mode toggle button using Sun/Moon icons from lucide-react
+- Integrated `useTheme` hook from `next-themes` for theme switching
+- Used `useSyncExternalStore` to detect client-side mounting (avoids ESLint `set-state-in-effect` error)
+- Added animated icon transitions (rotate) when toggling between dark/light modes
+- Enhanced header design:
+  - Subtle gradient background (`bg-gradient-to-b from-muted/40 to-transparent`) with `backdrop-blur-md`
+  - Logo pill with `rounded-lg bg-primary` and shadow
+  - "Watermark Remover" subtitle text next to logo (hidden on mobile, shown on `sm:`)
+  - Subtle bottom border with gradient effect (`from-transparent via-border to-transparent`)
+  - Sticky positioning (`sticky top-0 z-50`) maintained
+- Added "New Image" button with Plus icon when in editor mode (`step !== 'upload'`)
+  - Animated appearance/disappearance with `AnimatePresence`
+  - Responsive: icon-only on mobile, icon + label on `sm:` and up
+- Removed unused `RotateCcw` import (replaced with `Plus` for "New Image" button)
+- Header height increased from h-12 to h-14 for better spacing
+
+#### layout.tsx (`src/app/layout.tsx`)
+- Wrapped children with `ThemeProvider` from `next-themes`
+- Configuration: `attribute="class"`, `defaultTheme="system"`, `enableSystem`, `disableTransitionOnChange`
+- `Toaster` also wrapped inside `ThemeProvider` for consistent theming
+
+### Verification
+- ESLint: Passes with zero errors
+- Dev server: Running cleanly, no compilation errors
+
+---
+
+## Task ID: 3-a
+Agent: store-agent
+Task: Update Zustand store with undo/redo functionality and history tracking
+
+### Changes Made
+
+#### store.ts (`src/lib/store.ts`)
+
+**New Types:**
+- `LastAction`: Union type tracking operations ("upload" | "remove-watermark" | "add-watermark" | "transform" | "optimize" | "reset")
+- `ImageInfoSnapshot`: Serializable snapshot of ImageInfo (excludes `File` object, keeps dataUrl + metadata)
+- `WatermarkConfigSnapshot`: Serializable snapshot of WatermarkConfig (excludes `logoFile` File object, keeps all other fields)
+- `HistorySnapshot`: Combined snapshot type storing { originalImage, processedImage, step, transformConfig, watermarkConfig, lastAction }
+
+**New State Fields:**
+- `history: HistorySnapshot[]` — Array of state snapshots for undo/redo navigation. Initialized with `[initialSnapshot]`.
+- `historyIndex: number` — Current position in history. Always points to the snapshot representing the current state. Initialized to `0`.
+- `lastAction: LastAction | null` — Tracks what the last operation was. Initialized to `null`.
+- `canUndo: boolean` — Computed from `historyIndex > 0`. Updated on every history change.
+- `canRedo: boolean` — Computed from `historyIndex < history.length - 1`. Updated on every history change.
+
+**New Methods:**
+- `pushHistory(action?: LastAction)` — Pushes a snapshot of the current state to history. Truncates any redo entries beyond `historyIndex`. Updates `canUndo`/`canRedo`.
+- `undo()` — Decrements `historyIndex`, restores state from `history[newIndex]`. Restores: originalImage (reconstructing File from dataUrl), processedImage, step, transformConfig, watermarkConfig (logoFile set to null), lastAction, outputFileName, isProcessing (set to false).
+- `redo()` — Increments `historyIndex`, restores state from `history[newIndex]`. Same restoration logic as undo.
+
+**Helper Functions (private, not exported):**
+- `createImageInfoSnapshot()` — Strips File object from ImageInfo, producing ImageInfoSnapshot
+- `createWatermarkConfigSnapshot()` — Strips logoFile from WatermarkConfig, producing WatermarkConfigSnapshot
+- `dataUrlToFile()` — Reconstructs a File object from dataUrl + filename + mimeType (using atob + Uint8Array)
+- `restoreImageInfo()` — Reconstructs full ImageInfo from ImageInfoSnapshot by creating File from dataUrl
+- `restoreWatermarkConfig()` — Reconstructs WatermarkConfig from WatermarkConfigSnapshot (logoFile = null)
+- `createSnapshotFromState()` — Creates a complete HistorySnapshot from the current AppState
+
+**Modified Existing Methods:**
+- `setOriginalImage(image)` — Now automatically pushes to history before making the change. Truncates redo future. Creates snapshot of the state AFTER the change (including the new image). Sets `lastAction: "upload"` when image is set, `null` when cleared.
+- `setProcessedImage(image)` — Now automatically pushes to history before making the change. Truncates redo future. Creates snapshot of the state AFTER the change (including the new processedImage).
+- `reset()` — Now also resets history state: `history: [initialSnapshot]`, `historyIndex: 0`, `lastAction: null`, `canUndo: false`, `canRedo: false`.
+
+**Undo/Redo Design:**
+- Standard pattern: `history[historyIndex]` always represents the current state.
+- When a new action modifies state, the state AFTER the change is pushed as a new snapshot, and `historyIndex` advances.
+- Undo restores `history[historyIndex - 1]`, decrementing `historyIndex`.
+- Redo restores `history[historyIndex + 1]`, incrementing `historyIndex`.
+- Any new action truncates the redo future (entries after `historyIndex`).
+- Shallow cloning of ProcessedImage and TransformConfig in snapshots to prevent shared-reference mutations.
+
+**Known Limitation:**
+- `WatermarkConfig.logoFile` (File object) cannot be serialized into history snapshots. When restoring from history, `logoFile` is set to `null`. Users who undo/redo after applying a logo watermark will lose the logo file reference and need to re-upload it.
+
+**All existing functionality preserved:** All original types, state fields, and setter methods remain intact. No breaking changes to existing component imports or usage.
+
+### Verification
+- ESLint: Passes with zero errors
+- Dev server: Running cleanly, no compilation errors after store update
+- All 10 component files referencing `useAppStore` continue to work (no field removals or type changes to existing exports)
+
+---
+Task ID: cron-review-2
+Agent: main-agent
+Task: Comprehensive UI polish, new features, and accessibility improvements
+
+## Current Project Status Description
+
+The Zeminai Watermark & Logo Remover has been significantly enhanced with:
+- Frontend: 9 React components, all updated with improved styling, accessibility, and new features
+- Backend: 5 API endpoints (unchanged, all working)
+- State Management: Zustand store with undo/redo/history tracking
+- New Features: Dark mode, undo/redo with keyboard shortcuts, copy-to-clipboard, image info bar, comparison slider keyboard support, animated comparison labels
+- UI: Tailwind CSS 4, shadcn/ui, Work Sans font, Framer Motion animations, next-themes dark mode
+- VLM Rating: Improved from 7.5/10 to 8/10
+
+## Current Goals / Completed Modifications / Verification Results
+
+### New Feature: Dark Mode Toggle
+- Added Sun/Moon icon toggle in Header using next-themes
+- ThemeProvider wrapped in layout.tsx with system preference detection
+- Animated icon transitions (rotate) between light/dark modes
+- Hydration-safe mounting using useSyncExternalStore
+- Verified: Dark mode renders correctly with proper color scheme
+
+### New Feature: Undo/Redo with Keyboard Shortcuts
+- Added undo/redo buttons in page.tsx (appear when canUndo/canRedo)
+- Keyboard shortcuts: Ctrl+Z for undo, Ctrl+Y for redo
+- Store has full history tracking with snapshot/restore mechanism
+- Verified: Undo goes back to preview state, Redo restores processed result
+
+### New Feature: Copy to Clipboard
+- Added Copy button in DownloadPanel using ClipboardItem API
+- Shows "Copied" feedback with Check icon for 2 seconds
+- Fallback to copy dataUrl string if blob copy fails
+
+### New Feature: Image Info Bar
+- Added info bar above image preview showing: filename, dimensions, format, size
+- Compact badge-style labels with background highlighting
+- Uses ImageIcon from lucide-react for visual hierarchy
+
+### Enhanced: Comparison Slider
+- Added keyboard support (arrow keys to adjust slider position)
+- Animated Before/After labels that fade based on slider position
+- Enhanced divider line with gradient glow effect
+- Pill-shaped handle with hover/tap scale animations
+- Better backdrop for zoom controls
+
+### Enhanced: Upload Area
+- Larger hero section with bigger icon and bolder title
+- Trust badges (Secure, Instant, No trace) with shield/zap/eye icons
+- Better file format description ("PNG JPEG WebP up to 50MB")
+- Enhanced hover state with gradient background
+
+### Enhanced: Control Panel
+- Uppercase tracking labels for Transform section
+- Rounded-lg styling on all buttons and cards
+- Better active state indicators for flip buttons (ring + shadow)
+- More descriptive action labels ("Remove watermark" / "Apply watermark")
+
+### Enhanced: Footer
+- Three-column layout (brand, description, credits)
+- Gradient background from-muted/30 to transparent
+- Better text contrast (muted-foreground/50-60 instead of /30-40)
+- Heart icon with primary/50 color
+
+### Accessibility: Text Contrast Improvements
+- Increased all secondary text opacity from /30-40 to /50-60
+- Fixed muted-foreground/40 → /60 for important labels
+- Fixed muted-foreground/30 → /50 for descriptions
+- Addressed VLM feedback about WCAG AA contrast failures
+
+### QA Testing Results
+- ESLint: Passes with zero errors and zero warnings
+- Dev server: Running cleanly, no compilation errors
+- Agent-browser: Full flow tested (upload → process → comparison → undo → redo → download → copy)
+- VLM rating: 8/10 (up from 7.5/10)
+- Desktop (1280x800): Verified working
+- Mobile (390x844): Verified working
+- Dark mode: Verified working
+- Keyboard shortcuts: Verified working
+
+## Unresolved Issues or Risks
+
+1. **Inpainting performance**: The fast marching algorithm is O(n²) for large masks. Could be optimized with a priority queue (min-heap) for O(n log n) performance.
+
+2. **Logo file in undo/redo**: The `logoFile` File object cannot be serialized into history snapshots. When restoring from undo/redo, logoFile is set to null and needs re-upload.
+
+3. **VLM suggestions not yet addressed**: Make "Remove watermark" CTA button slightly larger/more prominent, add more specificity to trust badges (e.g., "256-bit SSL" instead of just "Secure"), improve icon style consistency.
+
+## Priority Recommendations for Next Phase
+
+1. **Optimize inpainting performance**: Replace the O(n²) linear search with a binary heap priority queue.
+
+2. **Add real-time watermark preview**: Implement client-side canvas preview for watermark addition so users can see changes before applying.
+
+3. **Make CTA button more prominent**: Slightly larger or with more visual weight.
+
+4. **Enhance trust badges**: Add more specificity (e.g., "Processed in <5s", "Files auto-deleted").
+
+5. **Add batch processing**: Allow multiple images to be processed at once.
+
+6. **Add SVG-based Gemini sparkle template**: Create an SVG template for precise mask matching.
+
+7. **Add drag-and-drop re-upload**: Allow users to drop a new image in the editor to replace current one.

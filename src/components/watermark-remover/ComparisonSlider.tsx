@@ -1,8 +1,9 @@
 'use client'
 
 import { useCallback, useRef, useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
-import { ArrowLeft, ArrowRight } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { ArrowLeft, ArrowRight, Maximize2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { useAppStore } from '@/lib/store'
 
 export default function ComparisonSlider() {
@@ -38,6 +39,19 @@ export default function ComparisonSlider() {
     [updatePosition]
   )
 
+  // Keyboard support: left/right arrow keys to adjust slider
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft') {
+        setSliderPosition(Math.max(0, sliderPosition - 2))
+      } else if (e.key === 'ArrowRight') {
+        setSliderPosition(Math.min(100, sliderPosition + 2))
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [sliderPosition, setSliderPosition])
+
   useEffect(() => {
     if (!isDragging) return
 
@@ -72,11 +86,11 @@ export default function ComparisonSlider() {
       initial={{ opacity: 0, scale: 0.98 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.3 }}
-      className="flex w-full flex-col gap-1"
+      className="flex w-full flex-col gap-1.5"
     >
       <div
         ref={containerRef}
-        className="comparison-slider relative w-full overflow-hidden rounded-lg border bg-muted/20"
+        className="comparison-slider relative w-full overflow-hidden rounded-xl border bg-muted/20 shadow-sm"
         style={{ minHeight: '240px', maxHeight: '55vh' }}
         onMouseDown={handleMouseDown}
         onTouchStart={handleTouchStart}
@@ -102,35 +116,66 @@ export default function ComparisonSlider() {
           />
         </div>
 
-        {/* Divider line */}
+        {/* Divider line with glow effect */}
         <div
-          className="absolute top-0 bottom-0 w-[2px] bg-white/80 shadow-[0_0_8px_rgba(0,0,0,0.3)]"
+          className="absolute top-0 bottom-0 w-[3px] z-10"
           style={{ left: `${sliderPosition}%`, transform: 'translateX(-1px)' }}
-        />
+        >
+          <div className="absolute inset-0 bg-gradient-to-b from-white via-white/90 to-white/70 shadow-[0_0_12px_rgba(255,255,255,0.5),0_0_4px_rgba(0,0,0,0.3)]" />
+        </div>
 
-        {/* Handle */}
+        {/* Handle - pill shaped with arrows */}
         <div
-          className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 size-9 rounded-full bg-white shadow-[0_2px_12px_rgba(0,0,0,0.4)] flex items-center justify-center"
+          className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 z-11"
           style={{ left: `${sliderPosition}%` }}
         >
-          <div className="flex items-center gap-0.5">
-            <ArrowLeft className="size-2.5 text-gray-600/70" />
-            <ArrowRight className="size-2.5 text-gray-600/70" />
-          </div>
+          <motion.div
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.95 }}
+            className="flex size-10 rounded-full bg-white/95 shadow-[0_2px_16px_rgba(0,0,0,0.4),0_0_0_1px_rgba(0,0,0,0.05)] items-center justify-center backdrop-blur-sm"
+          >
+            <div className="flex items-center gap-0.5">
+              <ArrowLeft className="size-2.5 text-gray-500/80" />
+              <ArrowRight className="size-2.5 text-gray-500/80" />
+            </div>
+          </motion.div>
         </div>
 
-        {/* Minimal labels */}
-        <div className="pointer-events-none absolute top-2 left-2 rounded bg-black/50 px-1.5 py-0.5 text-[9px] font-medium text-white/70 backdrop-blur-sm">
-          Before
-        </div>
-        <div className="pointer-events-none absolute top-2 right-2 rounded bg-black/50 px-1.5 py-0.5 text-[9px] font-medium text-white/70 backdrop-blur-sm">
-          After
-        </div>
+        {/* Labels - animated fade */}
+        <AnimatePresence>
+          {sliderPosition > 5 && (
+            <motion.div
+              initial={{ opacity: 0, x: -5 }}
+              animate={{ opacity: 0.8, x: 0 }}
+              exit={{ opacity: 0, x: -5 }}
+              className="pointer-events-none absolute top-2.5 left-2.5 rounded-lg bg-black/50 px-2 py-1 text-[10px] font-semibold text-white/80 backdrop-blur-sm shadow-sm"
+            >
+              Before
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {sliderPosition < 95 && (
+            <motion.div
+              initial={{ opacity: 0, x: 5 }}
+              animate={{ opacity: 0.8, x: 0 }}
+              exit={{ opacity: 0, x: 5 }}
+              className="pointer-events-none absolute top-2.5 right-2.5 rounded-lg bg-primary/50 px-2 py-1 text-[10px] font-semibold text-white/80 backdrop-blur-sm shadow-sm"
+            >
+              After
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
-      <div className="flex items-center justify-between text-[10px] text-muted-foreground/40 px-1">
-        <span>Original</span>
-        <span>Result</span>
+      {/* Bottom info */}
+      <div className="flex items-center justify-between px-1.5">
+        <span className="text-[10px] font-medium text-muted-foreground/60">Original</span>
+        <div className="flex items-center gap-1 text-[10px] text-muted-foreground/50">
+          <span>Drag slider or use arrow keys</span>
+        </div>
+        <span className="text-[10px] font-medium text-muted-foreground/60">Result</span>
       </div>
     </motion.div>
   )

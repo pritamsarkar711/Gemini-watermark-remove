@@ -184,3 +184,21 @@
 .transition-smooth {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
+
+/* Selection highlight color */
+::selection {
+  background: oklch(0.55 0.2 25 / 20%);
+}
+
+/* Focus ring style */
+:focus-visible {
+  outline: 2px solid oklch(0.55 0.2 25);
+  outline-offset: 2px;
+}
+
+/* Smooth page transitions */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
