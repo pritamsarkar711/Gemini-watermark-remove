@@ -85,18 +85,18 @@
   --card-foreground: oklch(0.985 0.002 247);
   --popover: oklch(0.18 0.005 247);
   --popover-foreground: oklch(0.985 0.002 247);
-  --primary: oklch(0.65 0.2 25);
-  --primary-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.7 0.19 25);
+  --primary-foreground: oklch(0.15 0.005 247);
   --secondary: oklch(0.25 0.01 247);
   --secondary-foreground: oklch(0.985 0.002 247);
   --muted: oklch(0.25 0.01 247);
-  --muted-foreground: oklch(0.65 0.02 247);
-  --accent: oklch(0.25 0.01 247);
+  --muted-foreground: oklch(0.72 0.015 247);
+  --accent: oklch(0.28 0.01 247);
   --accent-foreground: oklch(0.985 0.002 247);
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.65 0.2 25);
+  --border: oklch(1 0 0 / 14%);
+  --input: oklch(1 0 0 / 18%);
+  --ring: oklch(0.7 0.19 25);
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
@@ -104,12 +104,12 @@
   --chart-5: oklch(0.645 0.246 16.439);
   --sidebar: oklch(0.18 0.005 247);
   --sidebar-foreground: oklch(0.985 0.002 247);
-  --sidebar-primary: oklch(0.65 0.2 25);
+  --sidebar-primary: oklch(0.7 0.19 25);
   --sidebar-primary-foreground: oklch(0.985 0 0);
   --sidebar-accent: oklch(0.25 0.01 247);
   --sidebar-accent-foreground: oklch(0.985 0.002 247);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.65 0.2 25);
+  --sidebar-border: oklch(1 0 0 / 14%);
+  --sidebar-ring: oklch(0.7 0.19 25);
 }
 
 @layer base {
@@ -297,12 +297,14 @@
   font-weight: 600;
 }
 
-/* Toggle switch - brand color but softer than primary red */
+/* Toggle switch - subtle teal-ish tone when checked (clearly "active" not "error")
+   Using a desaturated primary-adjacent hue that reads as "on" without the alarm
+   of pure red. Falls back to primary if custom prop unset. */
 .toggle-switch[data-state="checked"] {
-  background-color: oklch(0.55 0.15 25);
+  background-color: oklch(0.55 0.13 152);
 }
 .toggle-switch[data-state="unchecked"] {
-  background-color: color-mix(in oklch, var(--muted-foreground) 30%, transparent);
+  background-color: color-mix(in oklch, var(--muted-foreground) 35%, transparent);
 }
 
 /* ─── Empty-state dot grid pattern ────────────────────────────────────────── */
@@ -543,4 +545,12 @@
 /* ─── Brand text shadow for depth ──────────────────────────────────────────── */
 .brand-shadow {
   text-shadow: 0 1px 2px color-mix(in oklch, var(--primary) 15%, transparent);
+}
+
+/* ─── Inline Magic Brush canvas (ImagePreview overlay) ────────────────────── */
+/* Crosshair cursor so the user knows they are painting; touch-action: none
+   prevents the browser from scrolling/zooming while drawing on touch devices. */
+.brush-canvas {
+  cursor: crosshair;
+  touch-action: none;
 }

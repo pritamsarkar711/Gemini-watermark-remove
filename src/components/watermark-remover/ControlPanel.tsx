@@ -27,6 +27,7 @@ export default function ControlPanel() {
     transformConfig,
     setTransformConfig,
     setOriginalImage,
+    isInlineBrushActive,
   } = useAppStore()
 
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -59,7 +60,20 @@ export default function ControlPanel() {
         const data = await res.json()
 
         if (data.success) {
-          setProcessedImage(data.result, 'remove-watermark')
+          // Merge detection metadata through to the store. The API returns
+          // detectionConfidence (0-99) and detectionRegion (bounding box or
+          // null) at the top level — only present when autoDetect ran.
+          // For manual-mask removals both are undefined/null, which is the
+          // correct semantic ("we didn't auto-detect anything").
+          const result = {
+            dataUrl: data.result.dataUrl as string,
+            width: data.result.width as number,
+            height: data.result.height as number,
+            size: data.result.size as number,
+            detectionConfidence: typeof data.detectionConfidence === 'number' ? data.detectionConfidence : undefined,
+            detectionRegion: data.detectionRegion ?? null,
+          }
+          setProcessedImage(result, 'remove-watermark')
           setShowComparison(true)
           showSuccessToast('remove')
         }
@@ -437,7 +451,7 @@ export default function ControlPanel() {
             <Switch checked={autoDetect} onCheckedChange={setAutoDetect} className="toggle-switch scale-90" />
           </div>
 
-          {!autoDetect && (
+          {!autoDetect && !isInlineBrushActive && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
@@ -481,6 +495,21 @@ export default function ControlPanel() {
               >
                 Clear mask
               </Button>
+            </motion.div>
+          )}
+
+          {/* Hint when inline brush is active on the main preview */}
+          {isInlineBrushActive && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 p-2.5"
+            >
+              <Paintbrush className="size-3.5 text-primary" />
+              <span className="text-[11px] font-medium text-foreground/80">
+                Paint over the watermark on the image, then click Apply.
+              </span>
             </motion.div>
           )}
         </TabsContent>

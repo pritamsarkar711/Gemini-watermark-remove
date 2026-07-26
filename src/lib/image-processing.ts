@@ -345,12 +345,111 @@ function applyBoundarySmoothing(
 // AUTO WATERMARK DETECTION (IMPROVED)
 // ============================================================
 
-interface DetectedRegion {
+export interface DetectedRegion {
   x: number;
   y: number;
   width: number;
   height: number;
   confidence: number;
+}
+
+/**
+ * Compute a 0-99 confidence score for auto-detected watermark regions.
+ *
+ * Heuristic (see task spec cron9-feat-B):
+ *   maskRatio = totalMaskPixels / totalImagePixels
+ *   - < 0.001 OR > 0.30  → 35  (implausibly small/large — probably a misdetect)
+ *   - < 0.005            → 60  (small but plausible)
+ *   - > 0.20             → 65  (large but plausible)
+ *   - 0.005..0.15        → 95  (sweet spot — typical watermark size)
+ *   - otherwise (0.15..0.20) → 80
+ *
+ * Corner bonus: if any region's center sits within 30% of any image edge
+ * (i.e. inside one of the four corner quadrants), add +5 — watermarks are
+ * usually corner-anchored.
+ *
+ * Confidence is capped at 99 (never 100 — leaves room for doubt).
+ */
+export function computeDetectionConfidence(
+  regions: DetectedRegion[],
+  imageWidth: number,
+  imageHeight: number
+): number {
+  const totalPixels = imageWidth * imageHeight;
+  if (totalPixels <= 0 || regions.length === 0) return 35;
+
+  // Sum of region areas. Regions may overlap or extend past image bounds,
+  // so clamp the total to totalPixels to keep the ratio meaningful.
+  let maskPixels = 0;
+  for (const r of regions) {
+    maskPixels += Math.max(0, r.width) * Math.max(0, r.height);
+  }
+  maskPixels = Math.min(maskPixels, totalPixels);
+
+  const maskRatio = maskPixels / totalPixels;
+
+  let confidence: number;
+  if (maskRatio < 0.001 || maskRatio > 0.30) {
+    confidence = 35;
+  } else if (maskRatio < 0.005) {
+    confidence = 60;
+  } else if (maskRatio > 0.20) {
+    confidence = 65;
+  } else if (maskRatio >= 0.005 && maskRatio <= 0.15) {
+    confidence = 95;
+  } else {
+    confidence = 80;
+  }
+
+  // Corner bonus: any region whose center lies in a corner quadrant
+  // (within 30% of two adjacent edges) earns +5.
+  const inCorner = regions.some((r) => {
+    const cx = r.x + r.width / 2;
+    const cy = r.y + r.height / 2;
+    const left = cx <= imageWidth * 0.30;
+    const right = cx >= imageWidth * 0.70;
+    const top = cy <= imageHeight * 0.30;
+    const bottom = cy >= imageHeight * 0.70;
+    return (left || right) && (top || bottom);
+  });
+  if (inCorner) confidence += 5;
+
+  // Cap at 99 (never 100). Floor at 0 defensively.
+  return Math.min(99, Math.max(0, Math.round(confidence)));
+}
+
+/**
+ * Compute the axis-aligned bounding box of all detected regions, clamped to
+ * the image bounds. Returns null when no regions were detected.
+ *
+ * Used as the `detectionRegion` metadata returned by the remove-watermark
+ * API for future use (e.g. drawing an overlay rectangle on the preview).
+ */
+export function computeDetectionBoundingRegion(
+  regions: DetectedRegion[],
+  imageWidth: number,
+  imageHeight: number
+): { x: number; y: number; width: number; height: number } | null {
+  if (regions.length === 0) return null;
+
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const r of regions) {
+    minX = Math.min(minX, r.x);
+    minY = Math.min(minY, r.y);
+    maxX = Math.max(maxX, r.x + r.width);
+    maxY = Math.max(maxY, r.y + r.height);
+  }
+
+  const x = Math.max(0, Math.round(minX));
+  const y = Math.max(0, Math.round(minY));
+  const width = Math.min(imageWidth - x, Math.round(maxX - minX));
+  const height = Math.min(imageHeight - y, Math.round(maxY - minY));
+
+  if (width <= 0 || height <= 0) return null;
+  return { x, y, width, height };
 }
 
 /**

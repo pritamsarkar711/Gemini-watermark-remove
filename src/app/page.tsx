@@ -234,28 +234,29 @@ export default function Home() {
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -10 }}
-                      className="flex items-center gap-1.5"
+                      className="flex items-center gap-1.5 rounded-lg border border-border/60 bg-card/80 p-1 shadow-sm backdrop-blur-sm"
                     >
                       <button
                         onClick={undo}
                         disabled={!canUndo}
-                        className={`flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium transition-all ${
+                        className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-semibold transition-all ${
                           canUndo
-                            ? 'bg-muted text-foreground hover:bg-accent'
-                            : 'text-muted-foreground/30 cursor-not-allowed'
+                            ? 'bg-muted/60 text-foreground hover:bg-accent hover:shadow-sm'
+                            : 'text-muted-foreground/40 cursor-not-allowed'
                         }`}
                         title="Undo (Ctrl+Z)"
                       >
                         <Undo2 className="size-3" />
                         Undo
                       </button>
+                      <div className="h-3 w-px bg-border/60" />
                       <button
                         onClick={redo}
                         disabled={!canRedo}
-                        className={`flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium transition-all ${
+                        className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-semibold transition-all ${
                           canRedo
-                            ? 'bg-muted text-foreground hover:bg-accent'
-                            : 'text-muted-foreground/30 cursor-not-allowed'
+                            ? 'bg-muted/60 text-foreground hover:bg-accent hover:shadow-sm'
+                            : 'text-muted-foreground/40 cursor-not-allowed'
                         }`}
                         title="Redo (Ctrl+Y)"
                       >

@@ -2,7 +2,7 @@
 
 import { useRef, useState, useCallback, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ZoomIn, ZoomOut, RotateCcw, ImageIcon, UploadCloud } from 'lucide-react'
+import { ZoomIn, ZoomOut, RotateCcw, ImageIcon, UploadCloud, Paintbrush, Eraser, Check, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAppStore, type ImageInfo } from '@/lib/store'
 
@@ -73,6 +73,11 @@ export default function ImagePreview() {
     setCropRect,
     isCropOverlayActive,
     isProcessing,
+    mode,
+    autoDetect,
+    setAutoDetect,
+    setMaskData,
+    setInlineBrushActive,
   } = useAppStore()
   const [zoom, setZoom] = useState(1)
   const [processingStage, setProcessingStage] = useState(0)
@@ -81,6 +86,23 @@ export default function ImagePreview() {
   const [isDragOver, setIsDragOver] = useState(false)
   const dragStart = useRef({ x: 0, y: 0 })
   const offsetStart = useRef({ x: 0, y: 0 })
+
+  // ─── Inline Magic Brush state ──────────────────────────────────────────────
+  // `isBrushMode` toggles the brushable canvas overlay on the main image preview.
+  // `brushSize` is in CSS pixels (what the user sees); it is scaled to canvas
+  // pixels at draw time using the canvas-to-display ratio.
+  // `brushCanvasRef` is the visible canvas (semi-transparent red strokes).
+  // `brushDataCanvasRef` is a hidden offscreen canvas that holds opaque white
+  // strokes — this is what gets exported as the mask PNG, because the
+  // remove-watermark API thresholds on RGB brightness (maskVal > 128) and pure
+  // red (255,60,60) averages to 125 which would be incorrectly skipped.
+  const [isBrushMode, setIsBrushMode] = useState(false)
+  const [brushSize, setBrushSize] = useState(20)
+  const [isBrushDrawing, setIsBrushDrawing] = useState(false)
+  const brushCanvasRef = useRef<HTMLCanvasElement | null>(null)
+  const brushDataCanvasRef = useRef<HTMLCanvasElement | null>(null)
+  const lastBrushPosRef = useRef<{ x: number; y: number } | null>(null)
+  const prevAutoDetectRef = useRef<boolean | null>(null)
 
   // ─── Processing stage timer ────────────────────────────────────────────────
   useEffect(() => {
@@ -320,13 +342,14 @@ export default function ImagePreview() {
   }, [])
 
   const handleWheel = useCallback((e: React.WheelEvent) => {
+    if (isBrushMode) return // disable zoom while painting
     e.preventDefault()
     setZoom((z) => {
       const newZoom = Math.max(1, Math.min(5, z - e.deltaY * 0.002))
       if (newZoom === 1) setOffset({ x: 0, y: 0 })
       return newZoom
     })
-  }, [])
+  }, [isBrushMode])
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
@@ -415,6 +438,245 @@ export default function ImagePreview() {
     [processFile]
   )
 
+  // ─── Inline Magic Brush handlers ───────────────────────────────────────────
+  // The brush overlay mirrors the crop overlay's positioning strategy: a
+  // relative wrapper sized to the rendered image bounds (renderedSize), with
+  // the canvas absolutely filling that wrapper. The canvas's internal
+  // resolution is set to the original image's natural dimensions so the mask
+  // matches the input image 1:1 (the API also resizes the mask to fit, but
+  // starting at native resolution avoids blur).
+
+  /** Initialize both brush canvases (visible + hidden data) when entering brush mode. */
+  useEffect(() => {
+    if (!isBrushMode || !originalImage) return
+    const dispCanvas = brushCanvasRef.current
+    const dataCanvas = brushDataCanvasRef.current
+    if (!dispCanvas || !dataCanvas) return
+    // Use the original image's natural dimensions for a high-quality mask
+    dispCanvas.width = originalImage.width
+    dispCanvas.height = originalImage.height
+    dataCanvas.width = originalImage.width
+    dataCanvas.height = originalImage.height
+    const dispCtx = dispCanvas.getContext('2d')
+    const dataCtx = dataCanvas.getContext('2d')
+    if (dispCtx) dispCtx.clearRect(0, 0, dispCanvas.width, dispCanvas.height)
+    if (dataCtx) dataCtx.clearRect(0, 0, dataCanvas.width, dataCanvas.height)
+    lastBrushPosRef.current = null
+  }, [isBrushMode, originalImage])
+
+  /** Exit brush mode automatically when leaving remove mode or losing the image.
+   *  Uses setTimeout(0) to defer the setState calls (matching the existing
+   *  processing-stage timer pattern in this file) and satisfy the
+   *  react-hooks/set-state-in-effect lint rule. */
+  useEffect(() => {
+    if (!isBrushMode) return
+    if (mode === 'remove' && originalImage) return
+    const timer = setTimeout(() => {
+      setIsBrushMode(false)
+      setInlineBrushActive(false)
+      // Restore autoDetect if it was on before entering brush mode
+      if (prevAutoDetectRef.current === true) setAutoDetect(true)
+      prevAutoDetectRef.current = null
+    }, 0)
+    return () => clearTimeout(timer)
+  }, [isBrushMode, mode, originalImage, setAutoDetect, setInlineBrushActive])
+
+  /** Convert a pointer's client coords to canvas-internal pixel coords. */
+  const getBrushPos = useCallback(
+    (clientX: number, clientY: number): { x: number; y: number } | null => {
+      const canvas = brushCanvasRef.current
+      if (!canvas) return null
+      const rect = canvas.getBoundingClientRect()
+      if (rect.width === 0 || rect.height === 0) return null
+      const scaleX = canvas.width / rect.width
+      const scaleY = canvas.height / rect.height
+      return {
+        x: (clientX - rect.left) * scaleX,
+        y: (clientY - rect.top) * scaleY,
+      }
+    },
+    []
+  )
+
+  /** Paint a filled circle (and a line from the last position) at canvas coords. */
+  const paintBrush = useCallback(
+    (pos: { x: number; y: number }) => {
+      const dispCanvas = brushCanvasRef.current
+      const dataCanvas = brushDataCanvasRef.current
+      if (!dispCanvas || !dataCanvas) return
+      const dispCtx = dispCanvas.getContext('2d')
+      const dataCtx = dataCanvas.getContext('2d')
+      if (!dispCtx || !dataCtx) return
+
+      const rect = dispCanvas.getBoundingClientRect()
+      if (rect.width === 0) return
+      // Scale brush size from CSS pixels to canvas pixels
+      const scale = dispCanvas.width / rect.width
+      const radius = (brushSize * scale) / 2
+      const lineWidth = brushSize * scale
+
+      // Visible canvas: semi-transparent red (per spec)
+      dispCtx.fillStyle = 'rgba(255, 60, 60, 0.4)'
+      dispCtx.strokeStyle = 'rgba(255, 60, 60, 0.4)'
+      dispCtx.lineWidth = lineWidth
+      dispCtx.lineCap = 'round'
+      dispCtx.lineJoin = 'round'
+
+      // Hidden data canvas: opaque white so the API's maskVal > 128 check passes
+      dataCtx.fillStyle = 'rgba(255, 255, 255, 1)'
+      dataCtx.strokeStyle = 'rgba(255, 255, 255, 1)'
+      dataCtx.lineWidth = lineWidth
+      dataCtx.lineCap = 'round'
+      dataCtx.lineJoin = 'round'
+
+      // Filled circle at the cursor
+      dispCtx.beginPath()
+      dispCtx.arc(pos.x, pos.y, radius, 0, Math.PI * 2)
+      dispCtx.fill()
+
+      dataCtx.beginPath()
+      dataCtx.arc(pos.x, pos.y, radius, 0, Math.PI * 2)
+      dataCtx.fill()
+
+      // Smooth line from last position to current
+      const last = lastBrushPosRef.current
+      if (last) {
+        dispCtx.beginPath()
+        dispCtx.moveTo(last.x, last.y)
+        dispCtx.lineTo(pos.x, pos.y)
+        dispCtx.stroke()
+
+        dataCtx.beginPath()
+        dataCtx.moveTo(last.x, last.y)
+        dataCtx.lineTo(pos.x, pos.y)
+        dataCtx.stroke()
+      }
+
+      lastBrushPosRef.current = pos
+    },
+    [brushSize]
+  )
+
+  /** Mouse: start drawing. */
+  const handleBrushMouseDown = useCallback(
+    (e: React.MouseEvent<HTMLCanvasElement>) => {
+      e.preventDefault()
+      e.stopPropagation()
+      const pos = getBrushPos(e.clientX, e.clientY)
+      if (!pos) return
+      setIsBrushDrawing(true)
+      lastBrushPosRef.current = null
+      paintBrush(pos)
+    },
+    [getBrushPos, paintBrush]
+  )
+
+  /** Mouse: continue drawing while button is held. */
+  const handleBrushMouseMove = useCallback(
+    (e: React.MouseEvent<HTMLCanvasElement>) => {
+      if (!isBrushDrawing) return
+      const pos = getBrushPos(e.clientX, e.clientY)
+      if (!pos) return
+      paintBrush(pos)
+    },
+    [isBrushDrawing, getBrushPos, paintBrush]
+  )
+
+  /** Mouse: stop drawing. */
+  const handleBrushMouseUp = useCallback(() => {
+    setIsBrushDrawing(false)
+    lastBrushPosRef.current = null
+  }, [])
+
+  /** Touch: start drawing (mobile). */
+  const handleBrushTouchStart = useCallback(
+    (e: React.TouchEvent<HTMLCanvasElement>) => {
+      e.preventDefault()
+      e.stopPropagation()
+      if (e.touches.length === 0) return
+      const t = e.touches[0]
+      const pos = getBrushPos(t.clientX, t.clientY)
+      if (!pos) return
+      setIsBrushDrawing(true)
+      lastBrushPosRef.current = null
+      paintBrush(pos)
+    },
+    [getBrushPos, paintBrush]
+  )
+
+  /** Touch: continue drawing (mobile). */
+  const handleBrushTouchMove = useCallback(
+    (e: React.TouchEvent<HTMLCanvasElement>) => {
+      if (!isBrushDrawing) return
+      e.preventDefault()
+      if (e.touches.length === 0) return
+      const t = e.touches[0]
+      const pos = getBrushPos(t.clientX, t.clientY)
+      if (!pos) return
+      paintBrush(pos)
+    },
+    [isBrushDrawing, getBrushPos, paintBrush]
+  )
+
+  /** Touch: stop drawing (mobile). */
+  const handleBrushTouchEnd = useCallback(() => {
+    setIsBrushDrawing(false)
+    lastBrushPosRef.current = null
+  }, [])
+
+  /** Enter brush mode: remember autoDetect so we can restore it on cancel. */
+  const enterBrushMode = useCallback(() => {
+    if (!originalImage || isProcessing) return
+    prevAutoDetectRef.current = autoDetect
+    setAutoDetect(false)
+    // Reset zoom/pan so the canvas overlay aligns exactly with the image
+    setZoom(1)
+    setOffset({ x: 0, y: 0 })
+    setIsBrushMode(true)
+    setInlineBrushActive(true)
+  }, [originalImage, isProcessing, autoDetect, setAutoDetect, setInlineBrushActive])
+
+  /** Clear both canvases. */
+  const clearBrushCanvas = useCallback(() => {
+    const dispCanvas = brushCanvasRef.current
+    const dataCanvas = brushDataCanvasRef.current
+    if (dispCanvas) {
+      const ctx = dispCanvas.getContext('2d')
+      if (ctx) ctx.clearRect(0, 0, dispCanvas.width, dispCanvas.height)
+    }
+    if (dataCanvas) {
+      const ctx = dataCanvas.getContext('2d')
+      if (ctx) ctx.clearRect(0, 0, dataCanvas.width, dataCanvas.height)
+    }
+    lastBrushPosRef.current = null
+  }, [])
+
+  /** Apply: export the data canvas as a PNG mask and trigger the remove API. */
+  const applyBrushMask = useCallback(() => {
+    const dataCanvas = brushDataCanvasRef.current
+    if (!dataCanvas) return
+    const dataUrl = dataCanvas.toDataURL('image/png')
+    setMaskData(dataUrl)
+    setIsBrushMode(false)
+    setInlineBrushActive(false)
+    // The autoDetect was already set to false on enter; leave it false so the
+    // API uses the mask. (prevAutoDetectRef is intentionally NOT restored here.)
+    prevAutoDetectRef.current = null
+    // Trigger the global process handler exposed by ControlPanel
+    if (typeof window !== 'undefined') {
+      const w = window as unknown as { __zeminaiProcess?: () => void }
+      w.__zeminaiProcess?.()
+    }
+  }, [setMaskData, setInlineBrushActive])
+
+  /** Cancel: exit brush mode and restore autoDetect if it was on before. */
+  const cancelBrushMode = useCallback(() => {
+    setIsBrushMode(false)
+    setInlineBrushActive(false)
+    if (prevAutoDetectRef.current === true) setAutoDetect(true)
+    prevAutoDetectRef.current = null
+  }, [setAutoDetect, setInlineBrushActive])
+
   if (!originalImage) {
     return (
       <motion.div
@@ -453,7 +715,7 @@ export default function ImagePreview() {
       : null
 
   const showOverlay =
-    isCropOverlayActive && originalImage && overlayPct && zoom <= 1
+    isCropOverlayActive && originalImage && overlayPct && zoom <= 1 && !isBrushMode
 
   return (
     <motion.div
@@ -585,6 +847,48 @@ export default function ImagePreview() {
           </div>
         )}
 
+        {/* Inline Magic Brush canvas overlay — covers the rendered image bounds.
+            A wrapper div is sized to the rendered image dimensions (mirroring
+            the crop overlay strategy) so the canvas only covers the image,
+            not the empty padding around it. */}
+        {isBrushMode && renderedSize && (
+          <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
+            <div
+              className="relative"
+              style={{
+                width: `${renderedSize.w}px`,
+                height: `${renderedSize.h}px`,
+                maxWidth: '100%',
+                maxHeight: '100%',
+              }}
+            >
+              <canvas
+                ref={brushCanvasRef}
+                className="brush-canvas pointer-events-auto absolute inset-0 h-full w-full"
+                onMouseDown={handleBrushMouseDown}
+                onMouseMove={handleBrushMouseMove}
+                onMouseUp={handleBrushMouseUp}
+                onMouseLeave={handleBrushMouseUp}
+                onTouchStart={handleBrushTouchStart}
+                onTouchMove={handleBrushTouchMove}
+                onTouchEnd={handleBrushTouchEnd}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Hidden offscreen data canvas — holds opaque white strokes that get
+            exported as the mask PNG on Apply. Kept in the DOM (display:none) so
+            its 2D context is always available. */}
+        <canvas ref={brushDataCanvasRef} style={{ display: 'none' }} aria-hidden="true" />
+
+        {/* Brush mode hint badge (top-left, above the canvas) */}
+        {isBrushMode && (
+          <div className="pointer-events-none absolute left-2 top-2 z-20 rounded-md bg-black/70 px-2 py-1 text-[10px] font-medium text-white/90 shadow-md backdrop-blur-sm">
+            Paint over the watermark to remove
+          </div>
+        )}
+
         {/* Processing overlay — semi-transparent with spinner and progress bar */}
         <AnimatePresence>
           {isProcessing && (
@@ -712,6 +1016,85 @@ export default function ImagePreview() {
           )}
         </div>
       </div>
+
+      {/* Inline Magic Brush toggle / toolbar — only shown in remove mode with an
+          image loaded and not during processing. When not in brush mode, shows a
+          single "Manual brush" button. When in brush mode, shows the full toolbar
+          (brush size slider, Clear, Apply, Cancel). */}
+      {mode === 'remove' && originalImage && !isProcessing && (
+        isBrushMode ? (
+          <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-card/80 px-2.5 py-1.5 shadow-sm backdrop-blur-sm">
+            <Paintbrush className="size-3.5 shrink-0 text-primary/70" />
+            <span className="hidden text-[10px] text-muted-foreground/70 sm:inline">
+              Paint over the watermark to remove
+            </span>
+            <div className="ml-auto flex items-center gap-1.5">
+              <span className="tabular-nums text-[10px] font-medium text-muted-foreground/60">
+                {brushSize}px
+              </span>
+              <input
+                type="range"
+                min="5"
+                max="80"
+                value={brushSize}
+                onChange={(e) => setBrushSize(Number(e.target.value))}
+                className="h-1 w-20 accent-primary sm:w-24"
+                aria-label="Brush size"
+              />
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={clearBrushCanvas}
+              className="h-7 gap-1 rounded-md px-2 text-[11px]"
+              title="Clear mask"
+              aria-label="Clear mask"
+            >
+              <Eraser className="size-3" />
+              <span className="hidden sm:inline">Clear</span>
+            </Button>
+            <Button
+              variant="default"
+              size="sm"
+              onClick={applyBrushMask}
+              className="h-7 gap-1 rounded-md px-2 text-[11px]"
+              title="Apply mask and remove watermark"
+              aria-label="Apply mask and remove watermark"
+            >
+              <Check className="size-3" />
+              Apply
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={cancelBrushMode}
+              className="h-7 gap-1 rounded-md px-2 text-[11px]"
+              title="Cancel brush mode"
+              aria-label="Cancel brush mode"
+            >
+              <X className="size-3" />
+              <span className="hidden sm:inline">Cancel</span>
+            </Button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={enterBrushMode}
+              className="h-7 gap-1.5 rounded-lg text-xs"
+              title="Manually paint over the watermark"
+              aria-label="Manually paint over the watermark"
+            >
+              <Paintbrush className="size-3.5" />
+              Manual brush
+            </Button>
+            <span className="hidden text-[10px] text-muted-foreground/50 sm:inline">
+              Paint over the watermark to remove it manually
+            </span>
+          </div>
+        )
+      )}
     </motion.div>
   )
 }

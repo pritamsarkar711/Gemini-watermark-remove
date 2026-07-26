@@ -1,37 +1,39 @@
 'use client'
 
-import { Eraser, Heart, Github, Keyboard } from 'lucide-react'
+import { Eraser, Heart, Keyboard, Github } from 'lucide-react'
 
 export default function Footer() {
   return (
-    <footer className="mt-auto w-full gradient-border-top bg-gradient-to-t from-muted/30 to-transparent">
-      <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6">
-        {/* Brand */}
-        <div className="flex items-center gap-1.5 text-muted-foreground">
-          <Eraser className="size-3" />
-          <span className="text-xs font-medium hover:text-primary transition-colors cursor-default">Zeminai</span>
+    <footer className="mt-auto w-full gradient-border-top bg-gradient-to-t from-muted/40 via-muted/20 to-transparent backdrop-blur-sm">
+      <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6 gap-3">
+        {/* Brand cluster */}
+        <div className="flex items-center gap-2">
+          <div className="flex size-5 items-center justify-center rounded bg-primary/15">
+            <Eraser className="size-3 text-primary" />
+          </div>
+          <span className="text-xs font-bold text-foreground/80">Zeminai</span>
+          <span className="hidden sm:inline text-[10px] text-muted-foreground/60">·</span>
+          <span className="hidden sm:inline text-[10px] font-medium text-muted-foreground">Watermark Remover</span>
         </div>
 
-        {/* Center: keyboard shortcut hints */}
-        <div className="hidden sm:flex items-center gap-1.5 text-[12px] text-muted-foreground">
-          <Keyboard className="size-3" />
-          <span>
-            <kbd className="rounded bg-muted px-1 py-0.5 text-[9px] font-medium">Ctrl+Z</kbd> Undo
-          </span>
-          <span className="text-muted-foreground/40">·</span>
-          <span>
-            <kbd className="rounded bg-muted px-1 py-0.5 text-[9px] font-medium">?</kbd> Help
-          </span>
+        {/* Center: keyboard shortcut hints — visually grouped */}
+        <div className="hidden md:flex items-center gap-2 px-2.5 py-1 rounded-full border border-border/60 bg-card/60 shadow-sm">
+          <Keyboard className="size-3 text-muted-foreground" />
+          <kbd className="rounded bg-muted px-1.5 py-0.5 text-[9px] font-semibold text-muted-foreground tabular-nums">Ctrl+Z</kbd>
+          <span className="text-[10px] text-muted-foreground font-medium">Undo</span>
+          <span className="text-muted-foreground/30">·</span>
+          <kbd className="rounded bg-muted px-1.5 py-0.5 text-[9px] font-semibold text-muted-foreground">?</kbd>
+          <span className="text-[10px] text-muted-foreground font-medium">Help</span>
         </div>
 
         {/* Right: credits + version */}
-        <div className="flex items-center gap-2 text-[12px] text-muted-foreground/70">
-          <div className="flex items-center gap-1">
-            <Heart className="size-2.5 text-primary/50" />
-            <span className="hidden sm:inline">Built with care</span>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+            <Heart className="size-2.5 text-primary/60" />
+            <span className="hidden sm:inline font-medium">Built with care</span>
           </div>
-          <span className="text-muted-foreground/40">·</span>
-          <span className="rounded-full border bg-card/60 px-1.5 py-0.5 text-[10px] font-medium tabular-nums">© 2025 v1.1</span>
+          <span className="text-muted-foreground/30">·</span>
+          <span className="rounded-full border border-border/60 bg-card/60 px-2 py-0.5 text-[10px] font-bold tabular-nums text-muted-foreground shadow-sm">v1.2</span>
         </div>
       </div>
     </footer>

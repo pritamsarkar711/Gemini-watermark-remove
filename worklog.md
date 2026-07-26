@@ -1629,3 +1629,316 @@ Additionally, the dev server consistently gets **OOM-killed** by the Linux kerne
 6. **Add AVIF compatibility warning**: Show browser compatibility warning when AVIF is selected for export.
 
 7. **Add progress bar to API calls**: Show server-side processing progress via streaming or polling instead of simulated client-side timer stages.
+
+---
+Task ID: cron9-feat-A
+Agent: magic-brush-agent
+Task: Add inline Magic Brush overlay on the main ImagePreview so users can paint over watermarks directly on the large image preview (previously only available in the small sidebar ControlPanel).
+
+Work Log:
+1. Read worklog.md (latest entries) and analyzed the three target files: ImagePreview.tsx (717 lines, has crop overlay + zoom + drag-drop), ControlPanel.tsx (sidebar brush canvas at max 400px width), and store.ts (Zustand with maskData/setMaskData/autoDetect/setAutoDetect/mode/originalImage).
+2. Inspected the remove-watermark API route and inpaintImage() in src/lib/image-processing.ts. Discovered the mask threshold is `maskVal = (R+G+B)/3 > 128`. Pure red (255,60,60) averages to 125 which is BELOW the threshold, so a literal rgba(255,60,60,0.4) stroke on transparent canvas would be invisible to the API. Decided to use a dual-canvas strategy: visible canvas with semi-transparent red (per spec) + hidden data canvas with opaque white (255,255,255) for the actual mask export.
+3. Added `.brush-canvas { cursor: crosshair; touch-action: none; }` class to /home/z/my-project/src/app/globals.css (after .brand-shadow).
+4. Modified /home/z/my-project/src/components/watermark-remover/ImagePreview.tsx:
+   - Added imports: Paintbrush, Eraser, Check, X from lucide-react.
+   - Extended store destructure to include mode, autoDetect, setAutoDetect, setMaskData.
+   - Added local state: isBrushMode, brushSize (5-80, default 20), isBrushDrawing; refs: brushCanvasRef (visible), brushDataCanvasRef (hidden), lastBrushPosRef, prevAutoDetectRef.
+   - Added useEffect to initialize both canvases to originalImage.width x originalImage.height when entering brush mode.
+   - Added useEffect (with setTimeout(0) to satisfy react-hooks/set-state-in-effect lint rule, matching the existing processing-stage timer pattern) to auto-exit brush mode when mode changes away from 'remove' or originalImage is cleared, restoring autoDetect if it was previously on.
+   - Added getBrushPos() helper to convert client coords to canvas-internal pixel coords using getBoundingClientRect + scale ratio.
+   - Added paintBrush() that draws filled circles + smooth connecting lines (lineCap='round', lineJoin='round') on BOTH canvases simultaneously: rgba(255,60,60,0.4) on the visible canvas, opaque white on the data canvas. Brush size is scaled from CSS pixels to canvas pixels.
+   - Added mouse handlers (onMouseDown/Move/Up/Leave) and touch handlers (onTouchStart/Move/End) with preventDefault + stopPropagation so they don't trigger the underlying zoom/pan handlers.
+   - Added enterBrushMode() (saves prevAutoDetect, sets autoDetect=false, resets zoom/pan to 1 so canvas aligns with image), clearBrushCanvas(), applyBrushMask() (toDataURL on data canvas -> setMaskData -> calls window.__zeminaiProcess?.() -> exits brush mode), cancelBrushMode() (exits + restores autoDetect if it was on).
+   - Disabled wheel zoom during brush mode (handleWheel early-returns if isBrushMode).
+   - Excluded brush mode from crop overlay visibility (showOverlay now checks !isBrushMode).
+   - Added brush canvas overlay UI inside the image container: a relative wrapper sized to renderedSize (mirroring the crop overlay strategy) with the canvas absolutely filling it, z-10, pointer-events-auto on the canvas only.
+   - Added a hidden <canvas ref={brushDataCanvasRef} style={{display:'none'}} aria-hidden> for offscreen mask rendering.
+   - Added a "Paint over the watermark to remove" hint badge (top-left, z-20) during brush mode.
+   - Added the "Manual brush" toggle button + full toolbar below the image container, visible only when mode==='remove' && originalImage && !isProcessing. Toolbar uses bg-card/80 backdrop-blur-sm border rounded-lg shadow-sm per spec, with brush size slider (range 5-80), Clear (Eraser icon), Apply (Check icon), Cancel (X icon) buttons using shadcn Button size="sm".
+5. Ran `bun run lint` — initial run flagged 1 error: react-hooks/set-state-in-effect on the auto-exit effect. Fixed by wrapping setState calls in setTimeout(0) (consistent with existing processing-stage timer pattern in the same file). Re-ran lint: 0 errors, 0 warnings.
+6. Ran `bunx tsc --noEmit` — 0 errors in modified files (pre-existing errors in unrelated files only).
+
+Stage Summary:
+- Files modified: src/app/globals.css (added .brush-canvas class), src/components/watermark-remover/ImagePreview.tsx (added ~350 lines: brush state, handlers, overlay UI, toolbar).
+- No changes to store.ts (used existing maskData/setMaskData/autoDetect/setAutoDetect as-is), no changes to ControlPanel.tsx (sidebar brush logic preserved — the new inline overlay takes priority when active but doesn't break the sidebar).
+- Key UX flow: User in "remove" mode with image loaded sees a "Manual brush" button below the image. Clicking it sets autoDetect=false, resets zoom, overlays a brushable canvas on the image (semi-transparent red strokes), shows a toolbar with size slider + Clear/Apply/Cancel + hint text. Mouse and touch are both supported. Apply exports the mask PNG (opaque white on transparent bg for API compatibility) via setMaskData, then triggers window.__zeminaiProcess?.() to call the remove-watermark API, then exits brush mode. Cancel exits and restores the previous autoDetect state.
+- Lint: 0 errors, 0 warnings. TypeScript: clean for modified files.
+- Design note: Used a dual-canvas approach (visible red + hidden white) because the remove-watermark API thresholds mask pixels at (R+G+B)/3 > 128, and pure red (255,60,60) averages to 125 which would be skipped. The hidden data canvas uses opaque white (255,255,255) so the API correctly identifies painted regions as the mask.
+
+---
+Task ID: cron9-feat-B
+Agent: confidence-agent
+Task: Add watermark detection confidence score — compute a 0-99 heuristic score in the remove-watermark API when autoDetect runs, return it (plus the bounding box of detected regions) to the client, persist it on ProcessedImage in the Zustand store, and surface it in the UI via a color-coded badge on the ComparisonSlider plus a row in the ImageInfoPanel After section.
+
+Work Log:
+1. Read worklog.md (latest entries — confirmed cron9-feat-A inline Magic Brush shipped; remove-watermark API already returns `{ success, result, stats }`; store's `ProcessedImage` has `{ dataUrl, width, height, size }` only).
+2. Read all 6 target files: src/app/api/remove-watermark/route.ts, src/lib/image-processing.ts (full read to find `detectWatermark` and the un-exported `DetectedRegion` interface at line 348), src/lib/store.ts, src/components/watermark-remover/ControlPanel.tsx, src/components/watermark-remover/ComparisonSlider.tsx, src/components/watermark-remover/ImageInfoPanel.tsx.
+3. Modified src/lib/image-processing.ts:
+   - Exported the existing `DetectedRegion` interface (`export interface DetectedRegion`).
+   - Added `computeDetectionConfidence(regions, imageWidth, imageHeight): number` implementing the spec heuristic: maskRatio = total region area / total pixels; 35 if <0.001 or >0.30; 60 if <0.005; 65 if >0.20; 95 if 0.005–0.15; else 80. +5 corner bonus when any region's center sits in a corner quadrant (within 30% of two adjacent edges). Capped at 99, floored at 0, rounded.
+   - Added `computeDetectionBoundingRegion(regions, imageWidth, imageHeight): { x, y, width, height } | null` returning the axis-aligned bounding box clamped to image bounds, null when no regions.
+4. Modified src/app/api/remove-watermark/route.ts:
+   - Added `computeDetectionConfidence` and `computeDetectionBoundingRegion` to the dynamic import list.
+   - Hoisted `getImageInfo(imageBuffer)` out of the `regions.length === 0` branch so it's always available; introduced `effectiveRegions` = real regions or the bottom-right fallback (existing fallback unchanged).
+   - In the autoDetect path, compute `detectionConfidence` and `detectionRegion` from `effectiveRegions` + image dimensions.
+   - For the manual-mask path (autoDetect=false OR maskFile supplied), leave `detectionConfidence` as `undefined` and `detectionRegion` as `null` per spec.
+   - Extended the JSON response to include `detectionConfidence` and `detectionRegion` alongside the existing `success`/`result`/`stats`. JSON.stringify drops the undefined `detectionConfidence` on the wire for the manual-mask path, matching the "only present when autoDetect was true" requirement.
+5. Modified src/lib/store.ts:
+   - Extended `ProcessedImage` with optional `detectionConfidence?: number` and `detectionRegion?: { x: number; y: number; width: number; height: number } | null`. Added doc comments explaining when each is populated. No other changes — the existing `setProcessedImage` already spreads the full object into history snapshots via `{ ...image }`, so the new fields flow through undo/redo/jumpTo automatically.
+6. Modified src/components/watermark-remover/ControlPanel.tsx:
+   - In the `mode === 'remove'` success branch, replaced `setProcessedImage(data.result, 'remove-watermark')` with an explicit result object that picks `dataUrl`/`width`/`height`/`size` from `data.result` plus `detectionConfidence` (validated with `typeof === 'number'`, else undefined) and `detectionRegion` (`data.detectionRegion ?? null`).
+   - Left the `mode === 'add'` branch untouched — its response doesn't include detection fields, so the new optional fields stay undefined (correct semantics).
+7. Modified src/components/watermark-remover/ComparisonSlider.tsx:
+   - Added `Target` to the lucide-react import list.
+   - Added `getDetectionConfidenceColor(confidence)` helper returning `{ text, dot }` Tailwind classes: >=85 emerald-400 text + emerald-500 dot, >=60 amber-400 text + amber-500 dot, else red-400 text + red-500 dot.
+   - Precomputed `detectionConfidence`, `showDetectionBadge`, and `detectionColor` after the early-return guard.
+   - Rendered a new badge at `top-9 left-2.5 z-20` (below the existing "Before" label which sits at top-2.5 left-2.5) using `pointer-events-none bg-black/75 backdrop-blur-md text-[10px] font-semibold tabular-nums shadow-md ring-1 ring-white/10`. Content: `<Target/> Detection: <N>% confidence <dot/>`. Hidden while `isProcessing` is true and when `detectionConfidence` is missing/zero.
+8. Modified src/components/watermark-remover/ImageInfoPanel.tsx:
+   - Added `getDetectionConfidenceTextColor(confidence)` helper: >=85 `text-emerald-500`, >=60 `text-amber-500`, else `text-red-500`.
+   - Added a new "Detection confidence" row to the After section grid (Dimensions/Size/Format already present), conditionally rendered only when `processedImage.detectionConfidence` is a number > 0. Displays the value followed by `%`, color-coded per the helper.
+9. Ran `bun run lint` — 0 errors, 0 warnings (exit code 0).
+10. Ran `bunx tsc --noEmit` — 0 errors in any of the 6 modified files (the 5 remaining errors are all pre-existing in unrelated files: examples/websocket/*, skills/image-edit, skills/stock-analysis-skill, src/app/api/adjust/route.ts TS2694 sharp.Modulate — already noted in worklog "Unresolved Issues" section).
+
+Stage Summary:
+- Files modified (6): src/lib/image-processing.ts (exported DetectedRegion; +2 new exported helpers ~80 lines), src/app/api/remove-watermark/route.ts (extended response shape, +computation), src/lib/store.ts (extended ProcessedImage interface, +2 optional fields), src/components/watermark-remover/ControlPanel.tsx (pass-through of detection fields), src/components/watermark-remover/ComparisonSlider.tsx (color-coded detection badge with Target icon, top-left below Before label), src/components/watermark-remover/ImageInfoPanel.tsx (Detection confidence row in After section).
+- API change: POST /api/remove-watermark now returns `{ success, result, stats, detectionConfidence, detectionRegion }`. `detectionConfidence` (0-99 integer) is only present when autoDetect=true AND no manual mask was supplied — it's omitted from the JSON entirely (undefined) on the manual-mask path. `detectionRegion` is `{ x, y, width, height }` (bounding box in source-image px, clamped to image bounds) when autoDetect ran, or `null` otherwise.
+- Confidence heuristic: based on the ratio of total detected region area to image area (sweet spot 0.5–15% → 95; small 0.1–0.5% → 60; large 20–30% → 65; implausible <0.1% or >30% → 35; mid 15–20% → 80). +5 corner bonus when any region center is in a corner quadrant (within 30% of two adjacent edges). Capped at 99 (never 100).
+- UI badge: rendered as `🎯 Detection: 92% confidence` (with Target icon and a colored dot) at top-left of the comparison slider, below the existing "Before" label, with `pointer-events-none bg-black/75 backdrop-blur-md text-[10px] font-semibold tabular-nums shadow-md ring-1 ring-white/10`. Color-coded by score (emerald/amber/red). Hidden while `isProcessing` is true and when no detectionConfidence is set (manual mask, add-watermark, transform paths).
+- Also surfaced in ImageInfoPanel.tsx After section as a new "Detection confidence: N%" row, color-coded.
+- The `detectionRegion` is stored on ProcessedImage but not currently rendered — kept for future use (e.g. overlay rectangle on preview).
+- No existing exports removed; no existing functionality broken; TypeScript strict mode clean for all modified files.
+- Lint: 0 errors, 0 warnings. TypeScript: clean for modified files.
+
+---
+Task ID: cron9-feat-C
+Agent: demo-samples-agent
+Task: Add a "Try with a sample" feature on the home page so new visitors can click a chip to load a built-in demo image (with watermark) and immediately experience the watermark-removal flow without needing to upload their own image.
+
+Work Log:
+1. Read worklog.md (latest entries — confirmed cron9-feat-A inline Magic Brush and cron9-feat-B detection-confidence shipped; `canvas` v3 package already in package.json dependencies; UploadArea.tsx has `setOriginalImage` from store and an existing `isReading` spinner state and `setError` error state).
+2. Read `/home/z/my-project/src/components/watermark-remover/UploadArea.tsx` (317 lines, client component, hero + upload zone + trust badges + How-It-Works 3-step grid + AnimatePresence error) and `/home/z/my-project/src/lib/store.ts` (confirmed `ImageInfo` shape `{ file, name, originalName, width, height, size, type, dataUrl }` and `setOriginalImage` signature).
+3. Created `/home/z/my-project/scripts/generate-samples.mjs` — an ESM Node/Bun script using the `canvas` package (`createCanvas`), with three generator functions:
+   - `makePortrait()` — 600x800 portrait gradient (warm orange→pink→purple) + stylized sun + horizon; white bold "Zeminai" text bottom-right with drop-shadow at globalAlpha 0.85.
+   - `makeLandscape()` — 800x600 landscape gradient (blue→cyan→green) + sun + mountain silhouette; white bold "Sample" text top-right with drop-shadow.
+   - `makeTextTile()` — 800x600 green-teal gradient; rotated -30° tiled "DRAFT" text pattern (stepX=280, stepY=140, alternate-row offset) at globalAlpha 0.35 with drop-shadow.
+   - Reproducible (seeded rand) — deterministic output across runs. Saves PNGs via `canvas.toBuffer('image/png')` to `/home/z/my-project/public/samples/`.
+4. Ran `bun run scripts/generate-samples.mjs` — all 3 PNGs created successfully:
+   - sample-portrait.png  (89.6 KB, 600x800)
+   - sample-landscape.png (106.5 KB, 800x600)
+   - sample-text.png      (229.4 KB, 800x600)
+5. Modified `/home/z/my-project/src/components/watermark-remover/UploadArea.tsx`:
+   - Added `Image as ImageIcon` to the lucide-react import list (alias avoids clash with the DOM `Image` constructor used in `loadSample`/`processFile`).
+   - Added a `SAMPLES` constant array (3 entries: `{ name: 'portrait'/'landscape'/'text', label: 'Portrait'/'Landscape'/'Tiled Text', src: '/samples/sample-*.png' }`).
+   - Added a `loadSample(sampleName)` async callback (per spec): clears error, sets `isReading=true`, fetches `/samples/sample-${name}.png`, response-blob → `new File([...], name, { type: 'image/png' })`, FileReader → dataURL, `new Image()` → onload reads `naturalWidth`/`naturalHeight`, builds `ImageInfo`, calls `setOriginalImage(imageInfo)`, sets `isReading=false`. Added explicit `response.ok` guard + `img.onerror` + try/catch with `setError('Could not load sample')` fallback.
+   - Added a new "Try with a sample" section BELOW the existing "How It Works" 3-step grid (before the AnimatePresence error block). Structure:
+     - Outer `motion.div` (initial opacity/y, delay 0.8) wrapping a centered max-w-md flex column with gap-3.
+     - Divider: a single `<span>` styled as `flex items-center gap-3 text-[10px] font-medium uppercase tracking-wider text-muted-foreground` with `before:content-[''] before:h-px before:flex-1 before:bg-border/50` and matching `after:` pseudo-borders — produces "──── or try with a sample ────" effect.
+     - `grid grid-cols-3 gap-2` of 3 `motion.button` chips. Each chip: `type="button"`, `disabled={isReading}`, `onClick={() => loadSample(sample.name)}`, `aria-label`, `whileHover={{ y: -2 }}`, `whileTap={{ scale: 0.97 }}`, staggered entrance animation (delay 0.9 + i*0.08), className per spec (`group flex cursor-pointer flex-col rounded-lg border border-border/60 bg-card/70 p-2 shadow-sm transition-all hover:shadow-md hover:border-primary/30 hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-50`).
+     - Inside each chip: a `relative aspect-video w-full overflow-hidden rounded-md bg-muted` thumbnail holding an `<img loading="lazy">` of the sample PNG (`size-full object-cover transition-transform duration-300 group-hover:scale-105`) + an overlay div with `ImageIcon` that fades in on hover (`opacity-0 group-hover:opacity-100 group-hover:bg-background/30`).
+     - Label below thumbnail: `text-[10px] font-semibold text-foreground/80 mt-1.5 text-center`.
+   - Did NOT touch the existing upload zone, drag-drop handlers, `processFile`, trust badges, or How-It-Works section per the constraint.
+   - Did NOT modify globals.css (no new CSS classes needed — used only existing Tailwind utilities).
+   - Did NOT modify store.ts (`ImageInfo` shape and `setOriginalImage` were already sufficient).
+6. Ran `bun run lint` — first pass flagged 4 "Unused eslint-disable directive" warnings (the `@next/next/no-img-element` rule isn't actually enabled in this project's eslint config, and 3 stale `no-console` disables in the script). Auto-fixed with `bun run lint --fix`, then manually cleaned up the leftover `{ }` placeholder JSX expression and trailing whitespace the autofix left behind.
+7. Re-ran `bun run lint` — 0 errors, 0 warnings. Confirmed with `bunx tsc --noEmit` that no TS errors exist in any modified file (the only remaining TS errors are pre-existing in unrelated files: examples/websocket/*, skills/*, src/app/api/adjust/route.ts — all already documented in worklog "Unresolved Issues").
+8. Re-ran `bun run scripts/generate-samples.mjs` after the script edit to verify it still produces all 3 PNGs (it does).
+
+Stage Summary:
+- Files created: `scripts/generate-samples.mjs` (~225 lines, ESM, uses `canvas` package), `public/samples/sample-portrait.png` (600x800, 89.6 KB), `public/samples/sample-landscape.png` (800x600, 106.5 KB), `public/samples/sample-text.png` (800x600, 229.4 KB).
+- Files modified: `src/components/watermark-remover/UploadArea.tsx` only — added `Image as ImageIcon` import, `SAMPLES` constant, `loadSample` useCallback, and a new "Try with a sample" UI section below the How-It-Works grid.
+- No changes to: `src/lib/store.ts`, `src/app/globals.css`, the existing upload flow, drag-drop handlers, trust badges, or How-It-Works 3-step grid.
+- UX flow: New visitors land on the home page → see the upload zone with trust badges + the "How It Works" 3-step guide → below that, a thin divider reads "or try with a sample" → 3 thumbnail chips (Portrait / Landscape / Tiled Text) sit in a 3-column grid, each showing a live preview of the sample image with the watermark visible. Clicking a chip triggers `loadSample` which fetches the static PNG, wraps it in a File object, reads its dimensions via `new Image()`, and calls `setOriginalImage(imageInfo)` — the same code path as a normal upload. The home screen transitions to the editor view (store's `step` becomes "preview") where the user can hit "Remove watermark" to watch the auto-detect + inpainting flow run end-to-end without ever needing their own image.
+- Sample variety covers three detection scenarios: (1) portrait — single corner watermark ("Zeminai" bottom-right) for the corner-detection heuristic; (2) landscape — single corner watermark ("Sample" top-right) at the opposite corner; (3) tiled text — repeated diagonal "DRAFT" pattern that exercises the sparkle/tiled-watermark detection path.
+- Lint: 0 errors, 0 warnings. TypeScript: clean for all modified/created files (pre-existing unrelated errors unchanged).
+
+---
+Task ID: cron-review-9
+Agent: main-agent
+Task: Round 9 — QA, styling polish, and three new features (inline magic brush, detection confidence, demo samples)
+
+## Current Project Status Assessment
+
+The Zeminai Watermark & Logo Remover is a mature Next.js 16 application with 22+ React components, 9 API endpoints, Zustand store with undo/redo, dark mode, comparison view modes, crop/resize/adjust/transform tools, batch processing, and history timeline. Coming into round 9, VLM QA showed:
+
+- **Home (light):** 6/10 — weak visual hierarchy, low-contrast text, static feel
+- **Home (dark):** 7/10 — "Powered by AI", format badges, "up to 50MB" nearly illegible
+- **Editor:** 7/10 — "Auto detect" toggle red state looked like an error; Redo button low-contrast
+- **Result:** 7/10 — "X% pixels modified" tooltip floating awkwardly; Before/After labels at different heights; sidebar Image Info cramped
+- **Mobile:** 8/10 — layout density risks overflow
+
+VLM also noted missing features: a brush/selection tool visible on the main preview, no detection confidence score, no way to try without uploading.
+
+## Current Goals / Completed Modifications / Verification Results
+
+### Styling Bug Fixes (main agent)
+
+#### 1. Dark mode contrast overhaul (`globals.css`)
+- Bumped `--muted-foreground` from `oklch(0.65 0.02 247)` → `oklch(0.72 0.015 247)` for clearer secondary text
+- Bumped `--primary` from `oklch(0.65 0.2 25)` → `oklch(0.7 0.19 25)` for stronger accent visibility
+- Bumped `--border` opacity from 10% → 14%, `--input` from 15% → 18%, `--accent` lightness 0.25 → 0.28
+- Bumped `--sidebar-primary`, `--sidebar-ring`, `--ring` to match new primary
+- Swapped `--primary-foreground` in dark mode from white to dark (`oklch(0.15 0.005 247)`) so primary buttons have proper contrast
+
+#### 2. Auto-detect toggle color fix (`globals.css`)
+- Changed `.toggle-switch[data-state="checked"]` from `oklch(0.55 0.15 25)` (red, looked like an error state) to `oklch(0.55 0.13 152)` (subtle teal/green — clearly reads as "active/on" without alarm)
+- Bumped unchecked state opacity from 30% → 35% for better visibility
+
+#### 3. ComparisonSlider tooltip alignment fix
+- Moved the floating "X% pixels modified" badge from `top-9 right-2` (awkward floating position) to `bottom-2 right-2` (anchored to bottom corner)
+- Redesigned badge: `bg-black/75 backdrop-blur-md`, color-coded — emerald-400 for the percentage, white/70 for "modified", white/80 for pixel count, with `ring-1 ring-white/15` and `shadow-md`
+- Both Before/After labels now at consistent `top-2.5` height (was different before), each with a small dot indicator for visual rhythm
+- Before label uses `bg-black/75` with white dot; After label uses solid `bg-primary` with white dot — clear semantic distinction
+- Redesigned bottom info bar: 3-section layout with Original (left, dark dot) → keyboard hint ←/→ or drag (center) → Result (right, primary dot)
+
+#### 4. ImageInfoPanel spacing & hierarchy
+- Container `p-3` → `p-3.5` with `rounded-xl` (was `rounded-lg`)
+- Before section now wrapped in `rounded-lg bg-muted/30 p-2.5` (clear visual grouping)
+- After section now wrapped in `rounded-lg bg-primary/5 p-2.5 ring-1 ring-primary/10` (highlights the "after" state)
+- All section headers changed to `font-bold` (was `font-semibold`)
+- All value labels changed to `font-semibold` (was default)
+- Progress bar height `h-1.5` → `h-2`, added `ring-1 ring-border/30`
+- All "Comparison" section labels changed to `font-semibold` (was `font-medium`)
+- Filename now has `title` attribute for hover tooltip on truncation
+
+#### 5. Footer cleanup (`Footer.tsx`)
+- Added small `size-5` icon container with `bg-primary/15` for the brand mark
+- Grouped keyboard shortcuts into a single pill-shaped container (`rounded-full border bg-card/60 shadow-sm`) instead of loose text — visually distinct cluster
+- "Built with care" + version now grouped on the right
+- Bumped version from `v1.1` → `v1.2` to reflect this round's changes
+
+#### 6. Undo/Redo bar polish (`page.tsx`)
+- Wrapped buttons in `rounded-lg border bg-card/80 backdrop-blur-sm shadow-sm p-1` container
+- Added vertical divider between Undo and Redo buttons (`h-3 w-px bg-border/60`)
+- Bumped disabled-state opacity from `/30` → `/40` for better visibility
+- Changed button text from `font-medium` → `font-semibold`
+- Added `hover:shadow-sm` for active feedback
+
+#### 7. UploadArea hero & badges overhaul
+- Headline: `text-3xl font-bold` → `text-4xl font-extrabold` for stronger hierarchy
+- Subtitle: `text-sm font-medium text-muted-foreground` → `text-sm font-semibold text-foreground/80` for better contrast
+- "Powered by AI" badge: redesigned with `border border-primary/20 bg-primary/10 shadow-sm` and added a Sparkles icon inside — was previously a flat `bg-primary/15 text-primary/70` pill with too low contrast
+- "Drop image" text: `font-semibold` → `font-bold`
+- "or click to browse": `text-muted-foreground/80` → `text-muted-foreground` (full opacity)
+- Format badges (PNG/JPEG/WebP): `rounded bg-primary/10 text-primary/70` → `rounded-md border border-primary/20 bg-primary/10 text-primary font-bold` — stronger borders, full primary color, bolder weight
+- "up to 50MB": `text-muted-foreground/80` → `text-muted-foreground font-medium` with `·` separator
+- Trust badges: removed primary-colored backgrounds (which looked loud); now use `bg-card/80 border-border/60` with `hover:bg-primary/5 hover:border-primary/30` for a more cohesive look; added `whileHover y: -2` micro-interaction; icon and text color changed from primary to `text-foreground/80` for better readability
+
+#### 8. How It Works step cards micro-interactions
+- Container: `rounded-lg bg-card/60` → `rounded-xl bg-card/70` with `overflow-hidden`
+- Added `whileHover y: -3` lift effect
+- Added subtle gradient overlay on hover (`bg-gradient-to-br from-primary/5 to-transparent`)
+- Icon container: `size-8` → `size-9`, added `group-hover:scale-110` for icon grow effect
+- Icon: added `group-hover:scale-110` transform
+- Card title: `font-semibold text-foreground/80` → `font-bold text-foreground/90`
+- Card description: `text-muted-foreground/80` → `text-muted-foreground font-medium` (full opacity)
+- Added subtle "progression dot" connector on the right edge of cards 1 and 2 (visible only on `sm+`)
+- Border: `hover:border-primary/20` → `hover:border-primary/40` for stronger hover feedback
+- Shadow: `hover:shadow-md` → `hover:shadow-lg` for more dramatic lift
+
+#### 9. "OR TRY WITH A SAMPLE" divider
+- Changed from flat `bg-border/50` lines to `bg-gradient-to-r from-transparent to-border/80` for a softer fade-in
+- Text weight `font-medium` → `font-bold` for stronger presence
+
+### Feature A: Inline Magic Brush overlay on main image preview (subagent)
+- Added a "Manual brush" button visible on the ImagePreview component when `mode === 'remove'` and an image is loaded
+- When clicked: disables autoDetect, resets zoom/pan, overlays a brushable canvas on the main image preview
+- Brush toolbar with size slider (5-80px), Clear, Apply, Cancel buttons + hint badge "Paint over the watermark to remove"
+- Dual-canvas strategy: visible canvas uses `rgba(255,60,60,0.4)` for user feedback; hidden data canvas uses opaque white `(255,255,255)` for the actual mask export (because the API thresholds on RGB brightness > 128 and pure red averages to 125, which would be incorrectly skipped)
+- Mouse + touch events for cross-device support
+- Apply exports the mask as PNG, calls `setMaskData`, then triggers `window.__zeminaiProcess()` to run the remove-watermark API
+- Added `.brush-canvas` CSS class with `cursor: crosshair` and `touch-action: none`
+- Added `isInlineBrushActive` flag to store.ts to coordinate with ControlPanel — when active, the sidebar's redundant brush canvas is hidden and replaced with a contextual hint
+
+### Feature B: Watermark Detection Confidence Score (subagent)
+- **API change**: `/api/remove-watermark` now returns `detectionConfidence` (0-99) and `detectionRegion` (bounding box) when autoDetect is true
+- **Confidence heuristic** (in `image-processing.ts`):
+  - maskRatio < 0.001 or > 0.30 → 35 (suspicious detection size)
+  - maskRatio < 0.005 → 60 (very small mask)
+  - maskRatio > 0.20 → 65 (very large mask)
+  - maskRatio 0.005-0.15 → 95 (typical watermark size, high confidence)
+  - Otherwise → 80
+  - +5 bonus if detected region is in a corner (typical watermark location)
+  - Capped at 99 (never 100 — leaves room for doubt)
+- **Store change**: `ProcessedImage` interface extended with optional `detectionConfidence?: number` and `detectionRegion?: { x, y, width, height } | null` — automatically carried through undo/redo via existing snapshot logic
+- **UI**: ComparisonSlider shows a "🎯 Detection: X% confidence" badge at top-left below the "Before" label. Color-coded:
+  - ≥85: emerald-400 text + emerald-500 dot
+  - ≥60: amber-400 text + amber-500 dot
+  - <60: red-400 text + red-500 dot
+- Hidden while `isProcessing` is true; hidden when confidence is missing (manual mask, add-watermark, transform paths)
+- ImageInfoPanel After section now shows a "Detection confidence" row with the same color coding
+
+### Feature C: Demo Sample Images on Home Page (subagent)
+- Created `/home/z/my-project/scripts/generate-samples.mjs` (Node.js script using the `canvas` package) that programmatically generates 3 sample images with watermarks
+- Generated 3 PNG files in `/home/z/my-project/public/samples/`:
+  - `sample-portrait.png` (600×800, 89.6 KB) — portrait gradient with "Zeminai" watermark bottom-right
+  - `sample-landscape.png` (800×600, 106.5 KB) — landscape gradient with "Sample" watermark top-right
+  - `sample-text.png` (800×600, 229.4 KB) — green-teal gradient with tiled -30° "DRAFT" pattern
+- Added "Try with a sample" section to UploadArea below the How It Works grid: divider with `or try with a sample` text and 3 thumbnail chips
+- Each chip shows a live preview of the sample image with watermark visible, label below, hover lift effect
+- Click handler fetches the PNG, wraps in File, reads dimensions via `new Image()`, builds `ImageInfo`, calls `setOriginalImage(imageInfo)` — same code path as a normal upload
+- Sample variety covers three detection scenarios: corner watermark (bottom-right), corner watermark (top-right), tiled diagonal pattern
+
+## Verification Results
+
+### VLM Polish Ratings (before → after)
+| View | Before | After | Δ |
+|---|---|---|---|
+| Home (light) | 6/10 | 9/10 | +3 |
+| Home (dark) | 7/10 | 8/10 | +1 |
+| Editor | 7/10 | 8/10 | +1 |
+| Result (comparison slider) | 7/10 | 9/10 | +2 |
+| Mobile home | 8/10 | 8/10 | 0 |
+| Manual brush mode | (n/a) | 8/10 | new |
+
+### Functional Verification
+- **Lint**: `bun run lint` passes with 0 errors, 0 warnings
+- **TypeScript**: `bunx tsc --noEmit` reports 0 errors in modified files (pre-existing unrelated errors only)
+- **Demo sample flow**: Click "Portrait" sample → image loads → editor opens → "Manual brush" button visible → click "Remove watermark" → "Detection: 65% confidence" badge appears on result
+- **Inline brush flow**: Click "Manual brush" → canvas overlay appears with toolbar → sidebar brush hidden, replaced with hint → Apply triggers removal
+- **Detection confidence**: Badge correctly displays "65% confidence" with amber color (60-85 range)
+- **Dark mode**: All text elements (Powered by AI, format badges, up to 50MB, OR TRY WITH A SAMPLE) clearly readable
+- **Mobile**: All 5 home page sections present (hero, upload, trust badges, how it works, samples)
+
+### Files Modified (directly by main agent)
+1. `src/app/globals.css` — dark mode color tokens, toggle-switch color
+2. `src/components/watermark-remover/UploadArea.tsx` — hero, badges, trust badges, how-it-works cards, sample divider
+3. `src/components/watermark-remover/ComparisonSlider.tsx` — tooltip repositioning, label alignment, bottom info bar redesign
+4. `src/components/watermark-remover/ImageInfoPanel.tsx` — spacing, hierarchy, color-coded sections
+5. `src/components/watermark-remover/Footer.tsx` — full rewrite with grouped clusters
+6. `src/app/page.tsx` — undo/redo bar polish
+7. `src/lib/store.ts` — added `isInlineBrushActive` flag + setter
+8. `src/components/watermark-remover/ControlPanel.tsx` — hide sidebar brush when inline brush active, show hint
+9. `src/components/watermark-remover/ImagePreview.tsx` — sync `setInlineBrushActive` with `setIsBrushMode`
+
+### Files Modified (by subagents)
+- Feature A: `src/components/watermark-remover/ImagePreview.tsx`, `src/app/globals.css`
+- Feature B: `src/lib/image-processing.ts`, `src/app/api/remove-watermark/route.ts`, `src/lib/store.ts`, `src/components/watermark-remover/ControlPanel.tsx`, `src/components/watermark-remover/ComparisonSlider.tsx`, `src/components/watermark-remover/ImageInfoPanel.tsx`
+- Feature C: `src/components/watermark-remover/UploadArea.tsx`, `scripts/generate-samples.mjs`, `public/samples/sample-portrait.png`, `public/samples/sample-landscape.png`, `public/samples/sample-text.png`
+
+## Unresolved Issues or Risks
+
+1. **Duplicate hint text in brush mode**: When inline brush is active, the floating "Paint over the watermark to remove" badge and the sidebar hint both say similar things. Minor visual redundancy — could consolidate, but currently reinforces the message.
+
+2. **OOM killing of dev server**: Pre-existing environment constraint. The Next.js dev server occasionally gets killed by the Linux OOM killer after multiple requests. Server must be restarted before each QA session. Not a code bug.
+
+3. **Mobile sample chips below fold**: On 390px viewport, the sample chips require scrolling to reach. This is acceptable for a content-rich landing page but could be addressed with a "scroll for samples" indicator if needed.
+
+4. **Pre-existing TS error in `src/app/api/adjust/route.ts`**: Unrelated to this round's work — TS2694 about sharp.Modulate. Doesn't affect runtime.
+
+5. **`detectionRegion` stored but not rendered**: Stored on `ProcessedImage` for future use (e.g., drawing an overlay rectangle on the image preview showing where the watermark was detected). Not yet visualized.
+
+## Priority Recommendations for Next Phase
+
+1. **Render `detectionRegion` overlay**: Draw a dashed rectangle on the result image showing where the watermark was detected. This would give users visual confirmation of the detection accuracy and reinforce the confidence score.
+
+2. **Real-time watermark preview**: Implement client-side canvas preview for watermark addition (currently requires clicking Apply to see the result). Users could see text watermarks update live as they type or change settings.
+
+3. **AVIF compatibility warning**: Show a browser compatibility warning when AVIF is selected for export, since not all browsers support AVIF display.
+
+4. **Batch watermark addition**: Extend BatchPanel to support watermark addition mode and per-image options (currently only supports watermark removal in batch).
+
+5. **Performance: priority queue for inpainting**: Replace the O(n²) linear search in the fast marching algorithm with a binary heap priority queue for O(n log n) performance on larger masks.
+
+6. **Mobile touch improvements**: Better touch event handling for the comparison slider and crop overlay on mobile devices — currently works but could be smoother.
+
+7. **Sound/haptic feedback**: Add subtle audio or vibration feedback on key actions (process complete, error, etc.) for better accessibility and engagement.

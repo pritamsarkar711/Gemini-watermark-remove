@@ -1,0 +1,718 @@
+     1→'use client'
+     2→
+     3→import { useRef, useState, useCallback, useEffect } from 'react'
+     4→import { motion, AnimatePresence } from 'framer-motion'
+     5→import { ZoomIn, ZoomOut, RotateCcw, ImageIcon, UploadCloud } from 'lucide-react'
+     6→import { Button } from '@/components/ui/button'
+     7→import { useAppStore, type ImageInfo } from '@/lib/store'
+     8→
+     9→const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+    10→const MAX_SIZE = 50 * 1024 * 1024
+    11→
+    12→function formatSize(bytes: number): string {
+    13→  if (bytes < 1024) return `${bytes}B`
+    14→  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)}KB`
+    15→  return `${(bytes / (1024 * 1024)).toFixed(1)}MB`
+    16→}
+    17→
+    18→function formatType(type: string): string {
+    19→  return type.replace('image/', '').toUpperCase()
+    20→}
+    21→
+    22→// ─── Crop overlay types ──────────────────────────────────────────────────────
+    23→type DragMode =
+    24→  | 'move'
+    25→  | 'resize-nw'
+    26→  | 'resize-n'
+    27→  | 'resize-ne'
+    28→  | 'resize-e'
+    29→  | 'resize-se'
+    30→  | 'resize-s'
+    31→  | 'resize-sw'
+    32→  | 'resize-w'
+    33→
+    34→interface CropRect {
+    35→  x: number
+    36→  y: number
+    37→  width: number
+    38→  height: number
+    39→}
+    40→
+    41→interface DragState {
+    42→  mode: DragMode
+    43→  startPointerX: number // image-space coords at drag start
+    44→  startPointerY: number
+    45→  startRect: CropRect
+    46→}
+    47→
+    48→const HANDLE_CURSORS: Record<DragMode, string> = {
+    49→  move: 'cursor-move',
+    50→  'resize-nw': 'cursor-nwse-resize',
+    51→  'resize-se': 'cursor-nwse-resize',
+    52→  'resize-ne': 'cursor-nesw-resize',
+    53→  'resize-sw': 'cursor-nesw-resize',
+    54→  'resize-n': 'cursor-ns-resize',
+    55→  'resize-s': 'cursor-ns-resize',
+    56→  'resize-e': 'cursor-ew-resize',
+    57→  'resize-w': 'cursor-ew-resize',
+    58→}
+    59→
+    60→const MIN_CROP_SIZE = 8 // minimum crop dimension in image pixels
+    61→
+    62→const PROCESSING_STAGES = [
+    63→  { label: 'Detecting', description: 'Detecting watermark...', progress: 33 },
+    64→  { label: 'Removing', description: 'Removing watermark...', progress: 66 },
+    65→  { label: 'Finishing', description: 'Applying final touches...', progress: 100 },
+    66→] as const
+    67→
+    68→export default function ImagePreview() {
+    69→  const {
+    70→    originalImage,
+    71→    setOriginalImage,
+    72→    cropRect,
+    73→    setCropRect,
+    74→    isCropOverlayActive,
+    75→    isProcessing,
+    76→  } = useAppStore()
+    77→  const [zoom, setZoom] = useState(1)
+    78→  const [processingStage, setProcessingStage] = useState(0)
+    79→  const [offset, setOffset] = useState({ x: 0, y: 0 })
+    80→  const [isDragging, setIsDragging] = useState(false)
+    81→  const [isDragOver, setIsDragOver] = useState(false)
+    82→  const dragStart = useRef({ x: 0, y: 0 })
+    83→  const offsetStart = useRef({ x: 0, y: 0 })
+    84→
+    85→  // ─── Processing stage timer ────────────────────────────────────────────────
+    86→  useEffect(() => {
+    87→    if (!isProcessing) return
+    88→    // Reset stage when processing begins (async callback avoids synchronous setState in effect)
+    89→    const resetTimer = setTimeout(() => setProcessingStage(0), 0)
+    90→    // Stage 0 (Detecting): 2 seconds
+    91→    const timer1 = setTimeout(() => setProcessingStage(1), 2000)
+    92→    // Stage 1 (Removing): 3 seconds
+    93→    const timer2 = setTimeout(() => setProcessingStage(2), 5000)
+    94→    return () => {
+    95→      clearTimeout(resetTimer)
+    96→      clearTimeout(timer1)
+    97→      clearTimeout(timer2)
+    98→    }
+    99→  }, [isProcessing])
+   100→
+   101→  // ─── Image measurement (for crop overlay positioning) ─────────────────────
+   102→  const imgRef = useRef<HTMLImageElement | null>(null)
+   103→  const [renderedSize, setRenderedSize] = useState<{ w: number; h: number } | null>(null)
+   104→
+   105→  useEffect(() => {
+   106→    const img = imgRef.current
+   107→    if (!img) return
+   108→    const measure = () => {
+   109→      const r = img.getBoundingClientRect()
+   110→      setRenderedSize({ w: r.width, h: r.height })
+   111→    }
+   112→    measure()
+   113→    const ro = new ResizeObserver(measure)
+   114→    ro.observe(img)
+   115→    // Re-measure when the image finishes loading (natural size known)
+   116→    const onLoad = () => measure()
+   117→    img.addEventListener('load', onLoad)
+   118→    return () => {
+   119→      ro.disconnect()
+   120→      img.removeEventListener('load', onLoad)
+   121→    }
+   122→  }, [originalImage])
+   123→
+   124→  // ─── Crop overlay drag state ───────────────────────────────────────────────
+   125→  // While dragging, `dragRect` holds the live in-progress rect (image coords);
+   126→  // the overlay shows `dragRect ?? cropRect`. On pointer up, dragRect is
+   127→  // committed to the store via setCropRect and cleared.
+   128→  const [dragRect, setDragRect] = useState<CropRect | null>(null)
+   129→  const [isCropDragging, setIsCropDragging] = useState(false)
+   130→  const dragStateRef = useRef<DragState | null>(null)
+   131→
+   132→  /** Convert screen pointer coords to image-space pixel coords. */
+   133→  const screenToImage = useCallback(
+   134→    (clientX: number, clientY: number): { x: number; y: number } | null => {
+   135→      const img = imgRef.current
+   136→      if (!img || !originalImage) return null
+   137→      const r = img.getBoundingClientRect()
+   138→      if (r.width === 0 || r.height === 0) return null
+   139→      const x = ((clientX - r.left) / r.width) * originalImage.width
+   140→      const y = ((clientY - r.top) / r.height) * originalImage.height
+   141→      return { x, y }
+   142→    },
+   143→    [originalImage]
+   144→  )
+   145→
+   146→  /** Compute the next crop rect given the current pointer position. */
+   147→  const computeNextRect = useCallback(
+   148→    (pointerImgX: number, pointerImgY: number): CropRect | null => {
+   149→      const ds = dragStateRef.current
+   150→      if (!ds || !originalImage) return null
+   151→      const imgW = originalImage.width
+   152→      const imgH = originalImage.height
+   153→      const start = ds.startRect
+   154→      // Delta in image-space pixels since drag start
+   155→      const dx = pointerImgX - ds.startPointerX
+   156→      const dy = pointerImgY - ds.startPointerY
+   157→
+   158→      let { x, y, width, height } = start
+   159→
+   160→      if (ds.mode === 'move') {
+   161→        x = Math.max(0, Math.min(imgW - start.width, start.x + dx))
+   162→        y = Math.max(0, Math.min(imgH - start.height, start.y + dy))
+   163→      } else {
+   164→        // Resize: adjust edges independently, then enforce min size & bounds
+   165→        let left = start.x
+   166→        let top = start.y
+   167→        let right = start.x + start.width
+   168→        let bottom = start.y + start.height
+   169→
+   170→        if (ds.mode.includes('w')) left = start.x + dx
+   171→        if (ds.mode.includes('e')) right = start.x + start.width + dx
+   172→        if (ds.mode.includes('n')) top = start.y + dy
+   173→        if (ds.mode.includes('s')) bottom = start.y + start.height + dy
+   174→
+   175→        // Clamp to image bounds
+   176→        left = Math.max(0, Math.min(left, imgW - MIN_CROP_SIZE))
+   177→        right = Math.max(MIN_CROP_SIZE, Math.min(right, imgW))
+   178→        top = Math.max(0, Math.min(top, imgH - MIN_CROP_SIZE))
+   179→        bottom = Math.max(MIN_CROP_SIZE, Math.min(bottom, imgH))
+   180→
+   181→        // Enforce min size (swap if user dragged past the opposite edge)
+   182→        if (right - left < MIN_CROP_SIZE) {
+   183→          // Pin to whichever edge is being dragged
+   184→          if (ds.mode.includes('w')) left = right - MIN_CROP_SIZE
+   185→          else right = left + MIN_CROP_SIZE
+   186→        }
+   187→        if (bottom - top < MIN_CROP_SIZE) {
+   188→          if (ds.mode.includes('n')) top = bottom - MIN_CROP_SIZE
+   189→          else bottom = top + MIN_CROP_SIZE
+   190→        }
+   191→
+   192→        x = left
+   193→        y = top
+   194→        width = right - left
+   195→        height = bottom - top
+   196→      }
+   197→
+   198→      return { x: Math.round(x), y: Math.round(y), width: Math.round(width), height: Math.round(height) }
+   199→    },
+   200→    [originalImage]
+   201→  )
+   202→
+   203→  // Unified pointer move/up handlers (work for both mouse and touch).
+   204→  const handlePointerMove = useCallback(
+   205→    (clientX: number, clientY: number) => {
+   206→      const next = computeNextRect(clientX, clientY)
+   207→      if (next) setDragRect(next)
+   208→    },
+   209→    [computeNextRect]
+   210→  )
+   211→
+   212→  const handlePointerUp = useCallback(() => {
+   213→    // Commit the final rect (if any) to the store, then clear local drag state
+   214→    setDragRect((dr) => {
+   215→      if (dr) setCropRect(dr)
+   216→      return null
+   217→    })
+   218→    dragStateRef.current = null
+   219→    setIsCropDragging(false)
+   220→    if (typeof window !== 'undefined') {
+   221→      document.body.style.userSelect = ''
+   222→    }
+   223→  }, [setCropRect])
+   224→
+   225→  // Attach global listeners during an active drag (so we keep tracking even
+   226→  // when the pointer leaves the overlay element).
+   227→  useEffect(() => {
+   228→    if (!isCropDragging) return
+   229→
+   230→    const onMouseMove = (e: MouseEvent) => {
+   231→      e.preventDefault()
+   232→      handlePointerMove(e.clientX, e.clientY)
+   233→    }
+   234→    const onMouseUp = () => handlePointerUp()
+   235→    const onTouchMove = (e: TouchEvent) => {
+   236→      if (e.touches.length === 0) return
+   237→      e.preventDefault()
+   238→      const t = e.touches[0]
+   239→      handlePointerMove(t.clientX, t.clientY)
+   240→    }
+   241→    const onTouchEnd = () => handlePointerUp()
+   242→
+   243→    window.addEventListener('mousemove', onMouseMove)
+   244→    window.addEventListener('mouseup', onMouseUp)
+   245→    window.addEventListener('touchmove', onTouchMove, { passive: false })
+   246→    window.addEventListener('touchend', onTouchEnd)
+   247→    window.addEventListener('touchcancel', onTouchEnd)
+   248→    document.body.style.userSelect = 'none'
+   249→
+   250→    return () => {
+   251→      window.removeEventListener('mousemove', onMouseMove)
+   252→      window.removeEventListener('mouseup', onMouseUp)
+   253→      window.removeEventListener('touchmove', onTouchMove)
+   254→      window.removeEventListener('touchend', onTouchEnd)
+   255→      window.removeEventListener('touchcancel', onTouchEnd)
+   256→    }
+   257→  }, [isCropDragging, handlePointerMove, handlePointerUp])
+   258→
+   259→  /** Begin a drag (move or resize). */
+   260→  const beginDrag = useCallback(
+   261→    (mode: DragMode, clientX: number, clientY: number) => {
+   262→      if (!originalImage) return
+   263→      const imgPos = screenToImage(clientX, clientY)
+   264→      if (!imgPos) return
+   265→      const baseRect = dragRect ?? cropRect
+   266→      dragStateRef.current = {
+   267→        mode,
+   268→        startPointerX: imgPos.x,
+   269→        startPointerY: imgPos.y,
+   270→        startRect: { ...baseRect },
+   271→      }
+   272→      // Seed the local drag rect so the overlay snaps to it immediately and so
+   273→      // subsequent pointermove events always have a non-null value to update.
+   274→      setDragRect({ ...baseRect })
+   275→      setIsCropDragging(true)
+   276→    },
+   277→    [originalImage, screenToImage, dragRect, cropRect]
+   278→  )
+   279→
+   280→  // Mouse + touch handlers for the rect body and each handle.
+   281→  const onRectPointerDown = useCallback(
+   282→    (e: React.MouseEvent | React.TouchEvent) => {
+   283→      if (zoom > 1) return
+   284→      e.stopPropagation()
+   285→      const pt = 'touches' in e ? e.touches[0] : (e as React.MouseEvent)
+   286→      if (!pt) return
+   287→      beginDrag('move', pt.clientX, pt.clientY)
+   288→    },
+   289→    [beginDrag, zoom]
+   290→  )
+   291→
+   292→  const makeHandlePointerDown = useCallback(
+   293→    (mode: DragMode) => (e: React.MouseEvent | React.TouchEvent) => {
+   294→      if (zoom > 1) return
+   295→      e.stopPropagation()
+   296→      e.preventDefault()
+   297→      const pt = 'touches' in e ? e.touches[0] : (e as React.MouseEvent)
+   298→      if (!pt) return
+   299→      beginDrag(mode, pt.clientX, pt.clientY)
+   300→    },
+   301→    [beginDrag, zoom]
+   302→  )
+   303→
+   304→  // ─── Existing zoom / pan / drag-drop handlers ──────────────────────────────
+   305→  const handleZoomIn = useCallback(() => {
+   306→    setZoom((z) => Math.min(z + 0.5, 5))
+   307→  }, [])
+   308→
+   309→  const handleZoomOut = useCallback(() => {
+   310→    setZoom((z) => {
+   311→      const newZoom = Math.max(z - 0.5, 1)
+   312→      if (newZoom === 1) setOffset({ x: 0, y: 0 })
+   313→      return newZoom
+   314→    })
+   315→  }, [])
+   316→
+   317→  const handleResetZoom = useCallback(() => {
+   318→    setZoom(1)
+   319→    setOffset({ x: 0, y: 0 })
+   320→  }, [])
+   321→
+   322→  const handleWheel = useCallback((e: React.WheelEvent) => {
+   323→    e.preventDefault()
+   324→    setZoom((z) => {
+   325→      const newZoom = Math.max(1, Math.min(5, z - e.deltaY * 0.002))
+   326→      if (newZoom === 1) setOffset({ x: 0, y: 0 })
+   327→      return newZoom
+   328→    })
+   329→  }, [])
+   330→
+   331→  const handleMouseDown = useCallback(
+   332→    (e: React.MouseEvent) => {
+   333→      if (zoom <= 1) return
+   334→      setIsDragging(true)
+   335→      dragStart.current = { x: e.clientX, y: e.clientY }
+   336→      offsetStart.current = { ...offset }
+   337→    },
+   338→    [zoom, offset]
+   339→  )
+   340→
+   341→  const handleMouseMove = useCallback(
+   342→    (e: React.MouseEvent) => {
+   343→      if (!isDragging) return
+   344→      const dx = e.clientX - dragStart.current.x
+   345→      const dy = e.clientY - dragStart.current.y
+   346→      setOffset({
+   347→        x: offsetStart.current.x + dx,
+   348→        y: offsetStart.current.y + dy,
+   349→      })
+   350→    },
+   351→    [isDragging]
+   352→  )
+   353→
+   354→  const handleMouseUp = useCallback(() => {
+   355→    setIsDragging(false)
+   356→  }, [])
+   357→
+   358→  // ─── Drag-and-drop re-upload ────────────────────────────────────────────────
+   359→  const processFile = useCallback(
+   360→    async (file: File) => {
+   361→      if (!ACCEPTED_TYPES.includes(file.type)) return
+   362→      if (file.size > MAX_SIZE) return
+   363→
+   364→      const dataUrl = await new Promise<string>((resolve) => {
+   365→        const reader = new FileReader()
+   366→        reader.onload = () => resolve(reader.result as string)
+   367→        reader.readAsDataURL(file)
+   368→      })
+   369→
+   370→      const img = new Image()
+   371→      img.onload = () => {
+   372→        const imageInfo: ImageInfo = {
+   373→          file,
+   374→          name: file.name,
+   375→          originalName: file.name,
+   376→          width: img.naturalWidth,
+   377→          height: img.naturalHeight,
+   378→          size: file.size,
+   379→          type: file.type,
+   380→          dataUrl,
+   381→        }
+   382→        setOriginalImage(imageInfo)
+   383→        // Reset zoom/pan when a new image is loaded
+   384→        setZoom(1)
+   385→        setOffset({ x: 0, y: 0 })
+   386→      }
+   387→      img.src = dataUrl
+   388→    },
+   389→    [setOriginalImage]
+   390→  )
+   391→
+   392→  const handleDragOver = useCallback((e: React.DragEvent) => {
+   393→    e.preventDefault()
+   394→    e.stopPropagation()
+   395→    setIsDragOver(true)
+   396→  }, [])
+   397→
+   398→  const handleDragLeave = useCallback((e: React.DragEvent) => {
+   399→    e.preventDefault()
+   400→    e.stopPropagation()
+   401→    // Only clear if leaving the container (not entering a child)
+   402→    if (e.currentTarget === e.target) {
+   403→      setIsDragOver(false)
+   404→    }
+   405→  }, [])
+   406→
+   407→  const handleDrop = useCallback(
+   408→    (e: React.DragEvent) => {
+   409→      e.preventDefault()
+   410→      e.stopPropagation()
+   411→      setIsDragOver(false)
+   412→      const file = e.dataTransfer.files?.[0]
+   413→      if (file) void processFile(file)
+   414→    },
+   415→    [processFile]
+   416→  )
+   417→
+   418→  if (!originalImage) {
+   419→    return (
+   420→      <motion.div
+   421→        initial={{ opacity: 0, scale: 0.98 }}
+   422→        animate={{ opacity: 1, scale: 1 }}
+   423→        transition={{ duration: 0.3 }}
+   424→        className="flex w-full flex-col gap-2"
+   425→      >
+   426→        <div
+   427→          className="dot-grid-bg flex items-center justify-center rounded-xl border border-dashed bg-muted/20"
+   428→          style={{ minHeight: '240px', maxHeight: '55vh' }}
+   429→        >
+   430→          <div className="flex flex-col items-center gap-2 text-muted-foreground/50">
+   431→            <ImageIcon className="size-8" />
+   432→            <span className="text-xs font-medium">No image loaded</span>
+   433→            <span className="text-[10px] text-muted-foreground/40">Drag and drop or use the upload area</span>
+   434→          </div>
+   435→        </div>
+   436→      </motion.div>
+   437→    )
+   438→  }
+   439→
+   440→  // Compute the displayed crop rect (dragRect takes priority while dragging)
+   441→  const displayRect = dragRect ?? cropRect
+   442→  const hasValidRect = displayRect.width > 0 && displayRect.height > 0
+   443→
+   444→  // Convert image-space crop rect to screen-space overlay coordinates (as %).
+   445→  const overlayPct =
+   446→    renderedSize && originalImage && hasValidRect
+   447→      ? {
+   448→          left: (displayRect.x / originalImage.width) * 100,
+   449→          top: (displayRect.y / originalImage.height) * 100,
+   450→          width: (displayRect.width / originalImage.width) * 100,
+   451→          height: (displayRect.height / originalImage.height) * 100,
+   452→        }
+   453→      : null
+   454→
+   455→  const showOverlay =
+   456→    isCropOverlayActive && originalImage && overlayPct && zoom <= 1
+   457→
+   458→  return (
+   459→    <motion.div
+   460→      initial={{ opacity: 0, scale: 0.98 }}
+   461→      animate={{ opacity: 1, scale: 1 }}
+   462→      transition={{ duration: 0.3 }}
+   463→      className="flex w-full flex-col gap-2"
+   464→    >
+   465→      {/* Image info bar */}
+   466→      <div className="gradient-border-left flex items-center gap-2 rounded-lg border bg-card/80 px-3 py-1.5 shadow-sm transition-all duration-200 hover:bg-card hover:shadow-md">
+   467→        <ImageIcon className="size-3.5 text-primary/70" />
+   468→        <span className="text-xs font-semibold">{originalImage.name}</span>
+   469→        <div className="flex items-center gap-2 ml-auto text-[11px] text-muted-foreground/60">
+   470→          <span className="rounded bg-muted px-1.5 py-0.5 font-medium">{originalImage.width} x {originalImage.height}</span>
+   471→          <span className="rounded bg-muted px-1.5 py-0.5 font-medium">{formatType(originalImage.type)}</span>
+   472→          <span className="rounded bg-muted px-1.5 py-0.5 font-medium">{formatSize(originalImage.size)}</span>
+   473→        </div>
+   474→      </div>
+   475→
+   476→      {/* Image container */}
+   477→      <div
+   478→        className="relative overflow-hidden rounded-xl border bg-muted/20 shadow-sm transition-shadow duration-300 hover:shadow-md"
+   479→        onWheel={handleWheel}
+   480→        onMouseDown={handleMouseDown}
+   481→        onMouseMove={handleMouseMove}
+   482→        onMouseUp={handleMouseUp}
+   483→        onMouseLeave={handleMouseUp}
+   484→        onDragOver={handleDragOver}
+   485→        onDragLeave={handleDragLeave}
+   486→        onDrop={handleDrop}
+   487→        style={{ cursor: zoom > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default' }}
+   488→      >
+   489→        <div className="flex items-center justify-center" style={{ minHeight: '240px', maxHeight: '55vh' }}>
+   490→          <img
+   491→            ref={imgRef}
+   492→            src={originalImage.dataUrl}
+   493→            alt="Preview"
+   494→            onLoad={() => {/* shimmer fades naturally after load */}}
+   495→            className="image-shimmer-loading max-h-[55vh] w-auto object-contain transition-transform duration-100 select-none"
+   496→            style={{
+   497→              transform: `scale(${zoom}) translate(${offset.x / zoom}px, ${offset.y / zoom}px)`,
+   498→            }}
+   499→            draggable={false}
+   500→          />
+   501→        </div>
+   502→
+   503→        {/* Crop overlay: positioned absolutely over the rendered <img>. */}
+   504→        {/* The container is centered (flex justify-center items-center), so the
+   505→            image bounding box equals the rendered img's box. We position the
+   506→            overlay using absolute + inset-0 + flex centering to match. */}
+   507→        {showOverlay && overlayPct && (
+   508→          <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
+   509→            <div
+   510→              className="relative"
+   511→              style={{
+   512→                width: renderedSize ? `${renderedSize.w}px` : 'auto',
+   513→                height: renderedSize ? `${renderedSize.h}px` : 'auto',
+   514→                maxWidth: '100%',
+   515→                maxHeight: '100%',
+   516→              }}
+   517→            >
+   518→              {/* Crop rectangle with mask via box-shadow */}
+   519→              <div
+   520→                role="button"
+   521→                aria-label="Crop rectangle — drag to move"
+   522→                tabIndex={0}
+   523→                onMouseDown={onRectPointerDown}
+   524→                onTouchStart={onRectPointerDown}
+   525→                className={`absolute border-2 border-primary ${HANDLE_CURSORS.move} pointer-events-auto`}
+   526→                style={{
+   527→                  left: `${overlayPct.left}%`,
+   528→                  top: `${overlayPct.top}%`,
+   529→                  width: `${overlayPct.width}%`,
+   530→                  height: `${overlayPct.height}%`,
+   531→                  boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.5)',
+   532→                  // Subtle inner outline for contrast on bright images
+   533→                  outline: '1px solid rgba(255, 255, 255, 0.4)',
+   534→                  outlineOffset: '-1px',
+   535→                  background: 'transparent',
+   536→                  // Make the body clickable for move but not block handles
+   537→                  touchAction: 'none',
+   538→                }}
+   539→              >
+   540→                {/* Rule-of-thirds grid lines for visual guidance */}
+   541→                <div className="pointer-events-none absolute inset-0">
+   542→                  <div className="absolute top-0 bottom-0 left-1/3 w-px bg-white/20" />
+   543→                  <div className="absolute top-0 bottom-0 left-2/3 w-px bg-white/20" />
+   544→                  <div className="absolute left-0 right-0 top-1/3 h-px bg-white/20" />
+   545→                  <div className="absolute left-0 right-0 top-2/3 h-px bg-white/20" />
+   546→                </div>
+   547→
+   548→                {/* Dimension badge (top-left, just inside the rect so it stays
+   549→                    visible even when the rect fills the container — avoids
+   550→                    being clipped by the container's overflow-hidden). */}
+   551→                <div className="pointer-events-none absolute left-1 top-1 z-10 rounded bg-primary px-1.5 py-0.5 text-[10px] font-semibold text-primary-foreground shadow-md">
+   552→                  {displayRect.width}×{displayRect.height}
+   553→                </div>
+   554→
+   555→                {/* 8 resize handles */}
+   556→                {(['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'] as unknown as DragMode[]).map(
+   557→                  (h) => {
+   558→                    // Position each handle at its corner / edge midpoint
+   559→                    const posCls: Record<string, string> = {
+   560→                      nw: 'left-0 top-0',
+   561→                      n: 'left-1/2 top-0 -translate-x-1/2',
+   562→                      ne: 'right-0 top-0',
+   563→                      e: 'right-0 top-1/2 -translate-y-1/2',
+   564→                      se: 'right-0 bottom-0',
+   565→                      s: 'left-1/2 bottom-0 -translate-x-1/2',
+   566→                      sw: 'left-0 bottom-0',
+   567→                      w: 'left-0 top-1/2 -translate-y-1/2',
+   568→                    }
+   569→                    return (
+   570→                      <div
+   571→                        key={h}
+   572→                        role="button"
+   573→                        aria-label={`Resize ${h}`}
+   574→                        tabIndex={0}
+   575→                        onMouseDown={makeHandlePointerDown(h)}
+   576→                        onTouchStart={makeHandlePointerDown(h)}
+   577→                        className={`absolute size-3 rounded-sm border-2 border-primary bg-white shadow-sm pointer-events-auto ${HANDLE_CURSORS[h]} ${posCls[h]} hover:bg-primary/10`}
+   578→                        style={{ touchAction: 'none' }}
+   579→                      />
+   580→                    )
+   581→                  }
+   582→                )}
+   583→              </div>
+   584→            </div>
+   585→          </div>
+   586→        )}
+   587→
+   588→        {/* Processing overlay — semi-transparent with spinner and progress bar */}
+   589→        <AnimatePresence>
+   590→          {isProcessing && (
+   591→            <motion.div
+   592→              initial={{ opacity: 0 }}
+   593→              animate={{ opacity: 1 }}
+   594→              exit={{ opacity: 0 }}
+   595→              transition={{ duration: 0.3 }}
+   596→              className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-background/60 backdrop-blur-sm"
+   597→            >
+   598→              <div className="flex flex-col items-center gap-3 rounded-xl bg-card/90 border shadow-lg px-6 py-4 backdrop-blur-md">
+   599→                <div className="relative size-10">
+   600→                  <div className="absolute inset-0 rounded-full border-2 border-muted-foreground/20" />
+   601→                  <motion.div
+   602→                    className="absolute inset-0 rounded-full border-2 border-transparent border-t-primary"
+   603→                    animate={{ rotate: 360 }}
+   604→                    transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+   605→                  />
+   606→                </div>
+   607→                <span className="text-sm font-semibold text-foreground">Processing</span>
+   608→                {/* Progress bar */}
+   609→                <div className="w-full">
+   610→                  <div className="quality-bar relative h-2 w-full rounded-full bg-muted/30 overflow-hidden">
+   611→                    <motion.div
+   612→                      className="absolute inset-y-0 left-0 rounded-full"
+   613→                      style={{ background: 'linear-gradient(to right, #ef4444, #f97316, #eab308, #22c55e)' }}
+   614→                      initial={{ width: '0%' }}
+   615→                      animate={{ width: `${PROCESSING_STAGES[processingStage].progress}%` }}
+   616→                      transition={{ duration: 0.5, ease: 'easeOut' }}
+   617→                    />
+   618→                  </div>
+   619→                  {/* Stage indicators */}
+   620→                  <div className="flex items-center justify-between mt-1.5">
+   621→                    {PROCESSING_STAGES.map((stage, idx) => (
+   622→                      <div
+   623→                        key={stage.label}
+   624→                        className={`flex items-center gap-1 text-[9px] font-medium transition-all duration-300 ${
+   625→                          idx <= processingStage
+   626→                            ? 'text-primary'
+   627→                            : 'text-muted-foreground/40'
+   628→                        }`}
+   629→                      >
+   630→                        <div
+   631→                          className={`size-1.5 rounded-full transition-all duration-300 ${
+   632→                            idx <= processingStage
+   633→                              ? 'bg-primary'
+   634→                              : 'bg-muted-foreground/30'
+   635→                          }`}
+   636→                        />
+   637→                        {stage.label}
+   638→                      </div>
+   639→                    ))}
+   640→                  </div>
+   641→                  {/* Stage description */}
+   642→                  <div className="text-[10px] text-muted-foreground/70 mt-1 text-center">
+   643→                    {PROCESSING_STAGES[processingStage].description}
+   644→                  </div>
+   645→                </div>
+   646→              </div>
+   647→            </motion.div>
+   648→          )}
+   649→        </AnimatePresence>
+   650→
+   651→        {/* Hint badge: overlay is active but zoom > 1 (overlay hidden) */}
+   652→        {isCropOverlayActive && zoom > 1 && (
+   653→          <div className="pointer-events-none absolute left-2 top-2 z-20 rounded-md bg-black/70 px-2 py-1 text-[10px] font-medium text-white/90 shadow-md backdrop-blur-sm">
+   654→            Reset zoom to edit crop
+   655→          </div>
+   656→        )}
+   657→
+   658→        {/* Subtle gradient overlay at bottom for zoom control visibility */}
+   659→        <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-black/30 to-transparent" />
+   660→
+   661→        {/* Drag-and-drop re-upload overlay */}
+   662→        <AnimatePresence>
+   663→          {isDragOver && (
+   664→            <motion.div
+   665→              initial={{ opacity: 0 }}
+   666→              animate={{ opacity: 1 }}
+   667→              exit={{ opacity: 0 }}
+   668→              transition={{ duration: 0.15 }}
+   669→              className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center bg-primary/15 backdrop-blur-sm"
+   670→            >
+   671→              <div className="flex flex-col items-center gap-2 rounded-xl border-2 border-dashed border-primary bg-card/90 px-6 py-5 shadow-lg">
+   672→                <UploadCloud className="size-7 text-primary" />
+   673→                <span className="text-sm font-semibold text-foreground">Drop to replace</span>
+   674→                <span className="text-[10px] text-muted-foreground/70">PNG JPEG WebP up to 50MB</span>
+   675→              </div>
+   676→            </motion.div>
+   677→          )}
+   678→        </AnimatePresence>
+   679→
+   680→        {/* Zoom controls - pill shaped */}
+   681→        <div className="absolute bottom-2 right-2 flex items-center gap-0.5 rounded-lg bg-black/40 px-1 py-0.5 backdrop-blur-sm shadow-md">
+   682→          <Button
+   683→            variant="ghost"
+   684→            size="icon"
+   685→            className="size-6 rounded-md text-white/70 hover:text-white hover:bg-white/10"
+   686→            onClick={handleZoomOut}
+   687→            disabled={zoom <= 1}
+   688→          >
+   689→            <ZoomOut className="size-3" />
+   690→          </Button>
+   691→          <span className="min-w-[2.5rem] text-center text-[10px] font-medium text-white/60">
+   692→            {Math.round(zoom * 100)}%
+   693→          </span>
+   694→          <Button
+   695→            variant="ghost"
+   696→            size="icon"
+   697→            className="size-6 rounded-md text-white/70 hover:text-white hover:bg-white/10"
+   698→            onClick={handleZoomIn}
+   699→            disabled={zoom >= 5}
+   700→          >
+   701→            <ZoomIn className="size-3" />
+   702→          </Button>
+   703→          {zoom > 1 && (
+   704→            <Button
+   705→              variant="ghost"
+   706→              size="icon"
+   707→              className="size-6 rounded-md text-white/70 hover:text-white hover:bg-white/10"
+   708→              onClick={handleResetZoom}
+   709→            >
+   710→              <RotateCcw className="size-3" />
+   711→            </Button>
+   712→          )}
+   713→        </div>
+   714→      </div>
+   715→    </motion.div>
+   716→  )
+   717→}
+   718→

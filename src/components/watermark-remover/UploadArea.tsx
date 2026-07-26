@@ -2,7 +2,7 @@
 
 import { useCallback, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Upload, X, Sparkles, Shield, Zap, Eye, Lock, Scan, Paintbrush } from 'lucide-react'
+import { Upload, X, Sparkles, Shield, Zap, Eye, Lock, Scan, Paintbrush, Image as ImageIcon } from 'lucide-react'
 import { useAppStore, type ImageInfo } from '@/lib/store'
 
 const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
@@ -14,6 +14,18 @@ const TRUST_ITEMS = [
   { icon: Eye, label: 'Zero residue' },
   { icon: Lock, label: 'Private' },
 ]
+
+/**
+ * Built-in demo samples shown on the upload screen. Clicking a chip fetches
+ * the corresponding static PNG from /samples/ and loads it into the store as
+ * if the user had uploaded it themselves — letting new visitors try the
+ * watermark-removal flow without having their own image handy.
+ */
+const SAMPLES = [
+  { name: 'portrait', label: 'Portrait', src: '/samples/sample-portrait.png' },
+  { name: 'landscape', label: 'Landscape', src: '/samples/sample-landscape.png' },
+  { name: 'text', label: 'Tiled Text', src: '/samples/sample-text.png' },
+] as const
 
 export default function UploadArea() {
   const { setOriginalImage } = useAppStore()
@@ -97,6 +109,55 @@ export default function UploadArea() {
     [processFile]
   )
 
+  /**
+   * Fetch a built-in demo sample from /samples/, wrap it in a File, and load
+   * it into the store via setOriginalImage — exactly the same path as a normal
+   * upload. Reuses the isReading spinner state for consistent UX.
+   */
+  const loadSample = useCallback(
+    async (sampleName: string) => {
+      setError(null)
+      setIsReading(true)
+      try {
+        const response = await fetch(`/samples/sample-${sampleName}.png`)
+        if (!response.ok) throw new Error(`HTTP ${response.status}`)
+        const blob = await response.blob()
+        const file = new File([blob], `sample-${sampleName}.png`, { type: 'image/png' })
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = () => resolve(reader.result as string)
+          reader.onerror = () => reject(reader.error)
+          reader.readAsDataURL(file)
+        })
+        const img = new Image()
+        img.onload = () => {
+          const imageInfo: ImageInfo = {
+            file,
+            name: `sample-${sampleName}.png`,
+            originalName: `sample-${sampleName}.png`,
+            width: img.naturalWidth,
+            height: img.naturalHeight,
+            size: file.size,
+            type: 'image/png',
+            dataUrl,
+          }
+          setOriginalImage(imageInfo)
+          setIsReading(false)
+        }
+        img.onerror = () => {
+          console.error('Failed to decode sample image')
+          setIsReading(false)
+        }
+        img.src = dataUrl
+      } catch (err) {
+        console.error('Failed to load sample:', err)
+        setError('Could not load sample')
+        setIsReading(false)
+      }
+    },
+    [setOriginalImage]
+  )
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -134,10 +195,13 @@ export default function UploadArea() {
             />
           ))}
         </div>
-        <div className="flex flex-col items-center gap-0.5">
-          <h1 className="gradient-text text-3xl font-bold tracking-tight">Zeminai</h1>
-          <p className="text-sm font-medium text-muted-foreground">Watermark remover</p>
-          <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-medium text-primary/70">Powered by AI</span>
+        <div className="flex flex-col items-center gap-1">
+          <h1 className="gradient-text text-4xl font-extrabold tracking-tight">Zeminai</h1>
+          <p className="text-sm font-semibold text-foreground/80">Watermark remover</p>
+          <span className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/10 px-2.5 py-0.5 text-[10px] font-semibold text-primary shadow-sm">
+            <Sparkles className="size-2.5" />
+            Powered by AI
+          </span>
         </div>
       </motion.div>
 
@@ -215,19 +279,19 @@ export default function UploadArea() {
                 </div>
 
                 <div className="flex flex-col items-center gap-1">
-                  <span className="text-base font-semibold text-foreground">
-                    {isDragging ? 'Release' : 'Drop image'}
+                  <span className="text-base font-bold text-foreground">
+                    {isDragging ? 'Release to upload' : 'Drop image'}
                   </span>
                   {!isDragging && (
-                    <span className="text-[11px] text-muted-foreground/80">
+                    <span className="text-[11px] font-medium text-muted-foreground">
                       or click to browse
                     </span>
                   )}
-                  <div className="mt-1 flex flex-wrap items-center justify-center gap-1.5">
-                    <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary/70">PNG</span>
-                    <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary/70">JPEG</span>
-                    <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary/70">WebP</span>
-                    <span className="text-[10px] text-muted-foreground/80">up to 50MB</span>
+                  <div className="mt-1.5 flex flex-wrap items-center justify-center gap-1.5">
+                    <span className="rounded-md border border-primary/20 bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary">PNG</span>
+                    <span className="rounded-md border border-primary/20 bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary">JPEG</span>
+                    <span className="rounded-md border border-primary/20 bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary">WebP</span>
+                    <span className="text-[10px] font-medium text-muted-foreground">· up to 50MB</span>
                   </div>
                 </div>
               </motion.div>
@@ -249,10 +313,11 @@ export default function UploadArea() {
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.3, delay: 0.5 + i * 0.1 }}
-            className="flex items-center justify-center gap-1.5 rounded-full border bg-primary/10 px-2.5 py-2 shadow-sm hover:bg-primary/20 hover:border-primary/30 transition-colors ring-1 ring-primary/5"
+            whileHover={{ y: -2 }}
+            className="flex items-center justify-center gap-1.5 rounded-full border border-border/60 bg-card/80 px-2.5 py-2 shadow-sm hover:shadow-md hover:border-primary/30 hover:bg-primary/5 transition-all"
           >
-            <item.icon className="size-3.5 text-primary/70" />
-            <span className="text-xs font-semibold text-primary/80">{item.label}</span>
+            <item.icon className="size-3.5 text-primary" />
+            <span className="text-xs font-semibold text-foreground/80">{item.label}</span>
           </motion.div>
         ))}
       </motion.div>
@@ -268,22 +333,73 @@ export default function UploadArea() {
           { step: 1, icon: Upload, title: 'Upload', desc: 'Drop your image' },
           { step: 2, icon: Scan, title: 'Detect', desc: 'AI finds watermark' },
           { step: 3, icon: Paintbrush, title: 'Remove', desc: 'Seamless cleanup' },
-        ].map((item) => (
+        ].map((item, idx) => (
           <motion.div
             key={item.step}
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.3, delay: 0.7 + item.step * 0.1 }}
-            className="flex flex-col items-center gap-1.5 rounded-lg border bg-card/60 p-3 shadow-sm hover:bg-card/80 hover:shadow-md hover:border-primary/20 transition-all group relative"
+            whileHover={{ y: -3, transition: { duration: 0.2 } }}
+            className="flex flex-col items-center gap-1.5 rounded-xl border border-border/60 bg-card/70 p-3 shadow-sm hover:shadow-lg hover:bg-card hover:border-primary/40 transition-all group relative overflow-hidden"
           >
+            {/* Subtle gradient overlay on hover */}
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
             <span className="step-badge absolute -top-2.5 -left-2.5 z-10">{item.step}</span>
-            <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 ring-1 ring-primary/15 group-hover:bg-primary/20 group-hover:ring-primary/30 transition-all">
-              <item.icon className="size-4 text-primary/70 group-hover:text-primary transition-colors" />
+            <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10 ring-1 ring-primary/15 group-hover:bg-primary/20 group-hover:ring-primary/40 group-hover:scale-110 transition-all">
+              <item.icon className="size-4 text-primary group-hover:scale-110 transition-transform" />
             </div>
-            <span className="text-xs font-semibold text-foreground/80 group-hover:text-foreground transition-colors">{item.title}</span>
-            <span className="text-[10px] text-muted-foreground/80">{item.desc}</span>
+            <span className="text-xs font-bold text-foreground/90 group-hover:text-foreground transition-colors">{item.title}</span>
+            <span className="text-[10px] font-medium text-muted-foreground">{item.desc}</span>
+            {/* Hidden arrow connector showing progression */}
+            {idx < 2 && (
+              <div className="hidden sm:block absolute -right-2.5 top-1/2 -translate-y-1/2 z-20 size-3 rounded-full bg-border/80 ring-2 ring-background" />
+            )}
           </motion.div>
         ))}
+      </motion.div>
+
+      {/* Try with a sample — lets new visitors experience the flow without uploading */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.8 }}
+        className="flex w-full max-w-md flex-col items-center gap-3"
+      >
+        <span className="flex w-full items-center gap-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground
+          before:content-[''] before:h-px before:flex-1 before:bg-gradient-to-r before:from-transparent before:to-border/80
+          after:content-[''] after:h-px after:flex-1 after:bg-gradient-to-l after:from-transparent after:to-border/80">
+          or try with a sample
+        </span>
+        <div className="grid w-full grid-cols-3 gap-2">
+          {SAMPLES.map((sample, i) => (
+            <motion.button
+              key={sample.name}
+              type="button"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.3, delay: 0.9 + i * 0.08 }}
+              whileHover={{ y: -2 }}
+              whileTap={{ scale: 0.97 }}
+              disabled={isReading}
+              onClick={() => loadSample(sample.name)}
+              aria-label={`Try the ${sample.label.toLowerCase()} sample image`}
+              className="group flex cursor-pointer flex-col rounded-lg border border-border/60 bg-card/70 p-2 shadow-sm transition-all hover:shadow-md hover:border-primary/30 hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <div className="relative aspect-video w-full overflow-hidden rounded-md bg-muted">
+                <img
+                  src={sample.src}
+                  alt={`${sample.label} sample preview`}
+                  loading="lazy"
+                  className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
+                />
+                <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-background/0 opacity-0 transition-opacity duration-200 group-hover:bg-background/30 group-hover:opacity-100">
+                  <ImageIcon className="size-4 text-foreground/80 drop-shadow" />
+                </div>
+              </div>
+              <span className="mt-1.5 text-center text-[10px] font-semibold text-foreground/80">{sample.label}</span>
+            </motion.button>
+          ))}
+        </div>
       </motion.div>
 
       <AnimatePresence>

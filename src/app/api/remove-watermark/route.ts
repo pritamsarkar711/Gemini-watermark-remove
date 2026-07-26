@@ -14,29 +14,57 @@ export async function POST(req: NextRequest) {
     const imageBuffer = Buffer.from(await imageFile.arrayBuffer());
 
     // Dynamic import to avoid bundling issues
-    const { inpaintImage, detectWatermark, generateDetectionMask, bufferToDataUrl, getImageInfo } = await import("@/lib/image-processing");
+    const {
+      inpaintImage,
+      detectWatermark,
+      generateDetectionMask,
+      bufferToDataUrl,
+      getImageInfo,
+      computeDetectionConfidence,
+      computeDetectionBoundingRegion,
+    } = await import("@/lib/image-processing");
 
     let maskBuffer: Buffer;
+    // Only populated when autoDetect ran (i.e. autoDetect=true AND no manual
+    // mask was supplied). When undefined, the field is omitted from the JSON
+    // response entirely (JSON.stringify drops undefined values).
+    let detectionConfidence: number | undefined;
+    // Bounding box of the detected region(s). null when autoDetect did not
+    // run (manual mask path) — per task spec cron9-feat-B.
+    let detectionRegion: { x: number; y: number; width: number; height: number } | null = null;
 
     if (autoDetect && !maskFile) {
       // Auto-detect watermark regions
       const regions = await detectWatermark(imageBuffer);
-      
-      if (regions.length === 0) {
-        // No watermark detected - try broader detection
-        // Check bottom-right area with a larger scan
-        const imageInfo = await getImageInfo(imageBuffer);
-        const fallbackRegions = [{
-          x: Math.floor(imageInfo.width * 0.78),
-          y: Math.floor(imageInfo.height * 0.78),
-          width: Math.floor(imageInfo.width * 0.22),
-          height: Math.floor(imageInfo.height * 0.22),
-          confidence: 0.5,
-        }];
-        maskBuffer = await generateDetectionMask(imageBuffer, fallbackRegions);
-      } else {
-        maskBuffer = await generateDetectionMask(imageBuffer, regions);
-      }
+      const imageInfo = await getImageInfo(imageBuffer);
+
+      // Regions used for mask generation (fallback to a bottom-right scan
+      // when nothing was detected so the inpainter still has something to
+      // work with).
+      const effectiveRegions = regions.length === 0
+        ? [{
+            x: Math.floor(imageInfo.width * 0.78),
+            y: Math.floor(imageInfo.height * 0.78),
+            width: Math.floor(imageInfo.width * 0.22),
+            height: Math.floor(imageInfo.height * 0.22),
+            confidence: 0.5,
+          }]
+        : regions;
+
+      maskBuffer = await generateDetectionMask(imageBuffer, effectiveRegions);
+
+      // Compute confidence + bounding box from the regions we actually
+      // used (fallback regions count too — they represent our best guess).
+      detectionConfidence = computeDetectionConfidence(
+        effectiveRegions,
+        imageInfo.width,
+        imageInfo.height
+      );
+      detectionRegion = computeDetectionBoundingRegion(
+        effectiveRegions,
+        imageInfo.width,
+        imageInfo.height
+      );
     } else if (maskFile) {
       maskBuffer = Buffer.from(await maskFile.arrayBuffer());
     } else {
@@ -124,6 +152,13 @@ export async function POST(req: NextRequest) {
         size: info.size,
       },
       stats,
+      // Only present when autoDetect ran. JSON.stringify omits `undefined`,
+      // so the field is dropped entirely from the wire response for the
+      // manual-mask path (per task spec cron9-feat-B).
+      detectionConfidence,
+      // null when autoDetect did not run; bounding box of the detected
+      // region(s) otherwise.
+      detectionRegion,
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";

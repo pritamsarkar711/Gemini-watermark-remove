@@ -2,7 +2,7 @@
 
 import { useCallback, useRef, useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowLeft, ArrowRight, Maximize2, Loader2, GitCompareArrows } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Maximize2, Loader2, GitCompareArrows, Target } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAppStore } from '@/lib/store'
 
@@ -34,6 +34,16 @@ function formatPixelCount(n: number): string {
   if (n < 1000) return String(n)
   if (n < 1_000_000) return `${(n / 1000).toFixed(1)}K`
   return `${(n / 1_000_000).toFixed(1)}M`
+}
+
+/**
+ * Pick the color classes for the detection-confidence badge based on the
+ * 0-99 score. Spec: >=85 emerald, >=60 amber, otherwise red.
+ */
+function getDetectionConfidenceColor(confidence: number): { text: string; dot: string } {
+  if (confidence >= 85) return { text: 'text-emerald-400', dot: 'bg-emerald-500' }
+  if (confidence >= 60) return { text: 'text-amber-400', dot: 'bg-amber-500' }
+  return { text: 'text-red-400', dot: 'bg-red-500' }
 }
 
 export default function ComparisonSlider() {
@@ -238,6 +248,17 @@ export default function ComparisonSlider() {
 
   if (!originalImage || !processedImage) return null
 
+  // Detection confidence — only show when autoDetect ran (i.e. the API
+  // populated detectionConfidence > 0) and we're not currently processing.
+  const detectionConfidence = processedImage.detectionConfidence
+  const showDetectionBadge =
+    typeof detectionConfidence === 'number'
+    && detectionConfidence > 0
+    && !isProcessing
+  const detectionColor = detectionConfidence != null
+    ? getDetectionConfidenceColor(detectionConfidence)
+    : { text: '', dot: '' }
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.98 }}
@@ -275,11 +296,26 @@ export default function ComparisonSlider() {
 
         {/* Compare badge - top center */}
         <div className="pointer-events-none absolute top-2.5 left-1/2 z-20 -translate-x-1/2">
-          <span className="pulse-subtle inline-flex items-center gap-1 rounded-full border border-white/20 bg-black/60 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm shadow-sm">
+          <span className="pulse-subtle inline-flex items-center gap-1 rounded-full border border-white/20 bg-black/70 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm shadow-sm">
             <Maximize2 className="size-2.5" />
             Compare
           </span>
         </div>
+
+        {/* Detection confidence badge - top-left, below the Before label.
+            Only shown when autoDetect ran (detectionConfidence > 0) and we
+            are not currently processing. Color-coded by score. */}
+        {showDetectionBadge && detectionConfidence != null && (
+          <div className="pointer-events-none absolute top-9 left-2.5 z-20">
+            <span className="inline-flex items-center gap-1.5 rounded-md bg-black/75 backdrop-blur-md px-2 py-1 text-[10px] font-semibold text-white shadow-md tabular-nums ring-1 ring-white/10">
+              <Target className={`size-2.5 ${detectionColor.text}`} />
+              <span className="text-white/80">Detection:</span>
+              <span className={detectionColor.text}>{detectionConfidence}%</span>
+              <span className="text-white/60">confidence</span>
+              <span className={`size-1.5 rounded-full ${detectionColor.dot}`} />
+            </span>
+          </div>
+        )}
 
         {/* Processing overlay */}
       <AnimatePresence>
@@ -345,9 +381,9 @@ export default function ComparisonSlider() {
         )}
       </AnimatePresence>
 
-      {/* Pixel diff stats badge - top right (below the "After" label to avoid overlap) */}
-        <div className="pointer-events-none absolute top-9 right-2 z-20">
-          <span className="inline-flex items-center gap-1 rounded-full bg-black/60 backdrop-blur-sm px-2 py-0.5 text-[10px] font-medium text-white shadow-sm tabular-nums">
+      {/* Pixel diff stats badge - bottom-right (was top-right, moved to bottom to avoid floating) */}
+        <div className="pointer-events-none absolute bottom-2 right-2 z-20">
+          <span className="inline-flex items-center gap-1.5 rounded-md border border-white/15 bg-black/75 backdrop-blur-md px-2 py-1 text-[10px] font-semibold text-white shadow-md tabular-nums">
             {diffLoading ? (
               <>
                 <Loader2 className="size-2.5 animate-spin" />
@@ -355,8 +391,11 @@ export default function ComparisonSlider() {
               </>
             ) : diffStats ? (
               <>
-                <GitCompareArrows className="size-2.5" />
-                {diffStats.diffPercentage}% pixels modified · {formatPixelCount(diffStats.changedPixels)} changed
+                <GitCompareArrows className="size-2.5 text-emerald-400" />
+                <span className="text-emerald-400">{diffStats.diffPercentage}%</span>
+                <span className="text-white/70">modified</span>
+                <span className="text-white/40">·</span>
+                <span className="text-white/80">{formatPixelCount(diffStats.changedPixels)} px</span>
               </>
             ) : (
               <>
@@ -406,15 +445,16 @@ export default function ComparisonSlider() {
           </motion.div>
         </div>
 
-        {/* Labels - animated fade */}
+        {/* Labels - animated fade — both labels at top-2.5 for consistent vertical alignment */}
         <AnimatePresence>
           {sliderPosition > 5 && (
             <motion.div
               initial={{ opacity: 0, x: -5 }}
               animate={{ opacity: 0.95, x: 0 }}
               exit={{ opacity: 0, x: -5 }}
-              className="pointer-events-none absolute top-2.5 left-2.5 rounded-lg bg-black/70 px-2 py-1 text-[10px] font-semibold text-white backdrop-blur-sm shadow-sm ring-1 ring-white/10"
+              className="pointer-events-none absolute top-2.5 left-2.5 z-20 inline-flex items-center gap-1 rounded-md bg-black/75 px-2 py-1 text-[10px] font-bold text-white backdrop-blur-md shadow-md ring-1 ring-white/10"
             >
+              <span className="size-1.5 rounded-full bg-white/80" />
               Before
             </motion.div>
           )}
@@ -426,21 +466,30 @@ export default function ComparisonSlider() {
               initial={{ opacity: 0, x: 5 }}
               animate={{ opacity: 0.95, x: 0 }}
               exit={{ opacity: 0, x: 5 }}
-              className="pointer-events-none absolute top-2.5 right-2.5 rounded-lg bg-primary/70 px-2 py-1 text-[10px] font-semibold text-white backdrop-blur-sm shadow-sm ring-1 ring-white/10"
+              className="pointer-events-none absolute top-2.5 right-2.5 z-20 inline-flex items-center gap-1 rounded-md bg-primary px-2 py-1 text-[10px] font-bold text-white shadow-md ring-1 ring-white/20"
             >
               After
+              <span className="size-1.5 rounded-full bg-white/90" />
             </motion.div>
           )}
         </AnimatePresence>
       </div>
 
-      {/* Bottom info */}
-      <div className="flex items-center justify-between px-2 py-1.5 rounded-lg border bg-card/60">
-        <span className="text-[10px] font-medium text-muted-foreground">Original</span>
-        <div className="flex items-center gap-1 text-[10px] text-muted-foreground/70">
-          <span>Drag slider or use arrow keys</span>
+      {/* Bottom info — combined original/result labels with diff stats inline */}
+      <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg border bg-card/80 backdrop-blur-sm shadow-sm">
+        <div className="flex items-center gap-1.5">
+          <span className="size-1.5 rounded-full bg-foreground/60" />
+          <span className="text-[10px] font-semibold text-foreground/80">Original</span>
         </div>
-        <span className="text-[10px] font-medium text-muted-foreground">Result</span>
+        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+          <kbd className="rounded bg-muted px-1 py-0.5 text-[9px] font-medium text-muted-foreground">←</kbd>
+          <kbd className="rounded bg-muted px-1 py-0.5 text-[9px] font-medium text-muted-foreground">→</kbd>
+          <span className="hidden sm:inline">or drag</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="text-[10px] font-semibold text-primary">Result</span>
+          <span className="size-1.5 rounded-full bg-primary" />
+        </div>
       </div>
     </motion.div>
   )

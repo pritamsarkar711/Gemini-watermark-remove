@@ -54,6 +54,18 @@ export interface ProcessedImage {
   width: number;
   height: number;
   size: number;
+  /**
+   * 0-99 confidence score for auto-detected watermark regions. Only present
+   * when the remove-watermark API ran with autoDetect=true. Undefined for
+   * manual-mask removals, watermark-add, transform, etc.
+   */
+  detectionConfidence?: number;
+  /**
+   * Bounding box { x, y, width, height } of the detected watermark region(s),
+   * in source-image pixel coordinates. null when autoDetect did not run.
+   * Stored for future use (e.g. drawing an overlay); not currently rendered.
+   */
+  detectionRegion?: { x: number; y: number; width: number; height: number } | null;
 }
 
 export interface WatermarkConfig {
@@ -427,6 +439,13 @@ interface AppState {
   isCropOverlayActive: boolean;
   setCropOverlayActive: (active: boolean) => void;
 
+  // ─── Inline brush mode (UI-only, not persisted) ─────────────────────────
+  // True when the user has activated the inline Magic Brush overlay on the
+  // main image preview. Used by ControlPanel to hide its (now-redundant)
+  // sidebar brush section while the inline brush is active.
+  isInlineBrushActive: boolean;
+  setInlineBrushActive: (active: boolean) => void;
+
   // ─── User presets ──────────────────────────────────────────────────────
   // Custom watermark presets saved by the user (in addition to BUILT_IN_PRESETS).
   // Persisted to localStorage so they survive page reloads.
@@ -606,6 +625,9 @@ export const useAppStore = create<AppState>()(
   isCropOverlayActive: false,
   setCropOverlayActive: (active) => set({ isCropOverlayActive: active }),
 
+  isInlineBrushActive: false,
+  setInlineBrushActive: (active) => set({ isInlineBrushActive: active }),
+
   // ─── User presets ──────────────────────────────────────────────────────
   customPresets: [],
   addCustomPreset: (preset) =>
@@ -766,6 +788,7 @@ export const useAppStore = create<AppState>()(
       // Reset crop overlay UI state as well
       cropRect: { x: 0, y: 0, width: 0, height: 0 },
       isCropOverlayActive: false,
+      isInlineBrushActive: false,
       // Reset history to initial snapshot
       history: [initialSnapshot],
       historyIndex: 0,
