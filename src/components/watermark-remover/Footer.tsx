@@ -1,16 +1,17 @@
 'use client'
 
-import { Eraser, Heart } from 'lucide-react'
+import { Heart } from 'lucide-react'
+import BrandMark from '@/components/watermark-remover/BrandMark'
 
 const TELEGRAM_URL = 'https://t.me/joegoldberg2025'
 
 export default function Footer() {
   return (
-    <footer className="mt-auto w-full gradient-border-top bg-gradient-to-t from-primary/[0.06] via-muted/45 to-transparent backdrop-blur-sm">
+    <footer className="mt-auto w-full gradient-border-top bg-muted/30 backdrop-blur-sm">
       <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-4 py-4 sm:flex-row sm:px-6">
         <div className="flex items-center gap-2.5 text-sm">
           <div className="flex size-7 items-center justify-center rounded-lg bg-primary/15 ring-1 ring-primary/20">
-            <Eraser className="size-3.5 text-primary" />
+            <BrandMark className="size-3.5 text-primary" />
           </div>
           <span className="font-bold tracking-tight text-foreground">Gemini Watermark</span>
         </div>

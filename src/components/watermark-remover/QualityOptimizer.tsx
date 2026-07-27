@@ -260,14 +260,11 @@ export default function QualityOptimizer() {
             />
             <span className="text-xs tabular-nums text-muted-foreground/50 w-5 text-right">{qualityConfig.quality}</span>
           </div>
-          {/* Visual quality bar — primary color gradient */}
+          {/* Visual quality bar — flat primary fill */}
           <div className="relative h-1.5 w-full rounded-full overflow-hidden bg-muted/50">
             <div
-              className="absolute inset-y-0 left-0 rounded-full transition-all duration-300"
-              style={{
-                width: `${qualityPercent}%`,
-                background: `linear-gradient(to right, color-mix(in oklch, var(--primary) 40%, transparent), color-mix(in oklch, var(--primary) 70%, transparent), var(--primary))`,
-              }}
+              className="absolute inset-y-0 left-0 rounded-full bg-primary transition-all duration-300"
+              style={{ width: `${qualityPercent}%` }}
             />
           </div>
         </div>

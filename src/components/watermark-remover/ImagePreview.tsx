@@ -881,7 +881,7 @@ export default function ImagePreview() {
                   <div className="quality-bar relative h-2 w-full rounded-full bg-muted/30 overflow-hidden">
                     <motion.div
                       className="absolute inset-y-0 left-0 rounded-full"
-                      style={{ background: 'linear-gradient(to right, color-mix(in oklch, var(--primary) 40%, transparent), color-mix(in oklch, var(--primary) 70%, transparent), var(--primary))' }}
+                      style={{ background: 'var(--primary)' }}
                       initial={{ width: '0%' }}
                       animate={{ width: `${PROCESSING_STAGES[processingStage].progress}%` }}
                       transition={{ duration: 0.5, ease: 'easeOut' }}
@@ -926,8 +926,8 @@ export default function ImagePreview() {
           </div>
         )}
 
-        {/* Subtle gradient overlay at bottom for zoom control visibility */}
-        <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-black/25 to-transparent" />
+        {/* Flat scrim at the bottom to keep zoom controls legible over any image */}
+        <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-12 bg-black/20" />
 
         {/* Drag-and-drop re-upload overlay */}
         <AnimatePresence>
