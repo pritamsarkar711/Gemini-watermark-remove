@@ -342,7 +342,7 @@ export default function ComparisonSlider() {
                 <div className="quality-bar relative h-2 w-full rounded-full bg-muted/30 overflow-hidden">
                   <motion.div
                     className="absolute inset-y-0 left-0 rounded-full"
-                    style={{ background: 'linear-gradient(to right, color-mix(in oklch, var(--primary) 30%, transparent), color-mix(in oklch, var(--primary) 60%, transparent), var(--primary))' }}
+                    style={{ background: 'var(--primary)' }}
                     initial={{ width: '0%' }}
                     animate={{ width: `${PROCESSING_STAGES[processingStage].progress}%` }}
                     transition={{ duration: 0.5, ease: 'easeOut' }}
@@ -411,7 +411,7 @@ export default function ComparisonSlider() {
           className="absolute top-0 bottom-0 w-[3px] z-10"
           style={{ left: `${sliderPosition}%`, transform: 'translateX(-1px)' }}
         >
-          <div className="absolute inset-0 bg-gradient-to-b from-white via-white/90 to-white/70 shadow-[0_0_12px_rgba(255,255,255,0.5),0_0_4px_rgba(0,0,0,0.3)]" />
+          <div className="absolute inset-0 bg-white shadow-[0_0_12px_rgba(255,255,255,0.5),0_0_4px_rgba(0,0,0,0.3)]" />
         </div>
 
         {/* Handle - pill shaped with arrows, drop shadow + white ring */}

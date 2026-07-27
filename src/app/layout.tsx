@@ -13,9 +13,8 @@ const workSans = Work_Sans({
 export const metadata: Metadata = {
   title: "Gemini Watermark Remover",
   description: "Remove watermarks and logos from images. High quality, seamless results.",
-  icons: {
-    icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
-  },
+  // The favicon is served from src/app/icon.svg (Next.js file convention),
+  // so no external CDN reference is needed here.
 };
 
 export default function RootLayout({

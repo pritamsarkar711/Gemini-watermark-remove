@@ -25,6 +25,7 @@
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -60,7 +61,9 @@
   --muted-foreground: #587060;
   --accent: #eaf3ed;
   --accent-foreground: #1b3828;
-  --destructive: #b42318;
+  /* Neutral graphite for warning / removal states — the palette is red-free. */
+  --destructive: #465049;
+  --destructive-foreground: #ffffff;
   --border: #d9e5dc;
   --input: #cbdccf;
   --ring: #286648;
@@ -95,7 +98,9 @@
   --muted-foreground: #b7c8bb;
   --accent: #2b4130;
   --accent-foreground: #f5faf6;
-  --destructive: #ffb4ab;
+  /* Neutral graphite for warning / removal states — the palette is red-free. */
+  --destructive: #c3cfc6;
+  --destructive-foreground: #101b14;
   --border: rgb(255 255 255 / 14%);
   --input: rgb(255 255 255 / 18%);
   --ring: #286648;
@@ -218,30 +223,25 @@
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
 }
 
-/* CTA button utility */
+/* CTA button utility — flat solid fill, no gradient */
 .cta-button {
-  background-image: linear-gradient(to right, var(--primary), color-mix(in oklch, var(--primary) 90%, transparent));
-  transition: transform 0.2s ease, box-shadow 0.2s ease, ring 0.2s ease;
+  background-color: var(--primary);
+  transition: background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
 }
 .cta-button:hover {
+  background-color: color-mix(in srgb, var(--primary) 88%, black);
   transform: translateY(-2px);
-  box-shadow: 0 10px 25px -5px color-mix(in oklch, var(--primary) 25%, transparent);
+  box-shadow: 0 10px 25px -5px color-mix(in srgb, var(--primary) 25%, transparent);
 }
 
-/* Shimmer keyframe */
+/* Shimmer keyframe — flat pulse instead of a moving gradient sweep */
 @keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
 }
 .animate-shimmer {
-  background: linear-gradient(
-    90deg,
-    color-mix(in oklch, var(--muted) 80%, transparent) 25%,
-    color-mix(in oklch, var(--muted) 60%, transparent) 50%,
-    color-mix(in oklch, var(--muted) 80%, transparent) 75%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite linear;
+  background-color: color-mix(in srgb, var(--muted) 80%, transparent);
+  animation: shimmer 1.5s infinite ease-in-out;
 }
 
 /* Thicker icon strokes */
@@ -312,11 +312,12 @@
 }
 
 /* ─── Dot grid pattern ────────────────────────────────────────────────────── */
+/* Dots are drawn as hard-edged solid circles (no soft colour ramp). */
 .dot-grid-bg {
   background-image: radial-gradient(
     circle,
-    color-mix(in oklch, var(--muted-foreground) 15%, transparent) 1px,
-    transparent 1px
+    color-mix(in srgb, var(--muted-foreground) 15%, transparent) 1px,
+    transparent 1.01px
   );
   background-size: 20px 20px;
   background-position: 0 0;
@@ -324,8 +325,8 @@
 .dot-grid-bg-dense {
   background-image: radial-gradient(
     circle,
-    color-mix(in oklch, var(--muted-foreground) 12%, transparent) 1px,
-    transparent 1px
+    color-mix(in srgb, var(--muted-foreground) 12%, transparent) 1px,
+    transparent 1.01px
   );
   background-size: 16px 16px;
 }
@@ -355,12 +356,11 @@
   box-shadow: 0 0 0 3px var(--card);
 }
 
-/* ─── Quality bar — uses primary color gradient ────────────────────────────── */
+/* ─── Quality bar — flat primary fill ─────────────────────────────────────── */
 .quality-bar {
   height: 4px;
   border-radius: 2px;
-  background: linear-gradient(to right, color-mix(in oklch, var(--primary) 30%, transparent), color-mix(in oklch, var(--primary) 60%, transparent), var(--primary));
-  opacity: 0.8;
+  background: color-mix(in srgb, var(--primary) 22%, transparent);
 }
 
 /* ─── Mobile drawer handle ──────────────────────────────────────────────── */
@@ -417,44 +417,14 @@
   .animated-border { animation: none; }
 }
 
-/* ─── Gradient text effect ────────────────────────────────────────────────── */
+/* ─── Brand wordmark — flat solid colour, no gradient fill ───────────────── */
 .gradient-text {
-  background: linear-gradient(
-    135deg,
-    var(--primary) 0%,
-    color-mix(in oklch, var(--primary) 60%, var(--foreground)) 100%
-  );
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--primary);
 }
 
-/* ─── Shimmer glow ──────────────────────────────── */
-@keyframes shimmer-glow-slide {
-  0% { left: -100%; }
-  100% { left: 200%; }
-}
+/* ─── Shimmer glow — removed; kept as a no-op so markup stays valid ──────── */
 .shimmer-glow {
   position: relative;
-  overflow: hidden;
-}
-.shimmer-glow::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 50%;
-  height: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    color-mix(in oklch, var(--primary-foreground) 15%, transparent) 50%,
-    transparent 100%
-  );
-  animation: shimmer-glow-slide 3s ease-in-out infinite;
-}
-@media (prefers-reduced-motion: reduce) {
-  .shimmer-glow::after { animation: none; display: none; }
 }
 
 /* ─── Float particle ────────────────────────────────── */
@@ -482,69 +452,37 @@
   .pulse-subtle { animation: none; }
 }
 
-/* ─── Gradient border top ────────────────────────────────── */
+/* ─── Top hairline rule — flat 1px border ─────────────────────────────────── */
 .gradient-border-top {
-  border-top: none;
+  border-top: 1px solid var(--border);
   position: relative;
 }
-.gradient-border-top::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    color-mix(in oklch, var(--primary) 30%, var(--border)) 20%,
-    color-mix(in oklch, var(--primary) 50%, var(--border)) 50%,
-    color-mix(in oklch, var(--primary) 30%, var(--border)) 80%,
-    transparent 100%
-  );
-}
 
-/* ─── Gradient left border ─────────────────────────────────── */
+/* ─── Accent left border — flat 2px primary rule ──────────────────────────── */
 .gradient-border-left {
-  border-left: 2px solid transparent;
-  border-image: linear-gradient(
-    to bottom,
-    var(--primary),
-    color-mix(in oklch, var(--primary) 40%, transparent)
-  ) 1;
+  border-left: 2px solid color-mix(in srgb, var(--primary) 55%, transparent);
 }
 
-/* ─── Image shimmer loading ───────────────────────────────────────────────── */
+/* ─── Image loading placeholder — flat pulse, no gradient sweep ───────────── */
 @keyframes image-shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
 }
 .image-shimmer-loading {
-  background: linear-gradient(
-    90deg,
-    color-mix(in oklch, var(--muted) 60%, transparent) 25%,
-    color-mix(in oklch, var(--muted) 90%, var(--card)) 50%,
-    color-mix(in oklch, var(--muted) 60%, transparent) 75%
-  );
-  background-size: 200% 100%;
+  background-color: color-mix(in srgb, var(--muted) 60%, transparent);
   animation: image-shimmer 1.5s ease-in-out 1;
 }
 @media (prefers-reduced-motion: reduce) {
   .image-shimmer-loading { animation: none; background: var(--card); }
 }
 
-/* ─── Sticky CTA wrapper ──────────────────────────────────── */
+/* ─── Sticky CTA wrapper — solid background with a hairline separator ─────── */
 .sticky-cta-wrapper {
   position: sticky;
   bottom: 0;
   z-index: 20;
-  background: linear-gradient(
-    to bottom,
-    transparent 0%,
-    color-mix(in oklch, var(--background) 40%, transparent) 20%,
-    color-mix(in oklch, var(--background) 70%, transparent) 40%,
-    var(--background) 100%
-  );
-  padding-top: 16px;
+  background-color: var(--background);
+  border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  padding-top: 12px;
   margin-top: auto;
 }

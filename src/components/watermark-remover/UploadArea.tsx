@@ -2,7 +2,8 @@
 
 import { useCallback, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Upload, X, Eraser, Shield, Zap, Eye, Lock, Scan, Paintbrush, Image as ImageIcon } from 'lucide-react'
+import { Upload, X, Shield, Zap, Eye, Lock, Scan, Paintbrush, Image as ImageIcon } from 'lucide-react'
+import BrandMark from '@/components/watermark-remover/BrandMark'
 import { useAppStore, type ImageInfo } from '@/lib/store'
 
 const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
@@ -174,7 +175,7 @@ export default function UploadArea() {
       >
         <div className="relative">
           <div className="flex size-20 items-center justify-center rounded-lg bg-primary/10 ring-2 ring-primary/10 animated-border">
-            <Eraser className="size-9 text-primary" />
+            <BrandMark className="size-9 text-primary" />
           </div>
           <motion.div
             animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.6, 0.3] }}
@@ -196,7 +197,7 @@ export default function UploadArea() {
           ))}
         </div>
         <div className="flex flex-col items-center gap-1">
-          <h1 className="gradient-text text-4xl font-extrabold tracking-tight">Gemini Watermark</h1>
+          <h1 className="text-4xl font-extrabold tracking-tight text-primary">Gemini Watermark</h1>
           <p className="text-lg font-bold text-foreground/80">Remover</p>
         </div>
       </motion.div>
@@ -231,8 +232,8 @@ export default function UploadArea() {
             className="hidden"
           />
 
-          {/* Subtle background gradient pattern */}
-          <div className="absolute inset-0 rounded-lg bg-gradient-to-br from-primary/[0.03] via-transparent to-primary/[0.04] opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+          {/* Subtle flat tint on hover */}
+          <div className="absolute inset-0 rounded-lg bg-primary/[0.03] opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
           {/* Dot grid pattern behind the upload zone */}
           <div className="absolute inset-0 rounded-lg dot-grid-bg opacity-30" />
 
@@ -338,8 +339,8 @@ export default function UploadArea() {
             whileHover={{ y: -3, transition: { duration: 0.2 } }}
             className="flex flex-col items-center gap-2 rounded-lg border border-border/60 bg-card/70 p-3 sm:p-3 shadow-sm hover:shadow-lg hover:bg-card hover:border-primary/40 transition-all group relative overflow-hidden"
           >
-            {/* Subtle gradient overlay on hover */}
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+            {/* Subtle flat tint on hover */}
+            <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
             <span className="step-badge absolute top-2 left-2 z-10">{item.step}</span>
             <div className="flex size-10 items-center justify-center rounded-lg bg-primary/20 ring-1 ring-primary/25 group-hover:bg-primary/25 group-hover:ring-primary/40 group-hover:scale-110 transition-all">
               <item.icon className="size-5 text-primary group-hover:scale-110 transition-transform" />
@@ -362,8 +363,8 @@ export default function UploadArea() {
         className="flex w-full max-w-xl flex-col items-center gap-3"
       >
         <span className="flex w-full items-center gap-3 text-xs font-bold uppercase tracking-wider text-muted-foreground
-          before:content-[''] before:h-px before:flex-1 before:bg-gradient-to-r before:from-transparent before:to-border/80
-          after:content-[''] after:h-px after:flex-1 after:bg-gradient-to-l after:from-transparent after:to-border/80">
+          before:content-[''] before:h-px before:flex-1 before:bg-border/80
+          after:content-[''] after:h-px after:flex-1 after:bg-border/80">
           or try with a sample
         </span>
         <div className="grid w-full grid-cols-3 gap-2">
@@ -404,10 +405,10 @@ export default function UploadArea() {
             initial={{ opacity: 0, y: -5 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -5 }}
-            className="flex items-center gap-2 rounded-md bg-destructive/10 px-3 py-1.5 text-xs text-destructive"
+            className="flex items-center gap-2 rounded-md border border-border bg-muted px-3 py-1.5 text-xs font-medium text-foreground"
           >
             <span>{error}</span>
-            <button onClick={() => setError(null)} className="text-destructive/70 hover:text-destructive">
+            <button onClick={() => setError(null)} className="text-muted-foreground hover:text-foreground">
               <X className="size-3" />
             </button>
           </motion.div>

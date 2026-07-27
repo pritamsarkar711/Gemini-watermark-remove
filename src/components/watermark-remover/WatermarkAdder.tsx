@@ -23,9 +23,11 @@ const POS_ICONS: Record<WatermarkPosition, string> = {
   'bottom-left': '↙', 'bottom-center': '↓', 'bottom-right': '↘',
 }
 
+// Neutral + brand-aligned swatches. Deliberately red-free to match the
+// site palette, while still covering light/dark/tinted watermark needs.
 const PRESET_COLORS = [
-  '#ffffff', '#000000', '#ff4444', '#4444ff',
-  '#44ff44', '#ffff44', '#ff44ff', '#44ffff',
+  '#ffffff', '#000000', '#286648', '#4e8d6a',
+  '#87b99a', '#3f4a43', '#8c9a91', '#c9d6cd',
 ]
 
 // Preview canvas size constraints (in canvas pixels). Large enough to make watermark text legible,

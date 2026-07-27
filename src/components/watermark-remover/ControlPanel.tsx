@@ -327,7 +327,7 @@ export default function ControlPanel() {
             className={`inline-flex h-8 items-center gap-1 rounded-md px-2 text-xs font-semibold transition-all shadow-sm ${
               !originalImage || isAutoEnhancing
                 ? 'cursor-not-allowed text-muted-foreground opacity-40'
-                : 'cursor-pointer border border-primary/30 bg-gradient-to-br from-primary/10 to-primary/5 text-primary hover:from-primary/20 hover:to-primary/10 hover:shadow-md'
+                : 'cursor-pointer border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 hover:shadow-md'
             }`}
             title="Auto enhance image"
             aria-label="Auto enhance image"

@@ -43,10 +43,10 @@ export default function SideBySideView() {
         </div>
 
         {/* Vertical divider (desktop) */}
-        <div className="hidden sm:block w-[2px] shrink-0 bg-gradient-to-b from-primary/40 via-primary/20 to-primary/10" />
+        <div className="hidden sm:block w-[2px] shrink-0 bg-primary/25" />
 
         {/* Horizontal divider (mobile) */}
-        <div className="block sm:hidden h-[2px] shrink-0 bg-gradient-to-r from-primary/40 via-primary/20 to-primary/10" />
+        <div className="block sm:hidden h-[2px] shrink-0 bg-primary/25" />
 
         {/* Processed (After) image */}
         <div className="relative flex-1 w-full sm:w-1/2 overflow-hidden" style={{ minHeight: '200px', maxHeight: '55vh' }}>
