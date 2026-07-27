@@ -10,6 +10,7 @@ import { useAppStore } from '@/lib/store'
 export default function Header() {
   const { reset, originalImage, step } = useAppStore()
   const { theme, setTheme } = useTheme()
+  // Safe hydration: mounted is true only on the client, avoiding SSR/client mismatch
   const mounted = useSyncExternalStore(
     () => () => {},
     () => true,
@@ -29,27 +30,17 @@ export default function Header() {
       {/* Bottom border with gradient effect */}
       <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
 
-      <div className="relative mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6">
+      <div className="relative mx-auto flex h-14 max-w-4xl items-center justify-between px-4 sm:px-6">
         {/* Left: Logo + Title */}
         <div className="flex items-center gap-2.5">
-          <motion.div
-            animate={{ boxShadow: ['0 0 0px var(--primary)', '0 0 8px color-mix(in oklch, var(--primary) 30%, transparent)', '0 0 0px var(--primary)'] }}
-            transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-            className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary shadow-sm"
-          >
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary shadow-sm">
             <Eraser className="size-4 text-primary-foreground" />
-          </motion.div>
-          <div className="flex items-center gap-1.5 leading-none">
-            <span className="gradient-text text-lg font-semibold tracking-tight brand-shadow">Gemini</span>
+          </div>
+          <div className="flex items-center gap-1 leading-none">
+            <span className="gradient-text text-lg font-semibold tracking-tight brand-shadow">Gemini Watermark</span>
             {step !== 'upload' && (
-              <motion.span
-                initial={{ scale: 0, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                className="size-1.5 rounded-full bg-green-500 shadow-[0_0_6px_rgba(34,197,94,0.6)]"
-                aria-label="Ready"
-              />
+              <span className="size-1.5 rounded-full bg-primary shadow-[0_0_6px_color-mix(in_oklch,var(--primary)_60%,transparent)]" />
             )}
-            <span className="hidden text-xs text-muted-foreground sm:inline-block">Watermark Remover</span>
           </div>
         </div>
 

@@ -899,7 +899,7 @@ export default function ImagePreview() {
               transition={{ duration: 0.3 }}
               className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-background/60 backdrop-blur-sm"
             >
-              <div className="flex flex-col items-center gap-3 rounded-lg bg-card/90 border shadow-lg px-6 py-4 backdrop-blur-md">
+              <div className="flex flex-col items-center gap-4 rounded-lg bg-card/90 border shadow-lg px-8 py-5 backdrop-blur-md min-w-[280px]">
                 <div className="relative size-10">
                   <div className="absolute inset-0 rounded-full border-2 border-muted-foreground/20" />
                   <motion.div
@@ -914,7 +914,7 @@ export default function ImagePreview() {
                   <div className="quality-bar relative h-2 w-full rounded-full bg-muted/30 overflow-hidden">
                     <motion.div
                       className="absolute inset-y-0 left-0 rounded-full"
-                      style={{ background: 'linear-gradient(to right, #ef4444, #f97316, #eab308, #22c55e)' }}
+                      style={{ background: 'linear-gradient(to right, color-mix(in oklch, var(--primary) 40%, transparent), color-mix(in oklch, var(--primary) 70%, transparent), var(--primary))' }}
                       initial={{ width: '0%' }}
                       animate={{ width: `${PROCESSING_STAGES[processingStage].progress}%` }}
                       transition={{ duration: 0.5, ease: 'easeOut' }}

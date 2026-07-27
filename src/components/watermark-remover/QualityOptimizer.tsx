@@ -68,25 +68,24 @@ interface EstimateResult {
   height: number
 }
 
+/** Get size reduction indicator using primary color classes */
+function getSizeReductionIndicator(reductionPct: number): { label: string; className: string; barClass: string } {
+  if (reductionPct >= 50) return { label: 'Excellent', className: 'text-primary', barClass: 'bg-primary' }
+  if (reductionPct >= 25) return { label: 'Good', className: 'text-primary/70', barClass: 'bg-primary/70' }
+  if (reductionPct > 0) return { label: 'Minor', className: 'text-primary/50', barClass: 'bg-primary/50' }
+  return { label: 'No reduction', className: 'text-muted-foreground', barClass: 'bg-muted-foreground/30' }
+}
+
 export default function QualityOptimizer() {
   const { qualityConfig, setQualityConfig, originalImage, processedImage } = useAppStore()
 
-  // Pick the image we should base the estimate on. Prefer the processed
-  // result (so the estimate reflects what the user will actually download),
-  // but fall back to the original upload when nothing has been processed yet.
   const sourceDataUrl = processedImage?.dataUrl ?? originalImage?.dataUrl ?? null
   const sourceFileName = originalImage?.name ?? 'image.png'
-  // The original-size baseline is used for the savings comparison. When a
-  // processed image exists, compare against its size; otherwise compare
-  // against the uploaded file's size.
   const baselineSize = processedImage?.size ?? originalImage?.size ?? 0
 
   const [estimate, setEstimate] = useState<EstimateResult | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  // Per-config cache so switching presets or tabbing away and back doesn't
-  // refetch an estimate we already computed.
   const cacheRef = useRef<Map<string, EstimateResult>>(new Map())
-  // Token so we can ignore stale responses if the user changes config mid-flight.
   const requestTokenRef = useRef(0)
 
   const estimateKey = `${qualityConfig.format}-${qualityConfig.quality}-${qualityConfig.maxWidth}-${qualityConfig.maxHeight}`
@@ -97,7 +96,6 @@ export default function QualityOptimizer() {
       return
     }
 
-    // Serve from cache when possible — makes preset switching instant.
     const cached = cacheRef.current.get(estimateKey)
     if (cached) {
       setEstimate(cached)
@@ -108,7 +106,6 @@ export default function QualityOptimizer() {
     setIsLoading(true)
 
     try {
-      // Convert the dataUrl to a File only when we actually need to send it.
       const file = dataUrlToFile(sourceDataUrl, sourceFileName)
 
       const formData = new FormData()
@@ -124,7 +121,6 @@ export default function QualityOptimizer() {
       })
       const data = await res.json()
 
-      // Ignore the response if a newer request superseded us.
       if (token !== requestTokenRef.current) return
 
       if (data.success) {
@@ -146,14 +142,13 @@ export default function QualityOptimizer() {
     }
   }, [sourceDataUrl, sourceFileName, estimateKey, qualityConfig])
 
-  // Debounce 500ms after any qualityConfig change, then fetch.
+  // Debounce 500ms after any qualityConfig change
   useEffect(() => {
     if (!sourceDataUrl) {
       setEstimate(null)
       return
     }
 
-    // If we already have a cached value for this key, show it immediately.
     const cached = cacheRef.current.get(estimateKey)
     if (cached) {
       setEstimate(cached)
@@ -167,14 +162,13 @@ export default function QualityOptimizer() {
     return () => clearTimeout(t)
   }, [estimateKey, sourceDataUrl, fetchEstimate])
 
-  // When the source image itself changes, invalidate the cache because the
-  // underlying pixels are different even if the quality config is the same.
+  // Invalidate cache when source image changes
   useEffect(() => {
     cacheRef.current.clear()
     setEstimate(null)
   }, [sourceDataUrl])
 
-  // Compute savings percentage vs. the baseline (original or processed).
+  // Compute savings
   let savingsPct: number | null = null
   let savingsDirection: 'down' | 'up' | null = null
   if (estimate && baselineSize > 0) {
@@ -183,39 +177,39 @@ export default function QualityOptimizer() {
     savingsDirection = diff <= 0 ? 'down' : 'up'
   }
 
-  // Compression ratio for the visual bar (0 = same size, 100 = maximum compression)
-  // For "up" direction, we show the expansion ratio differently
   const compressionRatio = savingsDirection === 'down' && savingsPct !== null
     ? savingsPct
     : 0
 
-  // Quality gradient color — interpolate from red (10) to green (100)
+  // Quality percentage (10-100 range mapped to 0-100%)
   const qualityPercent = ((qualityConfig.quality - 10) / 90) * 100
-
-  // Whether quality slider is visible (only for lossy formats)
   const showQualitySlider = qualityConfig.format !== 'png'
+
+  const sizeIndicator = estimate && savingsDirection === 'down' && savingsPct !== null
+    ? getSizeReductionIndicator(savingsPct)
+    : { label: '', className: '', barClass: '' }
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="flex flex-col gap-2.5 rounded-lg border bg-card/80 p-3 shadow-sm transition-all duration-200 hover:bg-card hover:shadow-md hover:border-border"
+      className="flex flex-col gap-2.5 rounded-lg border bg-card/80 p-4 shadow-sm"
     >
       <div className="flex items-center gap-1.5">
-        <Settings2 className="size-3.5 text-muted-foreground/60" />
-        <Label className="text-xs font-semibold">Export quality</Label>
+        <Settings2 className="size-3.5 text-primary/60" />
+        <Label className="text-xs font-semibold text-foreground">Export Quality</Label>
       </div>
 
       {/* Preset chips */}
-      <div className="flex items-center gap-1 flex-wrap">
+      <div className="flex items-center gap-1.5 flex-wrap">
         {presets.map((preset) => {
           const active = isPresetActive(qualityConfig, preset.config)
           return (
             <button
               key={preset.label}
               onClick={() => setQualityConfig(preset.config)}
-              className={`h-7 text-xs rounded-md px-2 border transition-colors ${
+              className={`h-7 text-xs rounded-md px-2.5 border transition-colors ${
                 active
                   ? 'bg-primary/10 border-primary/30 text-primary font-medium ring-1 ring-primary/20'
                   : 'bg-muted/60 text-muted-foreground hover:bg-accent border-transparent'
@@ -227,7 +221,7 @@ export default function QualityOptimizer() {
         })}
       </div>
 
-      {/* Format selector with description */}
+      {/* Format selector */}
       <div className="flex items-center justify-between gap-3">
         <span className="text-xs text-muted-foreground/50 font-medium">Format</span>
         <div className="flex flex-col items-end gap-0.5">
@@ -251,7 +245,7 @@ export default function QualityOptimizer() {
         </div>
       </div>
 
-      {/* Quality slider (only for lossy formats) */}
+      {/* Quality slider */}
       {showQualitySlider && (
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center justify-between gap-3">
@@ -262,17 +256,17 @@ export default function QualityOptimizer() {
               max={100}
               step={1}
               onValueChange={(v) => setQualityConfig({ quality: v[0] })}
-              className="w-20"
+              className="w-24"
             />
             <span className="text-xs tabular-nums text-muted-foreground/50 w-5 text-right">{qualityConfig.quality}</span>
           </div>
-          {/* Visual quality bar — gradient from red (low) to green (high) */}
+          {/* Visual quality bar — primary color gradient */}
           <div className="relative h-1.5 w-full rounded-full overflow-hidden bg-muted/50">
             <div
               className="absolute inset-y-0 left-0 rounded-full transition-all duration-300"
               style={{
                 width: `${qualityPercent}%`,
-                background: `linear-gradient(to right, #ef4444, #f97316, #eab308, #22c55e)`,
+                background: `linear-gradient(to right, color-mix(in oklch, var(--primary) 40%, transparent), color-mix(in oklch, var(--primary) 70%, transparent), var(--primary))`,
               }}
             />
           </div>
@@ -301,7 +295,7 @@ export default function QualityOptimizer() {
       </div>
 
       {/* Estimated output size row */}
-      <div className="flex items-center justify-between gap-2 rounded-md bg-muted/30 px-2 py-1.5 text-xs">
+      <div className="flex items-center justify-between gap-2 rounded-md bg-muted/30 px-2.5 py-1.5 text-xs">
         <span className="font-medium text-muted-foreground/70">Estimated size</span>
 
         <div className="flex items-center gap-1.5 tabular-nums">
@@ -319,8 +313,8 @@ export default function QualityOptimizer() {
                 <span
                   className={`inline-flex items-center gap-0.5 rounded px-1 py-0.5 font-medium ${
                     savingsDirection === 'down'
-                      ? 'bg-green-500/10 text-green-600 dark:text-green-400'
-                      : 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                      ? 'bg-primary/10 text-primary'
+                      : 'bg-primary/10 text-primary/70'
                   }`}
                 >
                   {savingsDirection === 'down' ? (
@@ -343,62 +337,52 @@ export default function QualityOptimizer() {
         </div>
       </div>
 
-      {/* Savings comparison row with visual progress bar */}
+      {/* Savings comparison row */}
       {estimate && baselineSize > 0 && savingsDirection === 'down' && savingsPct !== null && (
-        <div className="flex flex-col gap-1 rounded-md bg-green-500/5 border border-green-500/10 px-2 py-2">
+        <div className="flex flex-col gap-1.5 rounded-md bg-primary/5 border border-primary/10 px-3 py-2.5">
           <div className="flex items-center justify-between text-xs">
-            <span className="text-green-600/80 dark:text-green-400/80 font-medium">
+            <span className="text-primary/80 font-medium">
               Savings vs original
             </span>
             <div className="flex items-center gap-1.5 tabular-nums">
               <span className="text-muted-foreground/60">{formatBytes(baselineSize)}</span>
-              <ArrowDown className="size-2.5 text-green-600 dark:text-green-400" />
-              <span className="font-semibold text-green-600 dark:text-green-400">
+              <ArrowDown className="size-2.5 text-primary" />
+              <span className="font-semibold text-primary">
                 {formatBytes(estimate.estimatedSize)}
               </span>
             </div>
           </div>
           {/* Compression ratio bar */}
-          <div className="relative h-2 w-full rounded-full overflow-hidden bg-green-500/10">
+          <div className="relative h-2 w-full rounded-full overflow-hidden bg-primary/10">
             <div
-              className="absolute inset-y-0 left-0 rounded-full bg-green-500/40 transition-all duration-500"
+              className="absolute inset-y-0 left-0 rounded-full bg-primary/40 transition-all duration-500"
               style={{ width: `${Math.min(compressionRatio, 100)}%` }}
             />
-            <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-[8px] font-bold text-green-600 dark:text-green-400 mix-blend-difference">
-                {savingsPct}% smaller
-              </span>
-            </div>
           </div>
         </div>
       )}
 
       {/* Expansion warning row */}
       {estimate && baselineSize > 0 && savingsDirection === 'up' && savingsPct !== null && (
-        <div className="flex flex-col gap-1 rounded-md bg-amber-500/5 border border-amber-500/10 px-2 py-2">
+        <div className="flex flex-col gap-1.5 rounded-md bg-primary/5 border border-primary/10 px-3 py-2.5">
           <div className="flex items-center justify-between text-xs">
-            <span className="text-amber-600/80 dark:text-amber-400/80 font-medium">
+            <span className="text-primary/80 font-medium">
               Larger than original
             </span>
             <div className="flex items-center gap-1.5 tabular-nums">
               <span className="text-muted-foreground/60">{formatBytes(baselineSize)}</span>
-              <ArrowUp className="size-2.5 text-amber-600 dark:text-amber-400" />
-              <span className="font-semibold text-amber-600 dark:text-amber-400">
+              <ArrowUp className="size-2.5 text-primary" />
+              <span className="font-semibold text-primary">
                 {formatBytes(estimate.estimatedSize)}
               </span>
             </div>
           </div>
           {/* Expansion ratio bar */}
-          <div className="relative h-2 w-full rounded-full overflow-hidden bg-amber-500/10">
+          <div className="relative h-2 w-full rounded-full overflow-hidden bg-primary/10">
             <div
-              className="absolute inset-y-0 left-0 rounded-full bg-amber-500/40 transition-all duration-500"
+              className="absolute inset-y-0 left-0 rounded-full bg-primary/40 transition-all duration-500"
               style={{ width: `${Math.min(savingsPct, 100)}%` }}
             />
-            <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-[8px] font-bold text-amber-600 dark:text-amber-400 mix-blend-difference">
-                {savingsPct}% larger
-              </span>
-            </div>
           </div>
         </div>
       )}
