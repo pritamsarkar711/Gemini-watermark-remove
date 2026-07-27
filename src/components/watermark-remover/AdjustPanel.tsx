@@ -166,7 +166,7 @@ export default function AdjustPanel() {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="sidebar-panel flex flex-col gap-2.5 rounded-lg p-3 shadow-sm transition-all duration-200 hover:bg-card hover:shadow-md hover:border-border"
+      className="sidebar-panel flex flex-col gap-2.5 rounded-xl border border-border/60 bg-card/80 p-3 sm:p-4 shadow-sm transition-all duration-200 hover:bg-card hover:shadow-md max-w-full overflow-hidden"
     >
       <div
         role="button"

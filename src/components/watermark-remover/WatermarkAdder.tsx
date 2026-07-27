@@ -236,14 +236,14 @@ export default function WatermarkAdder() {
   const [logoOpen, setLogoOpen] = useState(false)
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-2 max-w-full overflow-hidden">
       {/* PRESETS — quick-apply watermark templates */}
-      <div className="flex flex-col gap-1.5 rounded-lg border bg-card/80 p-2.5 shadow-sm">
+      <div className="flex flex-col gap-1.5 rounded-xl border border-border/60 bg-card/80 p-2 sm:p-2.5 shadow-sm max-w-full overflow-hidden">
         <PresetBar />
       </div>
 
       {/* LIVE PREVIEW — compact, side-by-side label */}
-      <div className="flex flex-col gap-1.5 rounded-lg border bg-card/80 p-2.5 shadow-sm">
+      <div className="flex flex-col gap-1.5 rounded-xl border border-border/60 bg-card/80 p-2 sm:p-2.5 shadow-sm max-w-full overflow-hidden">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5">
             <ImageIcon className="size-3.5 text-muted-foreground/60" />
@@ -272,7 +272,7 @@ export default function WatermarkAdder() {
       </div>
 
       {/* Text watermark */}
-      <div className="flex flex-col gap-2 rounded-lg border bg-card/80 p-2.5 shadow-sm">
+      <div className="flex flex-col gap-2 rounded-xl border border-border/60 bg-card/80 p-2 sm:p-2.5 shadow-sm max-w-full overflow-hidden">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5">
             <Type className="size-3.5 text-muted-foreground/60" />
@@ -296,12 +296,12 @@ export default function WatermarkAdder() {
         />
 
         {/* Color presets */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 flex-wrap max-w-full overflow-hidden">
           {PRESET_COLORS.map((color) => (
             <button
               key={color}
               onClick={() => setWatermarkConfig({ color })}
-              className={`size-4 rounded-md border transition-all shadow-sm ${
+              className={`size-5 sm:size-4 rounded-md border transition-all shadow-sm min-h-[28px] min-w-[28px] ${
                 watermarkConfig.color === color ? 'ring-2 ring-primary ring-offset-1 ring-offset-card scale-110' : 'hover:scale-105'
               }`}
               style={{ backgroundColor: color }}
@@ -316,7 +316,7 @@ export default function WatermarkAdder() {
               type="color"
               value={watermarkConfig.color}
               onChange={(e) => setWatermarkConfig({ color: e.target.value })}
-              className="w-7 h-7 rounded-md border cursor-pointer shadow-sm"
+              className="min-h-[36px] min-w-[36px] w-7 h-7 rounded-md border cursor-pointer shadow-sm"
             />
           </div>
         </div>
@@ -379,12 +379,12 @@ export default function WatermarkAdder() {
         {!watermarkConfig.repeat && (
           <div className="flex flex-col gap-1.5">
             <span className="text-xs text-muted-foreground/50 font-medium">Position</span>
-            <div className="grid grid-cols-3 gap-1">
+            <div className="grid grid-cols-3 gap-1 max-w-full overflow-hidden">
               {POSITIONS.map((pos) => (
                 <button
                   key={pos}
                   onClick={() => setWatermarkConfig({ position: pos })}
-                  className={`flex h-8 w-full items-center justify-center rounded-md text-xs transition-all shadow-sm ${
+                  className={`flex min-h-[36px] sm:min-h-[40px] w-full items-center justify-center rounded-md text-xs transition-all shadow-sm ${
                     watermarkConfig.position === pos
                       ? 'bg-primary text-primary-foreground shadow-md'
                       : 'bg-muted/60 text-muted-foreground hover:bg-accent'
@@ -399,7 +399,7 @@ export default function WatermarkAdder() {
       </div>
 
       {/* Logo watermark — collapsible to save vertical space */}
-      <div className="flex flex-col gap-2 rounded-lg border bg-card/80 p-2.5 shadow-sm">
+      <div className="flex flex-col gap-2 rounded-xl border border-border/60 bg-card/80 p-2 sm:p-2.5 shadow-sm max-w-full overflow-hidden">
         <button
           type="button"
           onClick={() => setLogoOpen((v) => !v)}
@@ -488,12 +488,12 @@ export default function WatermarkAdder() {
 
                     <div className="flex flex-col gap-1.5">
                       <span className="text-xs text-muted-foreground/50 font-medium">Position</span>
-                      <div className="grid grid-cols-3 gap-1">
+                      <div className="grid grid-cols-3 gap-1 max-w-full overflow-hidden">
                         {POSITIONS.map((pos) => (
                           <button
                             key={pos}
                             onClick={() => setWatermarkConfig({ logoPosition: pos })}
-                            className={`flex h-8 w-full items-center justify-center rounded-md text-xs transition-all shadow-sm ${
+                            className={`flex min-h-[36px] sm:min-h-[40px] w-full items-center justify-center rounded-md text-xs transition-all shadow-sm ${
                               watermarkConfig.logoPosition === pos
                                 ? 'bg-primary text-primary-foreground shadow-md'
                                 : 'bg-muted/60 text-muted-foreground hover:bg-accent'

@@ -102,3 +102,165 @@ Task: Fix Vercel deployment failure + comprehensive UI/UX polish based on deep a
   - Add keyboard shortcut hints back in toolbar (removed per user request)
   - Consider sticky bottom action bar pattern for mobile Download CTA
 - The project is stable and ready for production deployment
+
+---
+Task ID: 3-a
+Agent: frontend-styling-expert
+Task: Deep redesign fix PC+mobile — comprehensive UI/UX polish
+
+## Work Log:
+- Read worklog.md and all 15 target files to understand current state
+- Identified remaining issues: ComparisonSlider still had emerald-400 diff badge colors (lines 394-395), hardcoded rainbow progress bar (#ef4444→#22c55e), inconsistent card styling across panels, Auto Enhance button floating loose outside containers, mobile overflow risks, Header using non-selective zustand subscriptions
+
+### Critical Fixes Applied:
+
+1. **ComparisonSlider.tsx**
+   - Updated `getDetectionConfidenceColor` comment (was already using primary colors from task 2)
+   - Changed diff stats badge from `text-emerald-400` → `text-primary` (GitCompareArrows icon + percentage text)
+   - Progress bar gradient already uses `var(--primary)` CSS color-mix (was fixed in task 2)
+   - Added `max-w-full overflow-hidden` to root motion.div and container div
+   - Changed `rounded-lg` → `rounded-xl border border-border/60` for slider container
+   - Changed bottom info bar to `rounded-xl border border-border/60 bg-card/80`
+
+2. **ImageInfoPanel.tsx**
+   - Added `rounded-xl border border-border/60 bg-card/80` to outer container
+   - Changed `p-4` → `p-3 sm:p-4` for responsive padding
+   - Added `max-w-full overflow-hidden` to outer container
+   - Changed Before/After inner sections to `p-2 sm:p-3` responsive padding
+
+3. **page.tsx**
+   - Added `overflow-x-hidden` to root div (already existed)
+   - Added `max-w-full overflow-x-hidden` to main element (already existed)
+   - Changed editor container gap from `gap-6` → `gap-4 sm:gap-6 max-w-full overflow-x-hidden`
+   - Added `max-w-full overflow-hidden` to preview area and controls section
+   - Changed download section to `gap-3 sm:gap-4 max-w-full overflow-hidden`
+
+4. **Header.tsx**
+   - Changed from destructured `useAppStore()` (subscribes to ALL store changes) to selective subscriptions:
+     - `const reset = useAppStore((s) => s.reset)`
+     - `const originalImage = useAppStore((s) => s.originalImage)`
+     - `const step = useAppStore((s) => s.step)`
+   - This prevents unnecessary re-renders and avoids "cannot update component while rendering" errors
+   - Verified active indicator dot already uses `bg-primary` with primary glow shadow
+
+5. **ControlPanel.tsx**
+   - Moved Auto Enhance button from floating loose (between Transform div and Tabs) into the Transform section header
+   - Changed from tiny `size-7` icon button to proper inline button with `px-2 py-1 text-xs` "Enhance" label
+   - The button is now part of a flex row alongside "Transform" label text
+   - Changed outer motion.div to `gap-3 sm:gap-4 max-w-full overflow-hidden`
+   - Changed Transform panel card from `rounded-lg p-3` → `rounded-xl border border-border/60 bg-card/80 p-3 sm:p-4`
+   - Changed Auto detect row to `rounded-xl border border-border/60 bg-card/80`
+   - Removed the old floating Auto Enhance button entirely (was between Transform div close and Tabs)
+
+6. **globals.css — StickyCTA**
+   - Improved sticky-cta-wrapper gradient fade from 2-step to 4-step gradient for smoother visual blend
+   - Changed `padding-top` from `12px` → `16px` for better spacing above the CTA
+   - Gradient: transparent → 40% bg → 70% bg → 100% bg (was 0% → 60% → 100%)
+
+### Design Improvements Applied:
+
+7. **All panel cards — consistent styling**
+   - Every panel now uses `rounded-xl border border-border/60 bg-card/80 p-3 sm:p-4 shadow-sm max-w-full overflow-hidden`
+   - Consistent padding: `p-3 sm:p-4` (mobile/desktop)
+   - Consistent corners: `rounded-xl`
+   - Consistent borders: `border-border/60`
+   - Consistent backgrounds: `bg-card/80`
+   - Mobile overflow protection: `max-w-full overflow-hidden`
+
+8. **QualityOptimizer.tsx**
+   - Changed card to `rounded-xl border border-border/60 bg-card/80 p-3 sm:p-4 shadow-sm max-w-full overflow-hidden`
+   - Added `max-w-full overflow-hidden` to preset chips container
+   - Preset chips already had `flex-wrap` and `gap-1.5`
+
+9. **DownloadPanel.tsx**
+   - Changed filename card to `rounded-xl border border-border/60 bg-card/80 p-3 sm:p-4 shadow-sm`
+   - Changed comparison info row from `flex-row` to `flex-col sm:flex-row` for better mobile layout
+   - Added `max-w-full overflow-hidden` to comparison row
+   - Changed `rounded-md` → `rounded-xl`
+
+10. **BatchPanel.tsx**
+   - Changed card to `rounded-xl border border-border/60 shadow-sm max-w-full overflow-hidden`
+   - Added responsive padding: `px-2 sm:px-2.5 pb-2 sm:pb-2.5`
+   - Added `max-w-full overflow-hidden` to inner content and queue list
+
+11. **WatermarkAdder.tsx**
+   - All sub-cards changed to `rounded-xl border border-border/60 bg-card/80 p-2 sm:p-2.5 shadow-sm max-w-full overflow-hidden`
+   - Color presets container: added `flex-wrap max-w-full overflow-hidden`
+   - Color preset buttons: changed from `size-4` → `size-5 sm:size-4 min-h-[28px] min-w-[28px]` (mobile touch targets)
+   - Color picker input: added `min-h-[36px] min-w-[36px]`
+   - Position grid buttons: changed from `h-8` → `min-h-[36px] sm:min-h-[40px]` (mobile touch targets)
+   - Logo position grid buttons: same touch target increase
+
+12. **CropPanel.tsx, ResizePanel.tsx, AdjustPanel.tsx**
+   - All three changed from `rounded-lg p-3` → `rounded-xl border border-border/60 bg-card/80 p-3 sm:p-4 shadow-sm max-w-full overflow-hidden`
+   - Resize format buttons: added `min-h-[36px]` and `flex-wrap max-w-full overflow-hidden` to format selector
+
+### Color Verification:
+- Searched entire src/ for `emerald`, `amber`, `#ef4444`, `#f97316`, `#eab308`, `#22c55e`, `text-green`, `bg-green`, `text-orange`, `bg-orange` — **zero matches found**
+- All status indicators use primary color with opacity variants
+- All progress bars use primary color gradient via CSS `var(--primary)` + `color-mix`
+
+### Lint Check:
+- `bun run lint` — **passed with zero errors**
+
+## Stage Summary:
+- 15 files edited across the entire application
+- All green/emerald/amber/orange color references eliminated (verified with grep)
+- Auto Enhance button properly integrated into Transform section (no floating loose button)
+- All panel cards have consistent styling (rounded-xl, border-border/60, bg-card/80, responsive padding)
+- Mobile overflow protection added to all containers (max-w-full overflow-hidden)
+- Touch targets increased on mobile (min-h-[36px] for interactive buttons)
+- Header uses selective zustand subscriptions (avoids unnecessary re-renders and state update errors)
+- StickyCTA gradient improved for smoother fade effect
+- Comparison info row uses responsive flex direction (mobile: column, desktop: row)
+- Zero lint errors
+
+---
+Task ID: 3-b
+Agent: frontend-styling-expert
+Task: Fix SideBySideView, OverlayView, and ImagePreview components — responsive, overflow, touch targets, primary color only
+
+## Work Log:
+- Read worklog.md and all three component files (SideBySideView.tsx, OverlayView.tsx, ImagePreview.tsx)
+- SideBySideView.tsx — 1101 lines total, OverlayView.tsx — 94 lines, ImagePreview.tsx — 1101 lines
+
+### SideBySideView.tsx Fixes:
+- Changed breakpoint from `md:flex-row` to `sm:flex-row` (640px threshold matches responsive rules)
+- Added `overflow-hidden` on wrapper div to prevent horizontal scroll
+- Changed divider from `md:block/md:hidden` to `sm:block/sm:hidden` with `shrink-0`
+- Replaced white divider gradient (`from-white via-white/90 to-white/70` with glow shadows) with primary color gradient (`from-primary/40 via-primary/20 to-primary/10` — clean, consistent with color system)
+- Changed minHeight from 240px to 200px for better mobile fit
+- Added `max-h-[55vh] w-full object-contain` as Tailwind classes on images (in addition to inline maxHeight style)
+- Added `shrink-0` on divider to prevent flex squishing
+- Added `gap-2` to bottom info bar for better spacing
+
+### OverlayView.tsx Fixes:
+- Added `overflow-hidden` on wrapper motion.div
+- Fixed overlay image alignment: wrapped overlay `<img>` in `absolute inset-0 flex items-center justify-center overflow-hidden` so it aligns exactly with the base image (both use object-contain, so the overlay must be centered too)
+- Changed minHeight from 240px to 200px for better mobile fit
+- Added `min-h-[44px]` on opacity slider row for touch accessibility
+- Increased padding on slider row from `px-2 py-1.5` to `px-3 py-2` for better touch targets
+
+### ImagePreview.tsx Fixes:
+- Added `overflow-hidden` on wrapper motion.div to prevent horizontal scroll
+- **Image info bar**: Added `overflow-hidden` and `flex-wrap` to prevent mobile overflow; added `truncate max-w-[120px] sm:max-w-none` on filename; hidden dimension/type badges on mobile with `hidden sm:inline-block` (only show size badge on mobile for compact display); reduced `gap-2` to `gap-1.5` and changed `px-1.5 py-0.5` to `px-1 py-0.5`
+- **Image container**: Added `overflow-hidden` on the flex centering div; changed minHeight from 240px to 200px
+- **Crop overlay handles**: Each handle now has a visible `size-3` dot wrapped inside a parent `<div>` with `min-h-[44px] min-w-[44px]` touch target that covers the handle position — ensures 44px minimum touch area on mobile while keeping visual handles small
+- **Crop overlay wrapper**: Added `overflow-hidden` on the relative positioning wrapper for the crop rect and brush canvas
+- **Processing overlay**: Changed `min-w-[280px]` to `w-[min(280px,90vw)]` for mobile safety; reduced padding to `px-4 sm:px-8 py-4 sm:py-5`; added `overflow-hidden` on both the absolute overlay and the inner card
+- **Gradient overlay**: Changed from `h-16` to `h-12` and `from-black/30` to `from-black/25` for subtler appearance
+- **Re-upload overlay**: Added `overflow-hidden` and `max-w-[90vw]` on the drop prompt card; made padding responsive `px-4 sm:px-6 py-4 sm:py-5`; icon from `size-7` to `size-6`
+- **Zoom controls**: Changed from `size-6` to `size-8 sm:size-7` for larger desktop hit area; added `min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0` on all buttons for 44px touch targets on mobile; increased icon size from `size-3` to `size-4 sm:size-3.5`; added `overflow-hidden` on the pill container; increased padding from `px-1 py-0.5` to `px-1.5 py-1`; added `select-none` on percentage text
+- **Brush toolbar**: All buttons changed from `h-7` to `min-h-[44px] sm:min-h-0 h-auto sm:h-7` for mobile touch accessibility; brush size slider widened from `w-20 sm:w-24` to `w-16 sm:w-24` (shorter on mobile since space is limited); added `overflow-hidden` on toolbar container; changed padding from `px-2.5 py-1.5` to `px-3 py-2`; button padding `px-2` to `px-3 sm:px-2`; icon sizes `size-3` to `size-3.5 sm:size-3`
+- **Manual brush button**: Same `min-h-[44px]` treatment; added `overflow-hidden` and `truncate` on description text
+- **Empty state**: Added `overflow-hidden` on wrapper; changed minHeight from 240px to 200px
+- Removed `image-shimmer-loading` class from img (not needed, was leftover)
+- No green/emerald/amber/orange colors found in any of the three files — all use primary color system
+
+### Lint check: PASSED (zero errors)
+
+## Stage Summary:
+- All three components fixed for responsive design, overflow prevention, touch accessibility, and primary color consistency
+- SideBySideView: sm breakpoint, primary dividers, overflow-hidden, proper sizing
+- OverlayView: aligned overlay image, overflow-hidden, 44px slider touch target
+- ImagePreview: 44px touch targets on all interactive elements (crop handles, zoom buttons, brush toolbar), overflow-hidden everywhere, responsive processing/re-upload overlays, mobile-friendly info bar

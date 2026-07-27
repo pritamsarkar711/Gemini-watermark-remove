@@ -17,12 +17,12 @@ export default function OverlayView() {
       initial={{ opacity: 0, scale: 0.98 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.3 }}
-      className="flex w-full flex-col gap-1.5"
+      className="flex w-full flex-col gap-1.5 overflow-hidden"
     >
       {/* Image container */}
       <div
         className="relative w-full overflow-hidden rounded-lg border bg-muted/20 shadow-sm transition-all duration-300 hover:shadow-lg hover:ring-1 hover:ring-inset hover:ring-primary/20 hover:border-primary/30"
-        style={{ minHeight: '240px', maxHeight: '55vh' }}
+        style={{ minHeight: '200px', maxHeight: '55vh' }}
       >
         {/* Processed (after) image - base layer */}
         <img
@@ -32,8 +32,8 @@ export default function OverlayView() {
           draggable={false}
         />
 
-        {/* Original (before) image - overlay layer */}
-        <div className="absolute inset-0">
+        {/* Original (before) image - overlay layer aligned to the base image */}
+        <div className="absolute inset-0 flex items-center justify-center overflow-hidden">
           <img
             src={originalImage.dataUrl}
             alt="Original image overlay"
@@ -76,7 +76,7 @@ export default function OverlayView() {
       </div>
 
       {/* Opacity slider */}
-      <div className="flex items-center gap-3 px-2 py-1.5 rounded-lg border bg-card/60">
+      <div className="flex items-center gap-3 px-3 py-2 rounded-lg border bg-card/60 min-h-[44px]">
         <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">0%</span>
         <Slider
           value={[overlayOpacity]}

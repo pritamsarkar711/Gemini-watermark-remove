@@ -88,14 +88,6 @@ export default function ImagePreview() {
   const offsetStart = useRef({ x: 0, y: 0 })
 
   // ─── Inline Magic Brush state ──────────────────────────────────────────────
-  // `isBrushMode` toggles the brushable canvas overlay on the main image preview.
-  // `brushSize` is in CSS pixels (what the user sees); it is scaled to canvas
-  // pixels at draw time using the canvas-to-display ratio.
-  // `brushCanvasRef` is the visible canvas (semi-transparent red strokes).
-  // `brushDataCanvasRef` is a hidden offscreen canvas that holds opaque white
-  // strokes — this is what gets exported as the mask PNG, because the
-  // remove-watermark API thresholds on RGB brightness (maskVal > 128) and pure
-  // red (255,60,60) averages to 125 which would be incorrectly skipped.
   const [isBrushMode, setIsBrushMode] = useState(false)
   const [brushSize, setBrushSize] = useState(20)
   const [isBrushDrawing, setIsBrushDrawing] = useState(false)
@@ -107,11 +99,8 @@ export default function ImagePreview() {
   // ─── Processing stage timer ────────────────────────────────────────────────
   useEffect(() => {
     if (!isProcessing) return
-    // Reset stage when processing begins (async callback avoids synchronous setState in effect)
     const resetTimer = setTimeout(() => setProcessingStage(0), 0)
-    // Stage 0 (Detecting): 2 seconds
     const timer1 = setTimeout(() => setProcessingStage(1), 2000)
-    // Stage 1 (Removing): 3 seconds
     const timer2 = setTimeout(() => setProcessingStage(2), 5000)
     return () => {
       clearTimeout(resetTimer)
@@ -134,7 +123,6 @@ export default function ImagePreview() {
     measure()
     const ro = new ResizeObserver(measure)
     ro.observe(img)
-    // Re-measure when the image finishes loading (natural size known)
     const onLoad = () => measure()
     img.addEventListener('load', onLoad)
     return () => {
@@ -144,9 +132,6 @@ export default function ImagePreview() {
   }, [originalImage])
 
   // ─── Crop overlay drag state ───────────────────────────────────────────────
-  // While dragging, `dragRect` holds the live in-progress rect (image coords);
-  // the overlay shows `dragRect ?? cropRect`. On pointer up, dragRect is
-  // committed to the store via setCropRect and cleared.
   const [dragRect, setDragRect] = useState<CropRect | null>(null)
   const [isCropDragging, setIsCropDragging] = useState(false)
   const dragStateRef = useRef<DragState | null>(null)
@@ -173,7 +158,6 @@ export default function ImagePreview() {
       const imgW = originalImage.width
       const imgH = originalImage.height
       const start = ds.startRect
-      // Delta in image-space pixels since drag start
       const dx = pointerImgX - ds.startPointerX
       const dy = pointerImgY - ds.startPointerY
 
@@ -183,7 +167,6 @@ export default function ImagePreview() {
         x = Math.max(0, Math.min(imgW - start.width, start.x + dx))
         y = Math.max(0, Math.min(imgH - start.height, start.y + dy))
       } else {
-        // Resize: adjust edges independently, then enforce min size & bounds
         let left = start.x
         let top = start.y
         let right = start.x + start.width
@@ -194,15 +177,12 @@ export default function ImagePreview() {
         if (ds.mode.includes('n')) top = start.y + dy
         if (ds.mode.includes('s')) bottom = start.y + start.height + dy
 
-        // Clamp to image bounds
         left = Math.max(0, Math.min(left, imgW - MIN_CROP_SIZE))
         right = Math.max(MIN_CROP_SIZE, Math.min(right, imgW))
         top = Math.max(0, Math.min(top, imgH - MIN_CROP_SIZE))
         bottom = Math.max(MIN_CROP_SIZE, Math.min(bottom, imgH))
 
-        // Enforce min size (swap if user dragged past the opposite edge)
         if (right - left < MIN_CROP_SIZE) {
-          // Pin to whichever edge is being dragged
           if (ds.mode.includes('w')) left = right - MIN_CROP_SIZE
           else right = left + MIN_CROP_SIZE
         }
@@ -232,7 +212,6 @@ export default function ImagePreview() {
   )
 
   const handlePointerUp = useCallback(() => {
-    // Commit the final rect (if any) to the store, then clear local drag state
     setDragRect((dr) => {
       if (dr) setCropRect(dr)
       return null
@@ -244,8 +223,7 @@ export default function ImagePreview() {
     }
   }, [setCropRect])
 
-  // Attach global listeners during an active drag (so we keep tracking even
-  // when the pointer leaves the overlay element).
+  // Attach global listeners during an active drag
   useEffect(() => {
     if (!isCropDragging) return
 
@@ -291,8 +269,6 @@ export default function ImagePreview() {
         startPointerY: imgPos.y,
         startRect: { ...baseRect },
       }
-      // Seed the local drag rect so the overlay snaps to it immediately and so
-      // subsequent pointermove events always have a non-null value to update.
       setDragRect({ ...baseRect })
       setIsCropDragging(true)
     },
@@ -342,7 +318,7 @@ export default function ImagePreview() {
   }, [])
 
   const handleWheel = useCallback((e: React.WheelEvent) => {
-    if (isBrushMode) return // disable zoom while painting
+    if (isBrushMode) return
     e.preventDefault()
     setZoom((z) => {
       const newZoom = Math.max(1, Math.min(5, z - e.deltaY * 0.002))
@@ -403,7 +379,6 @@ export default function ImagePreview() {
           dataUrl,
         }
         setOriginalImage(imageInfo)
-        // Reset zoom/pan when a new image is loaded
         setZoom(1)
         setOffset({ x: 0, y: 0 })
       }
@@ -421,7 +396,6 @@ export default function ImagePreview() {
   const handleDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    // Only clear if leaving the container (not entering a child)
     if (e.currentTarget === e.target) {
       setIsDragOver(false)
     }
@@ -439,20 +413,12 @@ export default function ImagePreview() {
   )
 
   // ─── Inline Magic Brush handlers ───────────────────────────────────────────
-  // The brush overlay mirrors the crop overlay's positioning strategy: a
-  // relative wrapper sized to the rendered image bounds (renderedSize), with
-  // the canvas absolutely filling that wrapper. The canvas's internal
-  // resolution is set to the original image's natural dimensions so the mask
-  // matches the input image 1:1 (the API also resizes the mask to fit, but
-  // starting at native resolution avoids blur).
-
   /** Initialize both brush canvases (visible + hidden data) when entering brush mode. */
   useEffect(() => {
     if (!isBrushMode || !originalImage) return
     const dispCanvas = brushCanvasRef.current
     const dataCanvas = brushDataCanvasRef.current
     if (!dispCanvas || !dataCanvas) return
-    // Use the original image's natural dimensions for a high-quality mask
     dispCanvas.width = originalImage.width
     dispCanvas.height = originalImage.height
     dataCanvas.width = originalImage.width
@@ -464,17 +430,13 @@ export default function ImagePreview() {
     lastBrushPosRef.current = null
   }, [isBrushMode, originalImage])
 
-  /** Exit brush mode automatically when leaving remove mode or losing the image.
-   *  Uses setTimeout(0) to defer the setState calls (matching the existing
-   *  processing-stage timer pattern in this file) and satisfy the
-   *  react-hooks/set-state-in-effect lint rule. */
+  /** Exit brush mode automatically when leaving remove mode or losing the image. */
   useEffect(() => {
     if (!isBrushMode) return
     if (mode === 'remove' && originalImage) return
     const timer = setTimeout(() => {
       setIsBrushMode(false)
       setInlineBrushActive(false)
-      // Restore autoDetect if it was on before entering brush mode
       if (prevAutoDetectRef.current === true) setAutoDetect(true)
       prevAutoDetectRef.current = null
     }, 0)
@@ -510,26 +472,24 @@ export default function ImagePreview() {
 
       const rect = dispCanvas.getBoundingClientRect()
       if (rect.width === 0) return
-      // Scale brush size from CSS pixels to canvas pixels
       const scale = dispCanvas.width / rect.width
       const radius = (brushSize * scale) / 2
       const lineWidth = brushSize * scale
 
-      // Visible canvas: semi-transparent red (per spec)
+      // Visible canvas: semi-transparent red (primary color)
       dispCtx.fillStyle = 'rgba(255, 60, 60, 0.4)'
       dispCtx.strokeStyle = 'rgba(255, 60, 60, 0.4)'
       dispCtx.lineWidth = lineWidth
       dispCtx.lineCap = 'round'
       dispCtx.lineJoin = 'round'
 
-      // Hidden data canvas: opaque white so the API's maskVal > 128 check passes
+      // Hidden data canvas: opaque white for API mask threshold
       dataCtx.fillStyle = 'rgba(255, 255, 255, 1)'
       dataCtx.strokeStyle = 'rgba(255, 255, 255, 1)'
       dataCtx.lineWidth = lineWidth
       dataCtx.lineCap = 'round'
       dataCtx.lineJoin = 'round'
 
-      // Filled circle at the cursor
       dispCtx.beginPath()
       dispCtx.arc(pos.x, pos.y, radius, 0, Math.PI * 2)
       dispCtx.fill()
@@ -538,7 +498,6 @@ export default function ImagePreview() {
       dataCtx.arc(pos.x, pos.y, radius, 0, Math.PI * 2)
       dataCtx.fill()
 
-      // Smooth line from last position to current
       const last = lastBrushPosRef.current
       if (last) {
         dispCtx.beginPath()
@@ -629,7 +588,6 @@ export default function ImagePreview() {
     if (!originalImage || isProcessing) return
     prevAutoDetectRef.current = autoDetect
     setAutoDetect(false)
-    // Reset zoom/pan so the canvas overlay aligns exactly with the image
     setZoom(1)
     setOffset({ x: 0, y: 0 })
     setIsBrushMode(true)
@@ -659,10 +617,7 @@ export default function ImagePreview() {
     setMaskData(dataUrl)
     setIsBrushMode(false)
     setInlineBrushActive(false)
-    // The autoDetect was already set to false on enter; leave it false so the
-    // API uses the mask. (prevAutoDetectRef is intentionally NOT restored here.)
     prevAutoDetectRef.current = null
-    // Trigger the global process handler exposed by ControlPanel
     if (typeof window !== 'undefined') {
       const w = window as unknown as { __geminiProcess?: () => void }
       w.__geminiProcess?.()
@@ -683,11 +638,11 @@ export default function ImagePreview() {
         initial={{ opacity: 0, scale: 0.98 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.3 }}
-        className="flex w-full flex-col gap-2"
+        className="flex w-full flex-col gap-2 overflow-hidden"
       >
         <div
           className="dot-grid-bg flex items-center justify-center rounded-lg border border-dashed bg-muted/20"
-          style={{ minHeight: '240px', maxHeight: '55vh' }}
+          style={{ minHeight: '200px', maxHeight: '55vh' }}
         >
           <div className="flex flex-col items-center gap-2 text-muted-foreground/50">
             <ImageIcon className="size-8" />
@@ -722,16 +677,16 @@ export default function ImagePreview() {
       initial={{ opacity: 0, scale: 0.98 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.3 }}
-      className="flex w-full flex-col gap-2"
+      className="flex w-full flex-col gap-2 overflow-hidden"
     >
-      {/* Image info bar */}
-      <div className="gradient-border-left flex items-center gap-2 rounded-lg border bg-card/80 px-3 py-1.5 shadow-sm transition-all duration-200 hover:bg-card hover:shadow-md">
-        <ImageIcon className="size-3.5 text-primary/70" />
-        <span className="text-xs font-semibold">{originalImage.name}</span>
-        <div className="flex items-center gap-2 ml-auto text-sm text-muted-foreground/60">
-          <span className="rounded bg-muted px-1.5 py-0.5 font-medium">{originalImage.width} x {originalImage.height}</span>
-          <span className="rounded bg-muted px-1.5 py-0.5 font-medium">{formatType(originalImage.type)}</span>
-          <span className="rounded bg-muted px-1.5 py-0.5 font-medium">{formatSize(originalImage.size)}</span>
+      {/* Image info bar — responsive, no overflow */}
+      <div className="gradient-border-left flex flex-wrap items-center gap-2 rounded-lg border bg-card/80 px-3 py-1.5 shadow-sm transition-all duration-200 hover:bg-card hover:shadow-md overflow-hidden">
+        <ImageIcon className="size-3.5 text-primary/70 shrink-0" />
+        <span className="text-xs font-semibold truncate max-w-[120px] sm:max-w-none">{originalImage.name}</span>
+        <div className="flex items-center gap-1.5 ml-auto text-muted-foreground/60 shrink-0">
+          <span className="rounded bg-muted px-1 py-0.5 text-xs font-medium hidden sm:inline-block">{originalImage.width} × {originalImage.height}</span>
+          <span className="rounded bg-muted px-1 py-0.5 text-xs font-medium hidden sm:inline-block">{formatType(originalImage.type)}</span>
+          <span className="rounded bg-muted px-1 py-0.5 text-xs font-medium">{formatSize(originalImage.size)}</span>
         </div>
       </div>
 
@@ -748,13 +703,12 @@ export default function ImagePreview() {
         onDrop={handleDrop}
         style={{ cursor: zoom > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default' }}
       >
-        <div className="flex items-center justify-center" style={{ minHeight: '240px', maxHeight: '55vh' }}>
+        <div className="flex items-center justify-center overflow-hidden" style={{ minHeight: '200px', maxHeight: '55vh' }}>
           <img
             ref={imgRef}
             src={originalImage.dataUrl}
             alt="Preview"
-            onLoad={() => {/* shimmer fades naturally after load */}}
-            className="image-shimmer-loading max-h-[55vh] w-auto object-contain transition-transform duration-100 select-none"
+            className="max-h-[55vh] w-auto object-contain transition-transform duration-100 select-none"
             style={{
               transform: `scale(${zoom}) translate(${offset.x / zoom}px, ${offset.y / zoom}px)`,
             }}
@@ -763,13 +717,10 @@ export default function ImagePreview() {
         </div>
 
         {/* Crop overlay: positioned absolutely over the rendered <img>. */}
-        {/* The container is centered (flex justify-center items-center), so the
-            image bounding box equals the rendered img's box. We position the
-            overlay using absolute + inset-0 + flex centering to match. */}
         {showOverlay && overlayPct && (
-          <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
+          <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center overflow-hidden">
             <div
-              className="relative"
+              className="relative overflow-hidden"
               style={{
                 width: renderedSize ? `${renderedSize.w}px` : 'auto',
                 height: renderedSize ? `${renderedSize.h}px` : 'auto',
@@ -791,11 +742,9 @@ export default function ImagePreview() {
                   width: `${overlayPct.width}%`,
                   height: `${overlayPct.height}%`,
                   boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.5)',
-                  // Subtle inner outline for contrast on bright images
                   outline: '1px solid rgba(255, 255, 255, 0.4)',
                   outlineOffset: '-1px',
                   background: 'transparent',
-                  // Make the body clickable for move but not block handles
                   touchAction: 'none',
                 }}
               >
@@ -807,17 +756,14 @@ export default function ImagePreview() {
                   <div className="absolute left-0 right-0 top-2/3 h-px bg-white/20" />
                 </div>
 
-                {/* Dimension badge (top-left, just inside the rect so it stays
-                    visible even when the rect fills the container — avoids
-                    being clipped by the container's overflow-hidden). */}
-                <div className="pointer-events-none absolute left-1 top-1 z-10 rounded-md bg-primary px-1.5 py-0.5 text-xs font-semibold text-primary-foreground shadow-md">
+                {/* Dimension badge (inside the rect) */}
+                <div className="pointer-events-none absolute left-1 top-1 z-10 rounded-md bg-primary px-1.5 py-0.5 text-xs font-semibold text-primary-foreground shadow-md whitespace-nowrap">
                   {displayRect.width}×{displayRect.height}
                 </div>
 
-                {/* 8 resize handles */}
+                {/* 8 resize handles — 44px touch target on mobile, smaller on desktop */}
                 {(['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'] as unknown as DragMode[]).map(
                   (h) => {
-                    // Position each handle at its corner / edge midpoint
                     const posCls: Record<string, string> = {
                       nw: 'left-0 top-0',
                       n: 'left-1/2 top-0 -translate-x-1/2',
@@ -836,9 +782,21 @@ export default function ImagePreview() {
                         tabIndex={0}
                         onMouseDown={makeHandlePointerDown(h)}
                         onTouchStart={makeHandlePointerDown(h)}
-                        className={`absolute size-3 rounded-sm border-2 border-primary bg-white shadow-sm pointer-events-auto ${HANDLE_CURSORS[h]} ${posCls[h]} hover:bg-primary/10`}
+                        // Visual handle is small (size-3), but padded to 44px touch target on mobile
+                        className={`absolute ${HANDLE_CURSORS[h]} ${posCls[h]} pointer-events-auto`}
                         style={{ touchAction: 'none' }}
-                      />
+                      >
+                        {/* Visible handle dot */}
+                        <div className={`size-3 sm:size-3 rounded-sm border-2 border-primary bg-white shadow-sm hover:bg-primary/10 mx-auto my-auto
+                          ${h === 'nw' || h === 'ne' || h === 'se' || h === 'sw' ? 'absolute' : 'relative'}
+                          ${h === 'nw' ? 'top-0 left-0' : ''}
+                          ${h === 'ne' ? 'top-0 right-0' : ''}
+                          ${h === 'se' ? 'bottom-0 right-0' : ''}
+                          ${h === 'sw' ? 'bottom-0 left-0' : ''}
+                        `} />
+                        {/* Touch target padding — ensures 44px minimum on mobile */}
+                        <div className="absolute inset-0 min-h-[44px] min-w-[44px] -translate-x-1/2 -translate-y-1/2 left-1/2 top-1/2" style={{ pointerEvents: 'auto' }} />
+                      </div>
                     )
                   }
                 )}
@@ -847,14 +805,11 @@ export default function ImagePreview() {
           </div>
         )}
 
-        {/* Inline Magic Brush canvas overlay — covers the rendered image bounds.
-            A wrapper div is sized to the rendered image dimensions (mirroring
-            the crop overlay strategy) so the canvas only covers the image,
-            not the empty padding around it. */}
+        {/* Inline Magic Brush canvas overlay */}
         {isBrushMode && renderedSize && (
-          <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
+          <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center overflow-hidden">
             <div
-              className="relative"
+              className="relative overflow-hidden"
               style={{
                 width: `${renderedSize.w}px`,
                 height: `${renderedSize.h}px`,
@@ -877,9 +832,7 @@ export default function ImagePreview() {
           </div>
         )}
 
-        {/* Hidden offscreen data canvas — holds opaque white strokes that get
-            exported as the mask PNG on Apply. Kept in the DOM (display:none) so
-            its 2D context is always available. */}
+        {/* Hidden offscreen data canvas */}
         <canvas ref={brushDataCanvasRef} style={{ display: 'none' }} aria-hidden="true" />
 
         {/* Brush mode hint badge (top-left, above the canvas) */}
@@ -889,7 +842,7 @@ export default function ImagePreview() {
           </div>
         )}
 
-        {/* Processing overlay — semi-transparent with spinner and progress bar */}
+        {/* Processing overlay */}
         <AnimatePresence>
           {isProcessing && (
             <motion.div
@@ -897,9 +850,9 @@ export default function ImagePreview() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.3 }}
-              className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-background/60 backdrop-blur-sm"
+              className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-background/60 backdrop-blur-sm overflow-hidden"
             >
-              <div className="flex flex-col items-center gap-4 rounded-lg bg-card/90 border shadow-lg px-8 py-5 backdrop-blur-md min-w-[280px]">
+              <div className="flex flex-col items-center gap-3 rounded-lg bg-card/90 border shadow-lg px-4 sm:px-8 py-4 sm:py-5 backdrop-blur-md w-[min(280px,90vw)] overflow-hidden">
                 <div className="relative size-10">
                   <div className="absolute inset-0 rounded-full border-2 border-muted-foreground/20" />
                   <motion.div
@@ -960,7 +913,7 @@ export default function ImagePreview() {
         )}
 
         {/* Subtle gradient overlay at bottom for zoom control visibility */}
-        <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-black/30 to-transparent" />
+        <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-black/25 to-transparent" />
 
         {/* Drag-and-drop re-upload overlay */}
         <AnimatePresence>
@@ -970,10 +923,10 @@ export default function ImagePreview() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.15 }}
-              className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center bg-primary/15 backdrop-blur-sm"
+              className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center bg-primary/15 backdrop-blur-sm overflow-hidden"
             >
-              <div className="flex flex-col items-center gap-2 rounded-lg border-2 border-dashed border-primary bg-card/90 px-6 py-5 shadow-lg">
-                <UploadCloud className="size-7 text-primary" />
+              <div className="flex flex-col items-center gap-2 rounded-lg border-2 border-dashed border-primary bg-card/90 px-4 sm:px-6 py-4 sm:py-5 shadow-lg max-w-[90vw]">
+                <UploadCloud className="size-6 text-primary" />
                 <span className="text-sm font-semibold text-foreground">Drop to replace</span>
                 <span className="text-xs text-muted-foreground/70">PNG JPEG WebP up to 50MB</span>
               </div>
@@ -981,54 +934,51 @@ export default function ImagePreview() {
           )}
         </AnimatePresence>
 
-        {/* Zoom controls - pill shaped */}
-        <div className="absolute bottom-2 right-2 flex items-center gap-0.5 rounded-lg bg-black/40 px-1 py-0.5 backdrop-blur-sm shadow-md">
+        {/* Zoom controls — pill shaped, 44px touch targets on mobile */}
+        <div className="absolute bottom-2 right-2 flex items-center gap-0.5 rounded-lg bg-black/40 px-1.5 py-1 backdrop-blur-sm shadow-md overflow-hidden">
           <Button
             variant="ghost"
             size="icon"
-            className="size-6 rounded-md text-white/70 hover:text-white hover:bg-white/10"
+            className="size-8 sm:size-7 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 rounded-md text-white/70 hover:text-white hover:bg-white/10"
             onClick={handleZoomOut}
             disabled={zoom <= 1}
           >
-            <ZoomOut className="size-3" />
+            <ZoomOut className="size-4 sm:size-3.5" />
           </Button>
-          <span className="min-w-[2.5rem] text-center text-xs font-medium text-white/60">
+          <span className="min-w-[2.5rem] text-center text-xs font-medium text-white/60 select-none">
             {Math.round(zoom * 100)}%
           </span>
           <Button
             variant="ghost"
             size="icon"
-            className="size-6 rounded-md text-white/70 hover:text-white hover:bg-white/10"
+            className="size-8 sm:size-7 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 rounded-md text-white/70 hover:text-white hover:bg-white/10"
             onClick={handleZoomIn}
             disabled={zoom >= 5}
           >
-            <ZoomIn className="size-3" />
+            <ZoomIn className="size-4 sm:size-3.5" />
           </Button>
           {zoom > 1 && (
             <Button
               variant="ghost"
               size="icon"
-              className="size-6 rounded-md text-white/70 hover:text-white hover:bg-white/10"
+              className="size-8 sm:size-7 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 rounded-md text-white/70 hover:text-white hover:bg-white/10"
               onClick={handleResetZoom}
             >
-              <RotateCcw className="size-3" />
+              <RotateCcw className="size-4 sm:size-3.5" />
             </Button>
           )}
         </div>
       </div>
 
-      {/* Inline Magic Brush toggle / toolbar — only shown in remove mode with an
-          image loaded and not during processing. When not in brush mode, shows a
-          single "Manual brush" button. When in brush mode, shows the full toolbar
-          (brush size slider, Clear, Apply, Cancel). */}
+      {/* Inline Magic Brush toggle / toolbar */}
       {mode === 'remove' && originalImage && !isProcessing && (
         isBrushMode ? (
-          <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-card/80 px-2.5 py-1.5 shadow-sm backdrop-blur-sm">
+          <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-card/80 px-3 py-2 shadow-sm backdrop-blur-sm overflow-hidden">
             <Paintbrush className="size-3.5 shrink-0 text-primary/70" />
             <span className="hidden text-xs text-muted-foreground/70 sm:inline">
               Paint over the watermark to remove
             </span>
-            <div className="ml-auto flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 sm:ml-auto">
               <span className="tabular-nums text-xs font-medium text-muted-foreground/60">
                 {brushSize}px
               </span>
@@ -1038,58 +988,60 @@ export default function ImagePreview() {
                 max="80"
                 value={brushSize}
                 onChange={(e) => setBrushSize(Number(e.target.value))}
-                className="h-1 w-20 accent-primary sm:w-24"
+                className="h-1 w-16 sm:w-24 accent-primary"
                 aria-label="Brush size"
               />
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={clearBrushCanvas}
-              className="h-7 gap-1 rounded-md px-2 text-sm"
-              title="Clear mask"
-              aria-label="Clear mask"
-            >
-              <Eraser className="size-3" />
-              <span className="hidden sm:inline">Clear</span>
-            </Button>
-            <Button
-              variant="default"
-              size="sm"
-              onClick={applyBrushMask}
-              className="h-7 gap-1 rounded-md px-2 text-sm"
-              title="Apply mask and remove watermark"
-              aria-label="Apply mask and remove watermark"
-            >
-              <Check className="size-3" />
-              Apply
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={cancelBrushMode}
-              className="h-7 gap-1 rounded-md px-2 text-sm"
-              title="Cancel brush mode"
-              aria-label="Cancel brush mode"
-            >
-              <X className="size-3" />
-              <span className="hidden sm:inline">Cancel</span>
-            </Button>
+            <div className="flex items-center gap-1.5 sm:ml-auto">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={clearBrushCanvas}
+                className="min-h-[44px] sm:min-h-0 h-auto sm:h-7 gap-1 rounded-md px-3 sm:px-2 text-sm"
+                title="Clear mask"
+                aria-label="Clear mask"
+              >
+                <Eraser className="size-3.5 sm:size-3" />
+                <span className="hidden sm:inline">Clear</span>
+              </Button>
+              <Button
+                variant="default"
+                size="sm"
+                onClick={applyBrushMask}
+                className="min-h-[44px] sm:min-h-0 h-auto sm:h-7 gap-1 rounded-md px-3 sm:px-2 text-sm"
+                title="Apply mask and remove watermark"
+                aria-label="Apply mask and remove watermark"
+              >
+                <Check className="size-3.5 sm:size-3" />
+                Apply
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={cancelBrushMode}
+                className="min-h-[44px] sm:min-h-0 h-auto sm:h-7 gap-1 rounded-md px-3 sm:px-2 text-sm"
+                title="Cancel brush mode"
+                aria-label="Cancel brush mode"
+              >
+                <X className="size-3.5 sm:size-3" />
+                <span className="hidden sm:inline">Cancel</span>
+              </Button>
+            </div>
           </div>
         ) : (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 overflow-hidden">
             <Button
               variant="outline"
               size="sm"
               onClick={enterBrushMode}
-              className="h-7 gap-1.5 rounded-lg text-xs"
+              className="min-h-[44px] sm:min-h-0 h-auto sm:h-7 gap-1.5 rounded-lg text-xs"
               title="Manually paint over the watermark"
               aria-label="Manually paint over the watermark"
             >
-              <Paintbrush className="size-3.5" />
+              <Paintbrush className="size-3.5 sm:size-3.5" />
               Manual brush
             </Button>
-            <span className="hidden text-xs text-muted-foreground/50 sm:inline">
+            <span className="hidden text-xs text-muted-foreground/50 sm:inline truncate">
               Paint over the watermark to remove it manually
             </span>
           </div>

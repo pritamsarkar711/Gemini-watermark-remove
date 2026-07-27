@@ -196,7 +196,7 @@ export default function ImageInfoPanel() {
   const sizeIndicator = getSizeReductionColor(sizeReductionPct)
 
   return (
-    <div className="sidebar-panel flex flex-col gap-3 rounded-lg p-4 shadow-sm">
+    <div className="sidebar-panel flex flex-col gap-3 rounded-xl border border-border/60 bg-card/80 p-3 sm:p-4 shadow-sm max-w-full overflow-hidden">
       {/* Collapsible header */}
       <button
         onClick={() => setIsOpen(!isOpen)}
@@ -229,7 +229,7 @@ export default function ImageInfoPanel() {
             className="flex flex-col gap-3 overflow-hidden"
           >
             {/* ── Before section ─────────────────────────────────────────── */}
-            <div className="flex flex-col gap-2.5 rounded-lg bg-muted/30 p-3">
+            <div className="flex flex-col gap-2.5 rounded-lg bg-muted/30 p-2 sm:p-3">
               <div className="flex items-center gap-1.5">
                 <ImageIcon className="size-3 text-muted-foreground" />
                 <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Before</span>
@@ -254,7 +254,7 @@ export default function ImageInfoPanel() {
             </div>
 
             {/* ── After section ──────────────────────────────────────────── */}
-            <div className="flex flex-col gap-2 rounded-lg bg-primary/5 p-3 ring-1 ring-primary/10">
+            <div className="flex flex-col gap-2 rounded-lg bg-primary/5 p-2 sm:p-3 ring-1 ring-primary/10">
               <div className="flex items-center gap-1.5">
                 <CheckCircle2 className="size-3 text-primary" />
                 <span className="text-xs font-bold text-primary uppercase tracking-wider">After</span>

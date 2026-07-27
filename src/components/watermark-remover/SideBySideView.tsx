@@ -13,15 +13,15 @@ export default function SideBySideView() {
       initial={{ opacity: 0, scale: 0.98 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.3 }}
-      className="flex w-full flex-col gap-1.5"
+      className="flex w-full flex-col gap-1.5 overflow-hidden"
     >
-      <div className="flex flex-col md:flex-row gap-0 md:gap-0 w-full overflow-hidden rounded-lg border bg-muted/20 shadow-sm transition-all duration-300 hover:shadow-lg hover:ring-1 hover:ring-inset hover:ring-primary/20 hover:border-primary/30">
+      <div className="flex flex-col sm:flex-row w-full overflow-hidden rounded-lg border bg-muted/20 shadow-sm transition-all duration-300 hover:shadow-lg hover:ring-1 hover:ring-inset hover:ring-primary/20 hover:border-primary/30">
         {/* Original (Before) image */}
-        <div className="relative flex-1 w-full md:w-1/2 overflow-hidden" style={{ minHeight: '240px', maxHeight: '55vh' }}>
+        <div className="relative flex-1 w-full sm:w-1/2 overflow-hidden" style={{ minHeight: '200px', maxHeight: '55vh' }}>
           <img
             src={originalImage.dataUrl}
             alt="Original image before watermark removal"
-            className="block w-full h-full object-contain select-none"
+            className="block max-h-[55vh] w-full object-contain select-none"
             draggable={false}
           />
           {/* Before label */}
@@ -43,17 +43,17 @@ export default function SideBySideView() {
         </div>
 
         {/* Vertical divider (desktop) */}
-        <div className="hidden md:block w-[3px] bg-gradient-to-b from-white via-white/90 to-white/70 shadow-[0_0_12px_rgba(255,255,255,0.5),0_0_4px_rgba(0,0,0,0.3)]" />
+        <div className="hidden sm:block w-[2px] shrink-0 bg-gradient-to-b from-primary/40 via-primary/20 to-primary/10" />
 
         {/* Horizontal divider (mobile) */}
-        <div className="block md:hidden h-[3px] bg-gradient-to-r from-white via-white/90 to-white/70 shadow-[0_0_12px_rgba(255,255,255,0.5),0_0_4px_rgba(0,0,0,0.3)]" />
+        <div className="block sm:hidden h-[2px] shrink-0 bg-gradient-to-r from-primary/40 via-primary/20 to-primary/10" />
 
         {/* Processed (After) image */}
-        <div className="relative flex-1 w-full md:w-1/2 overflow-hidden" style={{ minHeight: '240px', maxHeight: '55vh' }}>
+        <div className="relative flex-1 w-full sm:w-1/2 overflow-hidden" style={{ minHeight: '200px', maxHeight: '55vh' }}>
           <img
             src={processedImage.dataUrl}
             alt="Processed image after watermark removal"
-            className="block w-full h-full object-contain select-none"
+            className="block max-h-[55vh] w-full object-contain select-none"
             draggable={false}
           />
           {/* After label */}
@@ -64,7 +64,7 @@ export default function SideBySideView() {
       </div>
 
       {/* Bottom info */}
-      <div className="flex items-center justify-between px-2 py-1.5 rounded-lg border bg-card/60">
+      <div className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-lg border bg-card/60">
         <span className="text-xs font-medium text-muted-foreground">Original</span>
         <div className="flex items-center gap-1 text-xs text-muted-foreground/70">
           <span>Side-by-side comparison</span>

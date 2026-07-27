@@ -194,7 +194,7 @@ export default function ResizePanel() {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="sidebar-panel flex flex-col gap-2.5 rounded-lg p-3 shadow-sm transition-all duration-200 hover:bg-card hover:shadow-md hover:border-border"
+      className="sidebar-panel flex flex-col gap-2.5 rounded-xl border border-border/60 bg-card/80 p-3 sm:p-4 shadow-sm transition-all duration-200 hover:bg-card hover:shadow-md max-w-full overflow-hidden"
     >
       {/* Header (clickable toggle) */}
       <div
@@ -332,13 +332,13 @@ export default function ResizePanel() {
       <div className="flex items-center gap-1.5">
         <FileOutput className="size-3 text-muted-foreground/60" />
         <span className="text-xs font-medium text-muted-foreground/60">Format</span>
-        <div className="flex gap-1 ml-auto">
+        <div className="flex gap-1 ml-auto flex-wrap max-w-full overflow-hidden">
           {FORMAT_OPTIONS.map((f) => (
             <button
               key={f.value}
               type="button"
               onClick={() => setResizeConfig({ targetFormat: f.value })}
-              className={`h-7 rounded-md text-xs font-medium transition-all px-3 ${
+              className={`h-7 min-h-[36px] rounded-md text-xs font-medium transition-all px-2 sm:px-3 ${
                 resizeConfig.targetFormat === f.value
                   ? 'bg-primary text-primary-foreground shadow-md'
                   : 'bg-muted/50 text-muted-foreground/70 hover:bg-muted hover:text-foreground'

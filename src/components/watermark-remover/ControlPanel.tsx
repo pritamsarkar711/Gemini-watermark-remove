@@ -253,16 +253,84 @@ export default function ControlPanel() {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="flex w-full flex-col gap-4"
+      className="flex w-full max-w-full flex-col gap-3 sm:gap-4 overflow-hidden"
     >
-      {/* Transform controls */}
-      <div className="sidebar-panel flex flex-col gap-2 rounded-lg p-3 shadow-sm">
+      {/* Transform controls + Auto Enhance */}
+      <div className="sidebar-panel flex flex-col gap-2 rounded-xl border border-border/60 bg-card/80 p-3 sm:p-4 shadow-sm">
         <button
           type="button"
           onClick={() => setIsTransformOpen((prev) => !prev)}
           className="sidebar-panel-header flex items-center justify-between cursor-pointer"
         >
+        <div className="flex items-center justify-between">
           <span className="text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Transform</span>
+          {/* Auto Enhance button — integrated into Transform header */}
+          <button
+            type="button"
+            onClick={async () => {
+              if (!originalImage || isAutoEnhancing) return
+              setIsAutoEnhancing(true)
+              setIsProcessing(true)
+              try {
+                const formData = new FormData()
+                formData.append('image', originalImage.file)
+                formData.append('brightness', '1.15')
+                formData.append('contrast', '1.1')
+                formData.append('saturation', '1.2')
+                formData.append('sharpen', '1')
+                formData.append('blur', '0')
+                formData.append('hue', '0')
+                formData.append('grayscale', 'false')
+                formData.append('sepia', 'false')
+                formData.append('invert', 'false')
+
+                const res = await fetch('/api/adjust', {
+                  method: 'POST',
+                  body: formData,
+                })
+                const data = await res.json()
+
+                if (data.success) {
+                  const resultDataUrl = data.result.dataUrl
+                  const resultBlob = await fetch(resultDataUrl).then((r) => r.blob())
+                  const resultFile = new File([resultBlob], originalImage.name, { type: 'image/png' })
+
+                  const newImageInfo = {
+                    ...originalImage,
+                    file: resultFile,
+                    width: data.result.width,
+                    height: data.result.height,
+                    size: data.result.size,
+                    dataUrl: resultDataUrl,
+                  }
+                  setOriginalImage(newImageInfo, 'transform')
+                  toast({ title: 'Auto enhanced', description: 'Image brightness, contrast, and saturation have been improved.' })
+                }
+              } catch (err) {
+                console.error('Auto enhance failed:', err)
+                toast({ title: 'Enhance failed', description: 'Could not auto-enhance image.', variant: 'destructive' })
+              } finally {
+                setIsAutoEnhancing(false)
+                setIsProcessing(false)
+              }
+            }}
+            disabled={!originalImage || isAutoEnhancing}
+            className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-all shadow-sm ${
+              !originalImage || isAutoEnhancing
+                ? 'opacity-40 cursor-not-allowed text-muted-foreground'
+                : 'cursor-pointer bg-gradient-to-br from-primary/10 to-primary/5 hover:from-primary/20 hover:to-primary/10 hover:shadow-md text-primary border border-primary/30'
+            }`}
+            title="Auto enhance image"
+            aria-label="Auto enhance image"
+          >
+            {isAutoEnhancing ? (
+              <Loader2 className="size-3 animate-spin" />
+            ) : (
+              <Wrench className="size-3" />
+            )}
+            Enhance
+          </button>
+        </div>
           <div className="flex items-center gap-2">
             {hasTransform && (
               <span
@@ -360,72 +428,6 @@ export default function ControlPanel() {
         </AnimatePresence>
       </div>
 
-      {/* Auto Enhance button */}
-      <button
-        type="button"
-        onClick={async () => {
-          if (!originalImage || isAutoEnhancing) return
-          setIsAutoEnhancing(true)
-          setIsProcessing(true)
-          try {
-            const formData = new FormData()
-            formData.append('image', originalImage.file)
-            formData.append('brightness', '1.15')
-            formData.append('contrast', '1.1')
-            formData.append('saturation', '1.2')
-            formData.append('sharpen', '1')
-            formData.append('blur', '0')
-            formData.append('hue', '0')
-            formData.append('grayscale', 'false')
-            formData.append('sepia', 'false')
-            formData.append('invert', 'false')
-
-            const res = await fetch('/api/adjust', {
-              method: 'POST',
-              body: formData,
-            })
-            const data = await res.json()
-
-            if (data.success) {
-              const resultDataUrl = data.result.dataUrl
-              const resultBlob = await fetch(resultDataUrl).then((r) => r.blob())
-              const resultFile = new File([resultBlob], originalImage.name, { type: 'image/png' })
-
-              const newImageInfo = {
-                ...originalImage,
-                file: resultFile,
-                width: data.result.width,
-                height: data.result.height,
-                size: data.result.size,
-                dataUrl: resultDataUrl,
-              }
-              setOriginalImage(newImageInfo, 'transform')
-              toast({ title: 'Auto enhanced', description: 'Image brightness, contrast, and saturation have been improved.' })
-            }
-          } catch (err) {
-            console.error('Auto enhance failed:', err)
-            toast({ title: 'Enhance failed', description: 'Could not auto-enhance image.', variant: 'destructive' })
-          } finally {
-            setIsAutoEnhancing(false)
-            setIsProcessing(false)
-          }
-        }}
-        disabled={!originalImage || isAutoEnhancing}
-        className={`size-7 rounded-md border flex items-center justify-center transition-all shadow-sm ${
-          !originalImage || isAutoEnhancing
-            ? 'opacity-40 cursor-not-allowed'
-            : 'cursor-pointer bg-gradient-to-br from-primary/10 to-primary/5 hover:from-primary/20 hover:to-primary/10 hover:shadow-md hover:-translate-y-0.5 border-primary/30'
-        }`}
-        title="Auto enhance image"
-        aria-label="Auto enhance image"
-      >
-        {isAutoEnhancing ? (
-          <Loader2 className="size-3 animate-spin text-primary" />
-        ) : (
-          <Wrench className="size-3 text-primary" />
-        )}
-      </button>
-
       <Tabs
         value={mode}
         onValueChange={(v) => setMode(v as 'remove' | 'add')}
@@ -443,7 +445,7 @@ export default function ControlPanel() {
         </TabsList>
 
         <TabsContent value="remove" className="mt-3 flex flex-col gap-3 data-[state=active]:animate-in data-[state=active]:fade-in data-[state=active]:slide-in-from-left-1 data-[state=inactive]:animate-out data-[state=inactive]:fade-out">
-          <div className="sidebar-panel flex items-center justify-between rounded-lg p-3 shadow-sm gap-3">
+          <div className="sidebar-panel flex items-center justify-between rounded-xl border border-border/60 bg-card/80 p-3 shadow-sm gap-3">
             <div className="flex items-center gap-2">
               <Scan className="size-3.5 text-muted-foreground/70" />
               <span className="text-sm font-medium">Auto detect</span>

@@ -8,7 +8,9 @@ import { Button } from '@/components/ui/button'
 import { useAppStore } from '@/lib/store'
 
 export default function Header() {
-  const { reset, originalImage, step } = useAppStore()
+  const reset = useAppStore((s) => s.reset)
+  const originalImage = useAppStore((s) => s.originalImage)
+  const step = useAppStore((s) => s.step)
   const { theme, setTheme } = useTheme()
   // Safe hydration: mounted is true only on the client, avoiding SSR/client mismatch
   const mounted = useSyncExternalStore(

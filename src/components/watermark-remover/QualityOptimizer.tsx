@@ -194,7 +194,7 @@ export default function QualityOptimizer() {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="flex flex-col gap-2.5 rounded-lg border bg-card/80 p-4 shadow-sm"
+      className="flex flex-col gap-2.5 rounded-xl border border-border/60 bg-card/80 p-3 sm:p-4 shadow-sm max-w-full overflow-hidden"
     >
       <div className="flex items-center gap-1.5">
         <Settings2 className="size-3.5 text-primary/60" />
@@ -202,7 +202,7 @@ export default function QualityOptimizer() {
       </div>
 
       {/* Preset chips */}
-      <div className="flex items-center gap-1.5 flex-wrap">
+      <div className="flex items-center gap-1.5 flex-wrap max-w-full overflow-hidden">
         {presets.map((preset) => {
           const active = isPresetActive(qualityConfig, preset.config)
           return (

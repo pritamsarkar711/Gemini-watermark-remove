@@ -47,7 +47,7 @@ export default function StickyCTA() {
         transition={{ duration: 0.2 }}
         className="sticky-cta-wrapper"
       >
-        <div className="rounded-lg border bg-card/95 p-2 shadow-lg backdrop-blur-md">
+        <div className="rounded-xl border border-border/60 bg-card/95 p-2 sm:p-3 shadow-lg backdrop-blur-md">
           <button
             type="button"
             onClick={handleProcess}

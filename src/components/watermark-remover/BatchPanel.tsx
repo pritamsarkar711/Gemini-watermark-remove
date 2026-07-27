@@ -147,7 +147,7 @@ export default function BatchPanel() {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="sidebar-panel flex flex-col rounded-lg shadow-sm transition-all duration-200 hover:bg-card hover:shadow-md hover:border-border"
+      className="sidebar-panel flex flex-col rounded-xl border border-border/60 shadow-sm transition-all duration-200 hover:bg-card hover:shadow-md max-w-full overflow-hidden"
     >
       {/* Header */}
       <button
@@ -198,7 +198,7 @@ export default function BatchPanel() {
             transition={{ duration: 0.2, ease: 'easeOut' }}
             className="overflow-hidden"
           >
-            <div className="flex flex-col gap-2.5 px-2.5 pb-2.5">
+            <div className="flex flex-col gap-2.5 px-2 sm:px-2.5 pb-2 sm:pb-2.5 max-w-full overflow-hidden">
               {/* Add files button */}
               <Button
                 variant="outline"
@@ -224,7 +224,7 @@ export default function BatchPanel() {
 
               {/* Queue list */}
               {items.length > 0 && (
-                <div className="max-h-48 overflow-y-auto custom-scrollbar flex flex-col gap-1">
+                <div className="max-h-48 overflow-y-auto custom-scrollbar flex flex-col gap-1 max-w-full overflow-hidden">
                   {items.map((item, idx) => (
                     <div
                       key={item.id}

@@ -221,7 +221,7 @@ export default function DownloadPanel() {
       className="flex flex-col gap-2.5"
     >
       {/* Filename */}
-      <div className="flex items-center gap-2 rounded-md border bg-card/80 p-3 shadow-sm">
+      <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-card/80 p-3 sm:p-4 shadow-sm">
         <FileText className="size-3.5 text-muted-foreground/60" />
         <Input
           value={outputFileName}
@@ -268,7 +268,7 @@ export default function DownloadPanel() {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="flex items-center justify-between gap-2 rounded-md bg-muted/30 px-2 py-1.5 text-xs"
+          className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1 sm:gap-2 rounded-xl bg-muted/30 px-2 py-1.5 text-xs max-w-full overflow-hidden"
         >
           <span className="flex items-center gap-1.5 tabular-nums text-muted-foreground/70">
             <span>

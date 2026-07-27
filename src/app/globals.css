@@ -523,9 +523,10 @@
   background: linear-gradient(
     to bottom,
     transparent 0%,
-    color-mix(in oklch, var(--background) 60%, transparent) 30%,
+    color-mix(in oklch, var(--background) 40%, transparent) 20%,
+    color-mix(in oklch, var(--background) 70%, transparent) 40%,
     var(--background) 100%
   );
-  padding-top: 12px;
+  padding-top: 16px;
   margin-top: auto;
 }

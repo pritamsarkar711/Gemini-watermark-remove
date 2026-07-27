@@ -38,12 +38,12 @@ function formatPixelCount(n: number): string {
 
 /**
  * Pick the color classes for the detection-confidence badge based on the
- * 0-99 score. Spec: >=85 emerald, >=60 amber, otherwise red.
+ * 0-99 score. Uses primary color with opacity variants.
  */
 function getDetectionConfidenceColor(confidence: number): { text: string; dot: string } {
-  if (confidence >= 85) return { text: 'text-emerald-400', dot: 'bg-emerald-500' }
-  if (confidence >= 60) return { text: 'text-amber-400', dot: 'bg-amber-500' }
-  return { text: 'text-red-400', dot: 'bg-red-500' }
+  if (confidence >= 85) return { text: 'text-primary', dot: 'bg-primary' }
+  if (confidence >= 60) return { text: 'text-primary/70', dot: 'bg-primary/70' }
+  return { text: 'text-primary/50', dot: 'bg-primary/50' }
 }
 
 export default function ComparisonSlider() {
@@ -264,11 +264,11 @@ export default function ComparisonSlider() {
       initial={{ opacity: 0, scale: 0.98 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.3 }}
-      className="flex w-full flex-col gap-1.5"
+      className="flex w-full max-w-full flex-col gap-1.5 overflow-hidden"
     >
       <div
         ref={containerRef}
-        className="comparison-slider group relative w-full overflow-hidden rounded-lg border bg-muted/20 shadow-sm transition-all duration-300 hover:shadow-lg hover:ring-1 hover:ring-inset hover:ring-primary/20 hover:border-primary/30"
+        className="comparison-slider group relative w-full max-w-full overflow-hidden rounded-xl border border-border/60 bg-muted/20 shadow-sm transition-all duration-300 hover:shadow-lg hover:ring-1 hover:ring-inset hover:ring-primary/20 hover:border-primary/30"
         style={{ minHeight: '240px', maxHeight: '55vh' }}
         onMouseDown={handleMouseDown}
         onTouchStart={handleTouchStart}
@@ -342,7 +342,7 @@ export default function ComparisonSlider() {
                 <div className="quality-bar relative h-2 w-full rounded-full bg-muted/30 overflow-hidden">
                   <motion.div
                     className="absolute inset-y-0 left-0 rounded-full"
-                    style={{ background: 'linear-gradient(to right, #ef4444, #f97316, #eab308, #22c55e)' }}
+                    style={{ background: 'linear-gradient(to right, color-mix(in oklch, var(--primary) 30%, transparent), color-mix(in oklch, var(--primary) 60%, transparent), var(--primary))' }}
                     initial={{ width: '0%' }}
                     animate={{ width: `${PROCESSING_STAGES[processingStage].progress}%` }}
                     transition={{ duration: 0.5, ease: 'easeOut' }}
@@ -391,8 +391,8 @@ export default function ComparisonSlider() {
               </>
             ) : diffStats ? (
               <>
-                <GitCompareArrows className="size-2.5 text-emerald-400" />
-                <span className="text-emerald-400">{diffStats.diffPercentage}%</span>
+                <GitCompareArrows className="size-2.5 text-primary" />
+                <span className="text-primary">{diffStats.diffPercentage}%</span>
                 <span className="text-white/70">modified</span>
                 <span className="text-white/40">·</span>
                 <span className="text-white/80">{formatPixelCount(diffStats.changedPixels)} px</span>
@@ -476,7 +476,7 @@ export default function ComparisonSlider() {
       </div>
 
       {/* Bottom info — combined original/result labels with diff stats inline */}
-      <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg border bg-card/80 backdrop-blur-sm shadow-sm">
+      <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl border border-border/60 bg-card/80 backdrop-blur-sm shadow-sm max-w-full overflow-hidden">
         <div className="flex items-center gap-1.5">
           <span className="size-1.5 rounded-full bg-foreground/60" />
           <span className="text-xs font-semibold text-foreground/80">Original</span>

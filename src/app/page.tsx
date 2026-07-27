@@ -35,10 +35,10 @@ export default function Home() {
   const isEditor = step !== 'upload'
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="min-h-screen flex flex-col bg-background overflow-x-hidden">
       <Header />
 
-      <main className="flex-1 w-full">
+      <main className="flex-1 w-full max-w-full overflow-x-hidden">
         <div className="mx-auto max-w-4xl px-4 sm:px-6 py-4 sm:py-6">
           <AnimatePresence mode="wait">
             {step === 'upload' && (
@@ -61,10 +61,10 @@ export default function Home() {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.2 }}
-                className="flex flex-col gap-6"
+                className="flex flex-col gap-4 sm:gap-6 max-w-full overflow-x-hidden"
               >
                 {/* ── Image Preview Area ─────────────────────────────────────── */}
-                <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-3 max-w-full overflow-hidden">
                   {showComparison && processedImage && (
                     <ComparisonViewModeSwitcher />
                   )}
@@ -82,7 +82,7 @@ export default function Home() {
                 </div>
 
                 {/* ── Controls Section — stacked below preview ─────────────── */}
-                <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-3 sm:gap-4 max-w-full overflow-hidden">
                   <ControlPanel />
 
                   {/* Image info panel — before/after stats when result available */}
@@ -97,7 +97,7 @@ export default function Home() {
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.2 }}
-                      className="flex flex-col gap-4"
+                      className="flex flex-col gap-3 sm:gap-4 max-w-full overflow-hidden"
                     >
                       <QualityOptimizer />
                       <DownloadPanel />
