@@ -45,7 +45,7 @@ export default function StickyCTA() {
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 10 }}
         transition={{ duration: 0.2 }}
-        className="sticky-cta-wrapper -mx-1"
+        className="sticky-cta-wrapper"
       >
         <div className="rounded-lg border bg-card/95 p-2 shadow-lg backdrop-blur-md">
           <button

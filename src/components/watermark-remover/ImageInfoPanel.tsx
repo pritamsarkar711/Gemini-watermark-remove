@@ -57,22 +57,22 @@ function inferFormatFromDataUrl(dataUrl: string): string {
   return 'Unknown'
 }
 
-/** Get color indicator based on size reduction percentage. */
+/** Get color indicator based on size reduction percentage — uses primary color. */
 function getSizeReductionColor(reductionPct: number): { label: string; className: string; barColor: string } {
-  if (reductionPct >= 50) return { label: 'Excellent', className: 'text-emerald-600', barColor: 'bg-emerald-500' }
-  if (reductionPct >= 25) return { label: 'Good', className: 'text-amber-600', barColor: 'bg-amber-500' }
-  if (reductionPct > 0) return { label: 'Minor', className: 'text-red-500', barColor: 'bg-red-500' }
+  if (reductionPct >= 50) return { label: 'Excellent', className: 'text-primary', barColor: 'bg-primary' }
+  if (reductionPct >= 25) return { label: 'Good', className: 'text-primary/80', barColor: 'bg-primary/70' }
+  if (reductionPct > 0) return { label: 'Minor', className: 'text-primary/60', barColor: 'bg-primary/50' }
   return { label: 'No reduction', className: 'text-muted-foreground', barColor: 'bg-muted-foreground/30' }
 }
 
 /**
  * Pick text color class for the detection-confidence row based on the
- * 0-99 score. Spec: >=85 emerald, >=60 amber, otherwise red.
+ * 0-99 score — uses primary color consistently.
  */
 function getDetectionConfidenceTextColor(confidence: number): string {
-  if (confidence >= 85) return 'text-emerald-500'
-  if (confidence >= 60) return 'text-amber-500'
-  return 'text-red-500'
+  if (confidence >= 85) return 'text-primary'
+  if (confidence >= 60) return 'text-primary/70'
+  return 'text-primary/50'
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -196,7 +196,7 @@ export default function ImageInfoPanel() {
   const sizeIndicator = getSizeReductionColor(sizeReductionPct)
 
   return (
-    <div className="sidebar-panel flex flex-col gap-3 rounded-lg p-3.5 shadow-sm transition-all duration-200 hover:bg-card hover:shadow-md hover:border-border">
+    <div className="sidebar-panel flex flex-col gap-3 rounded-lg p-4 shadow-sm">
       {/* Collapsible header */}
       <button
         onClick={() => setIsOpen(!isOpen)}
@@ -293,7 +293,7 @@ export default function ImageInfoPanel() {
               <div className="flex flex-col gap-2 pl-1">
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-semibold text-muted-foreground">Size</span>
-                  <span className={`font-bold tabular-nums ${sizeIncrease ? 'text-red-500' : sizeIndicator.className}`}>
+                  <span className={`font-bold tabular-nums ${sizeIncrease ? 'text-primary/60' : sizeIndicator.className}`}>
                     {formatFileSize(origSize)} → {formatFileSize(procSize)}
                     {sizeIncrease
                       ? ` (↑ ${effectiveReduction}%)`

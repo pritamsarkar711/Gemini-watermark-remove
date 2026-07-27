@@ -255,7 +255,7 @@ export default function DownloadPanel() {
           className="gap-1.5 h-8 text-sm rounded-md"
         >
           {copied ? (
-            <Check className="size-3 text-green-500" />
+            <Check className="size-3 text-primary" />
           ) : (
             <Copy className="size-3" />
           )}
@@ -284,14 +284,14 @@ export default function DownloadPanel() {
           <span
             className={`inline-flex items-center gap-0.5 rounded px-1 py-0.5 font-medium ${
               comparisonDirection === 'down'
-                ? 'bg-green-500/10 text-green-600 dark:text-green-400'
-                : 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                ? 'bg-primary/10 text-primary'
+                : 'bg-primary/10 text-primary/70'
             }`}
           >
             {comparisonDirection === 'down' ? (
-              <ArrowDown className="size-2.5" />
+              <ArrowDown className="size-2.5 text-primary" />
             ) : (
-              <ArrowUp className="size-2.5" />
+              <ArrowUp className="size-2.5 text-primary/70" />
             )}
             {comparisonAbsPct}%
           </span>

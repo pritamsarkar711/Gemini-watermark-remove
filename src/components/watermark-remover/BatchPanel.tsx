@@ -232,7 +232,7 @@ export default function BatchPanel() {
                         idx === currentIdx
                           ? 'bg-primary/10 border-l-2 border-primary shadow-sm'
                           : item.status === 'done'
-                          ? 'bg-green-500/5 border-l-2 border-green-500/30'
+                          ? 'bg-primary/5 border-l-2 border-primary/30'
                           : item.status === 'error'
                           ? 'bg-destructive/5 border-l-2 border-destructive/30'
                           : 'bg-muted/30 hover:bg-muted/50'
@@ -243,7 +243,7 @@ export default function BatchPanel() {
                         <Loader2 className="size-3 animate-spin text-primary shrink-0" />
                       )}
                       {item.status === 'done' && (
-                        <CheckCircle2 className="size-3 text-green-500 shrink-0" />
+                        <CheckCircle2 className="size-3 text-primary shrink-0" />
                       )}
                       {item.status === 'error' && (
                         <XCircle className="size-3 text-destructive shrink-0" />

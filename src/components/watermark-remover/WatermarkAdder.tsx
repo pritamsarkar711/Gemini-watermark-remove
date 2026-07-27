@@ -251,8 +251,8 @@ export default function WatermarkAdder() {
           </div>
           <div className="flex items-center gap-1 rounded-full bg-black/50 px-1.5 py-0.5 backdrop-blur-sm">
             <span className="relative flex size-1.5">
-              <span className="absolute inline-flex size-full animate-ping rounded-full bg-green-400/70" />
-              <span className="relative inline-flex size-1.5 rounded-full bg-green-400" />
+              <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary/70" />
+              <span className="relative inline-flex size-1.5 rounded-full bg-primary" />
             </span>
             <span className="text-[11px] font-medium uppercase tracking-wider text-white">Live</span>
           </div>

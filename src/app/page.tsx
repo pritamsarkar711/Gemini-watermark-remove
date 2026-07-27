@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Eraser, Stamp, Scan, Download, Undo2, Redo2 } from 'lucide-react'
+import { Eraser, Stamp } from 'lucide-react'
 import { useAppStore } from '@/lib/store'
 import Header from '@/components/watermark-remover/Header'
 import UploadArea from '@/components/watermark-remover/UploadArea'
@@ -18,12 +18,10 @@ import AdjustPanel from '@/components/watermark-remover/AdjustPanel'
 import QualityOptimizer from '@/components/watermark-remover/QualityOptimizer'
 import DownloadPanel from '@/components/watermark-remover/DownloadPanel'
 import HistoryPanel from '@/components/watermark-remover/HistoryPanel'
-import ShortcutHelp from '@/components/watermark-remover/ShortcutHelp'
-import StickyCTA from '@/components/watermark-remover/StickyCTA'
-import Footer from '@/components/watermark-remover/Footer'
-import MobileDrawer from '@/components/watermark-remover/MobileDrawer'
 import BatchPanel from '@/components/watermark-remover/BatchPanel'
 import ImageInfoPanel from '@/components/watermark-remover/ImageInfoPanel'
+import StickyCTA from '@/components/watermark-remover/StickyCTA'
+import Footer from '@/components/watermark-remover/Footer'
 
 export default function Home() {
   const {
@@ -32,169 +30,7 @@ export default function Home() {
     processedImage,
     showComparison,
     comparisonMode,
-    canUndo,
-    canRedo,
-    undo,
-    redo,
-    setTransformConfig,
-    transformConfig,
-    setMode,
-    outputFileName,
-    qualityConfig,
-    isCropOverlayActive,
-    setCropOverlayActive,
   } = useAppStore()
-
-  const [showHelp, setShowHelp] = useState(false)
-
-  // ─── Basic download / copy (used by Ctrl+S / Ctrl+C) ───────────────────────
-  // Note: these bypass the optional optimization layer in DownloadPanel and
-  // always use the raw processedImage.dataUrl. For the optimized output, the
-  // user should still click the Download button in the sidebar.
-  const handleQuickDownload = useCallback(() => {
-    if (!processedImage?.dataUrl) return
-    const ext = qualityConfig.format === 'jpeg' ? 'jpg' : qualityConfig.format === 'webp' ? 'webp' : qualityConfig.format === 'avif' ? 'avif' : 'png'
-    const link = document.createElement('a')
-    link.href = processedImage.dataUrl
-    link.download = `${outputFileName || 'processed'}.${ext}`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-  }, [processedImage, outputFileName, qualityConfig.format])
-
-  const handleQuickCopy = useCallback(async () => {
-    if (!processedImage?.dataUrl) return
-    try {
-      const blob = await fetch(processedImage.dataUrl).then((r) => r.blob())
-      await navigator.clipboard.write([
-        new ClipboardItem({ [blob.type]: blob }),
-      ])
-    } catch {
-      try {
-        await navigator.clipboard.writeText(processedImage.dataUrl)
-      } catch {
-        console.error('Copy failed')
-      }
-    }
-  }, [processedImage])
-
-  // ─── Keyboard shortcuts ────────────────────────────────────────────────────
-  useEffect(() => {
-    const isTypingTarget = (target: EventTarget | null): boolean => {
-      if (!(target instanceof HTMLElement)) return false
-      const tag = target.tagName
-      return tag === 'INPUT' || tag === 'TEXTAREA' || target.isContentEditable
-    }
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // ── Undo / Redo (works everywhere) ───────────────────────────────────
-      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
-        e.preventDefault()
-        undo()
-        return
-      }
-      if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
-        e.preventDefault()
-        redo()
-        return
-      }
-
-      // ── Ctrl+S: download (prevent browser save) ─────────────────────────
-      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-        e.preventDefault()
-        handleQuickDownload()
-        return
-      }
-
-      // ── Ctrl+C: copy result to clipboard (only when not typing & no text selected) ─
-      if ((e.ctrlKey || e.metaKey) && e.key === 'c' && !isTypingTarget(e.target)) {
-        // Only intercept if there's a processed image to copy AND the user
-        // hasn't selected text on the page (let native copy win in that case)
-        const hasTextSelection = typeof window !== 'undefined'
-          && !!window.getSelection?.()?.toString()
-        if (processedImage?.dataUrl && !hasTextSelection) {
-          e.preventDefault()
-          void handleQuickCopy()
-        }
-        return
-      }
-
-      // ── Escape: close help dialog (if open) ─────────────────────────────
-      if (e.key === 'Escape') {
-        if (showHelp) {
-          setShowHelp(false)
-        }
-        return
-      }
-
-      // Skip the remaining editor-mode shortcuts when typing in a field
-      if (isTypingTarget(e.target)) return
-      // Skip when a modifier (other than shift for `?`) is held
-      if (e.ctrlKey || e.metaKey || e.altKey) return
-
-      // ── `?` opens the help dialog (editor mode only) ────────────────────
-      if (e.key === '?' && step !== 'upload') {
-        e.preventDefault()
-        setShowHelp(true)
-        return
-      }
-
-      // Below shortcuts only apply in editor mode
-      if (step === 'upload') return
-
-      // ── R / H / V: transforms ───────────────────────────────────────────
-      if (e.key === 'r' || e.key === 'R') {
-        e.preventDefault()
-        setTransformConfig({ rotation: (transformConfig.rotation + 90) % 360 })
-        return
-      }
-      if (e.key === 'h' || e.key === 'H') {
-        e.preventDefault()
-        setTransformConfig({ flipH: !transformConfig.flipH })
-        return
-      }
-      if (e.key === 'v' || e.key === 'V') {
-        e.preventDefault()
-        setTransformConfig({ flipV: !transformConfig.flipV })
-        return
-      }
-
-      // ── 1 / 2: switch mode ──────────────────────────────────────────────
-      if (e.key === '1') {
-        e.preventDefault()
-        setMode('remove')
-        return
-      }
-      if (e.key === '2') {
-        e.preventDefault()
-        setMode('add')
-        return
-      }
-
-      // ── C: toggle crop overlay ─────────────────────────────────────────
-      if (e.key === 'c' || e.key === 'C') {
-        e.preventDefault()
-        setCropOverlayActive(!isCropOverlayActive)
-        return
-      }
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [
-    undo,
-    redo,
-    handleQuickDownload,
-    handleQuickCopy,
-    showHelp,
-    step,
-    setTransformConfig,
-    transformConfig,
-    setMode,
-    processedImage,
-    isCropOverlayActive,
-    setCropOverlayActive,
-  ])
 
   const isEditor = step !== 'upload'
 
@@ -203,7 +39,7 @@ export default function Home() {
       <Header />
 
       <main className="flex-1 w-full">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-4 sm:py-6">
+        <div className="mx-auto max-w-4xl px-4 sm:px-6 py-4 sm:py-6">
           <AnimatePresence mode="wait">
             {step === 'upload' && (
               <motion.div
@@ -225,104 +61,54 @@ export default function Home() {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.2 }}
-                className="flex flex-col gap-4"
+                className="flex flex-col gap-6"
               >
-                {/* Undo/redo bar */}
-                <AnimatePresence>
-                  {(canUndo || canRedo) && (
+                {/* ── Image Preview Area ─────────────────────────────────────── */}
+                <div className="flex flex-col gap-3">
+                  {showComparison && processedImage && (
+                    <ComparisonViewModeSwitcher />
+                  )}
+                  {showComparison && processedImage ? (
+                    comparisonMode === 'slider' ? (
+                      <ComparisonSlider />
+                    ) : comparisonMode === 'side-by-side' ? (
+                      <SideBySideView />
+                    ) : (
+                      <OverlayView />
+                    )
+                  ) : (
+                    <ImagePreview />
+                  )}
+                </div>
+
+                {/* ── Controls Section — stacked below preview ─────────────── */}
+                <div className="flex flex-col gap-4">
+                  <ControlPanel />
+
+                  {/* Image info panel — before/after stats when result available */}
+                  {processedImage && step === 'result' && <ImageInfoPanel />}
+
+                  <CropPanel />
+                  <ResizePanel />
+                  <AdjustPanel />
+
+                  {processedImage && step === 'result' && (
                     <motion.div
-                      initial={{ opacity: 0, y: -10 }}
+                      initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      className="flex items-center gap-1.5 rounded-lg border border-border/60 bg-card/80 p-1 shadow-sm backdrop-blur-sm"
+                      transition={{ duration: 0.2 }}
+                      className="flex flex-col gap-4"
                     >
-                      <button
-                        onClick={undo}
-                        disabled={!canUndo}
-                        className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-sm font-semibold transition-all ${
-                          canUndo
-                            ? 'bg-muted/60 text-foreground hover:bg-accent hover:shadow-sm'
-                            : 'text-muted-foreground/40 cursor-not-allowed'
-                        }`}
-                        title="Undo (Ctrl+Z)"
-                      >
-                        <Undo2 className="size-3" />
-                        Undo
-                      </button>
-                      <div className="h-3 w-px bg-border/60" />
-                      <button
-                        onClick={redo}
-                        disabled={!canRedo}
-                        className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-sm font-semibold transition-all ${
-                          canRedo
-                            ? 'bg-muted/60 text-foreground hover:bg-accent hover:shadow-sm'
-                            : 'text-muted-foreground/40 cursor-not-allowed'
-                        }`}
-                        title="Redo (Ctrl+Y)"
-                      >
-                        <Redo2 className="size-3" />
-                        Redo
-                      </button>
+                      <QualityOptimizer />
+                      <DownloadPanel />
                     </motion.div>
                   )}
-                </AnimatePresence>
 
-                <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4">
-                  {/* Image area */}
-                  <div className="flex flex-col gap-2">
-                    {showComparison && processedImage && (
-                      <ComparisonViewModeSwitcher />
-                    )}
-                    {showComparison && processedImage ? (
-                      comparisonMode === 'slider' ? (
-                        <ComparisonSlider />
-                      ) : comparisonMode === 'side-by-side' ? (
-                        <SideBySideView />
-                      ) : (
-                        <OverlayView />
-                      )
-                    ) : (
-                      <ImagePreview />
-                    )}
-                  </div>
+                  <HistoryPanel />
+                  <BatchPanel />
 
-                  {/* Controls sidebar — hidden on mobile (accessible via MobileDrawer), visible on lg+ */}
-                  <div className="hidden lg:flex lg:flex-col gap-3 lg:max-h-[calc(100vh-10rem)] lg:overflow-y-auto custom-scrollbar lg:pr-1">
-                    <ControlPanel />
-
-                    {/* Image info panel — shows before/after comparison stats when result is available */}
-                    {processedImage && step === 'result' && <ImageInfoPanel />}
-
-                    {/* Crop tool — available whenever an image is loaded */}
-                    <CropPanel />
-
-                    {/* Resize tool — available whenever an image is loaded */}
-                    <ResizePanel />
-
-                    {/* Image adjustments — available whenever an image is loaded */}
-                    <AdjustPanel />
-
-                    {processedImage && step === 'result' && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.2 }}
-                        className="flex flex-col gap-3"
-                      >
-                        <QualityOptimizer />
-                        <DownloadPanel />
-                      </motion.div>
-                    )}
-
-                    {/* History timeline — always visible in editor mode */}
-                    <HistoryPanel />
-
-                    {/* Batch processing panel */}
-                    <BatchPanel />
-
-                    {/* Sticky primary CTA — always visible at the bottom of the sidebar */}
-                    <StickyCTA />
-                  </div>
+                  {/* Sticky primary CTA */}
+                  <StickyCTA />
                 </div>
               </motion.div>
             )}
@@ -331,14 +117,6 @@ export default function Home() {
       </main>
 
       <Footer />
-
-      {/* Mobile bottom drawer for editing tools */}
-      <MobileDrawer />
-
-      {/* Keyboard shortcuts help (FAB + dialog) — editor mode only */}
-      {isEditor && (
-        <ShortcutHelp open={showHelp} onOpenChange={setShowHelp} />
-      )}
     </div>
   )
 }
