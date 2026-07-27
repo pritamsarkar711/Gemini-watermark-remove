@@ -32,14 +32,14 @@ export default function Header() {
       {/* Bottom border with gradient effect */}
       <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
 
-      <div className="relative mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
+      <div className="relative mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
         {/* Left: Logo + Title */}
         <div className="flex items-center gap-2.5">
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary shadow-sm">
-            <Eraser className="size-4 text-primary-foreground" />
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary shadow-sm shadow-primary/20">
+            <Eraser className="size-[1.125rem] text-primary-foreground" />
           </div>
           <div className="flex items-center gap-1 leading-none">
-            <span className="gradient-text text-lg font-semibold tracking-tight brand-shadow">Gemini Watermark</span>
+            <span className="gradient-text text-xl font-extrabold tracking-tight brand-shadow">Gemini Watermark</span>
             {step !== 'upload' && (
               <span className="size-1.5 rounded-full bg-primary shadow-[0_0_6px_color-mix(in_oklch,var(--primary)_60%,transparent)]" />
             )}

@@ -249,7 +249,7 @@ function createSnapshotFromState(state: AppState): HistorySnapshot {
 
 const defaultWatermarkConfig: WatermarkConfig = {
   text: "",
-  fontSize: 24,
+  fontSize: 36,
   color: "#ffffff",
   opacity: 50,
   position: "bottom-right",
@@ -305,7 +305,7 @@ export const BUILT_IN_PRESETS: WatermarkPreset[] = [
   {
     id: "copyright",
     label: "© 2025",
-    text: "© 2025 Gemini",
+    text: "© 2025",
     fontSize: 28,
     color: "#ffffff",
     opacity: 80,
@@ -356,17 +356,6 @@ export const BUILT_IN_PRESETS: WatermarkPreset[] = [
     rotation: -25,
     shadow: true,
     repeat: true,
-  },
-  {
-    id: "gemini",
-    label: "Gemini",
-    text: "Gemini",
-    fontSize: 24,
-    color: "#ffffff",
-    opacity: 60,
-    rotation: 0,
-    shadow: true,
-    repeat: false,
   },
 ];
 

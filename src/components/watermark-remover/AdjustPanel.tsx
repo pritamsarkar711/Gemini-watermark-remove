@@ -176,9 +176,11 @@ export default function AdjustPanel() {
         className="sidebar-panel-header flex items-center justify-between cursor-pointer"
         aria-expanded={isOpen}
       >
-        <div className="flex items-center gap-1.5">
-          <SlidersHorizontal className="size-3.5 text-muted-foreground/60" />
-          <span className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider">Adjustments</span>
+        <div className="flex items-center gap-2">
+          <span className="flex size-7 items-center justify-center rounded-lg bg-primary/10 text-primary ring-1 ring-primary/15">
+            <SlidersHorizontal className="size-3.5" />
+          </span>
+          <span className="text-sm font-bold text-foreground">Adjustments</span>
         </div>
         <div className="flex items-center gap-2">
           {hasAdjustments && (

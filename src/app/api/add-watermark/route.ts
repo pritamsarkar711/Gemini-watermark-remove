@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
 
     const options = {
       text: (formData.get("text") as string) || "",
-      fontSize: parseInt(formData.get("fontSize") as string) || 24,
+      fontSize: parseInt(formData.get("fontSize") as string) || 36,
       color: (formData.get("color") as string) || "#ffffff",
       opacity: parseInt(formData.get("opacity") as string) || 50,
       position: (formData.get("position") as string) || "bottom-right",
