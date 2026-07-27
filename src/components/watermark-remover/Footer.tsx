@@ -5,7 +5,7 @@ import { Eraser, Heart } from 'lucide-react'
 export default function Footer() {
   return (
     <footer className="mt-auto w-full gradient-border-top bg-gradient-to-t from-muted/40 via-muted/20 to-transparent backdrop-blur-sm">
-      <div className="mx-auto max-w-4xl flex flex-col items-center sm:flex-row sm:justify-between gap-2 px-4 sm:px-6 py-3 sm:py-4">
+      <div className="mx-auto max-w-6xl flex flex-col items-center sm:flex-row sm:justify-between gap-2 px-4 sm:px-6 py-3 sm:py-4">
         {/* Brand cluster */}
         <div className="flex items-center gap-2">
           <div className="flex size-5 items-center justify-center rounded-md bg-primary/15">

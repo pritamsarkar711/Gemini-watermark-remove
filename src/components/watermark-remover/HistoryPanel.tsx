@@ -58,13 +58,12 @@ export default function HistoryPanel() {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="sidebar-panel flex flex-col rounded-lg shadow-sm transition-all duration-200 hover:bg-card hover:shadow-md hover:border-border"
-    >
+      className="sidebar-panel flex flex-col rounded-xl border border-border/50 bg-card/85 shadow-sm transition-all duration-200 hover:shadow-md hover:border-border/70 overflow-hidden">
       {/* Header (click to toggle) */}
       <button
         type="button"
         onClick={() => setIsOpen((v) => !v)}
-        className="sidebar-panel-header flex items-center justify-between gap-2 p-2.5 text-left"
+        className="sidebar-panel-header flex items-center justify-between gap-2 p-3 text-left bg-gradient-to-r from-transparent via-card/50 to-transparent"
         aria-expanded={isOpen}
         aria-controls="history-panel-body"
       >

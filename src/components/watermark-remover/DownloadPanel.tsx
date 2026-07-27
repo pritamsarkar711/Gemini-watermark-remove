@@ -320,7 +320,7 @@ export default function DownloadPanel() {
       >
         <Download className="size-4" />
         Download
-        <span className="ml-1 inline-flex items-center gap-1 rounded-md bg-black/15 px-1.5 py-0.5 text-xs font-medium text-primary-foreground/90">
+        <span className="ml-1 inline-flex items-center gap-1 rounded-md bg-black/15 px-1.5 py-0.5 text-xs font-medium text-primary-foreground/90 whitespace-nowrap">
           {isEstimating && !badgeIsEstimate && optimizedSize === null ? (
             <Loader2 className="size-2.5 animate-spin" />
           ) : null}

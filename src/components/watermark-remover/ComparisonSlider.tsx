@@ -476,15 +476,15 @@ export default function ComparisonSlider() {
       </div>
 
       {/* Bottom info — combined original/result labels with diff stats inline */}
-      <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl border border-border/60 bg-card/80 backdrop-blur-sm shadow-sm max-w-full overflow-hidden">
+      <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 rounded-xl border border-border/60 bg-card/80 backdrop-blur-sm shadow-sm max-w-full overflow-hidden">
         <div className="flex items-center gap-1.5">
           <span className="size-1.5 rounded-full bg-foreground/60" />
           <span className="text-xs font-semibold text-foreground/80">Original</span>
         </div>
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <kbd className="rounded-md bg-muted px-1 py-0.5 text-xs font-medium text-muted-foreground">←</kbd>
-          <kbd className="rounded-md bg-muted px-1 py-0.5 text-xs font-medium text-muted-foreground">→</kbd>
-          <span className="hidden sm:inline">or drag</span>
+          <kbd className="rounded-md bg-muted px-1 py-0.5 text-[10px] font-medium text-muted-foreground">←</kbd>
+          <kbd className="rounded-md bg-muted px-1 py-0.5 text-[10px] font-medium text-muted-foreground">→</kbd>
+          <span className="hidden xs:inline">drag</span>
         </div>
         <div className="flex items-center gap-1.5">
           <span className="text-xs font-semibold text-primary">Result</span>
