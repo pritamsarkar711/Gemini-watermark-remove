@@ -13,10 +13,9 @@ import {
   History as HistoryIcon,
   Trash2,
   ChevronDown,
+  CheckCircle2,
 } from 'lucide-react'
 import { useAppStore, type LastAction } from '@/lib/store'
-
-// ─── Action metadata ────────────────────────────────────────────────────────
 
 interface ActionMeta {
   label: string
@@ -34,60 +33,58 @@ const ACTION_META: Record<LastAction | 'initial', ActionMeta> = {
 }
 
 function getActionMeta(action: LastAction | null): ActionMeta {
-  if (action === null) return ACTION_META.initial
-  return ACTION_META[action]
+  return action === null ? ACTION_META.initial : ACTION_META[action]
 }
 
-// ─── Component ───────────────────────────────────────────────────────────────
-
+/** A compact, expandable timeline that matches the resize and adjustments cards. */
 export default function HistoryPanel() {
   const { history, historyIndex, jumpTo, reset } = useAppStore()
-  const [isOpen, setIsOpen] = useState(true)
+  const [isOpen, setIsOpen] = useState(false)
 
-  // Newest first — but keep the index labels reflecting chronological order
-  // (history[0] is "#1", the initial state)
-  const reversed = [...history].map((snapshot, idx) => ({
-    snapshot,
-    originalIndex: idx,
-  })).reverse()
-
-  const actionCount = Math.max(0, history.length - 1) // exclude the initial state from the visible "actions" count
+  const newestFirst = [...history]
+    .map((snapshot, originalIndex) => ({ snapshot, originalIndex }))
+    .reverse()
+  const actionCount = Math.max(0, history.length - 1)
 
   return (
-    <motion.div
+    <motion.section
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="sidebar-panel flex flex-col rounded-xl border border-border/50 bg-card/85 shadow-sm transition-all duration-200 hover:shadow-md hover:border-border/70 overflow-hidden">
-      {/* Header (click to toggle) */}
+      className="sidebar-panel flex max-w-full flex-col gap-2.5 overflow-hidden rounded-xl p-3 shadow-sm transition-all duration-200 hover:bg-card hover:shadow-md sm:p-4"
+      aria-label="Edit history"
+    >
       <button
         type="button"
-        onClick={() => setIsOpen((v) => !v)}
-        className="sidebar-panel-header flex items-center justify-between gap-2 p-3 text-left bg-gradient-to-r from-transparent via-card/50 to-transparent"
+        onClick={() => setIsOpen((open) => !open)}
+        className="sidebar-panel-header flex min-h-8 w-full items-center justify-between gap-3 text-left"
         aria-expanded={isOpen}
         aria-controls="history-panel-body"
       >
-        <div className="flex items-center gap-1.5">
-          <HistoryIcon className="size-3.5 text-muted-foreground/60" />
-          <span className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider">
-            History
+        <span className="flex min-w-0 items-center gap-2">
+          <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary ring-1 ring-primary/15">
+            <HistoryIcon className="size-3.5" />
           </span>
-          {actionCount > 0 && (
-            <span className="ml-0.5 rounded-full bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground/70">
-              {actionCount} {actionCount === 1 ? 'action' : 'actions'}
-            </span>
-          )}
-        </div>
-        <motion.div
-          animate={{ rotate: isOpen ? 0 : -90 }}
-          transition={{ duration: 0.15 }}
-          className="text-muted-foreground/50"
-        >
-          <ChevronDown className="size-3.5" />
-        </motion.div>
+          <span className="flex min-w-0 flex-col">
+            <span className="text-sm font-bold tracking-tight text-foreground">History</span>
+            <span className="text-xs font-medium text-muted-foreground">Restore any previous edit</span>
+          </span>
+        </span>
+
+        <span className="flex shrink-0 items-center gap-2">
+          <span className="rounded-full bg-primary/10 px-2 py-1 text-xs font-bold tabular-nums text-primary">
+            {actionCount} {actionCount === 1 ? 'edit' : 'edits'}
+          </span>
+          <motion.span
+            animate={{ rotate: isOpen ? 0 : -90 }}
+            transition={{ duration: 0.15 }}
+            className="text-muted-foreground"
+          >
+            <ChevronDown className="size-4" />
+          </motion.span>
+        </span>
       </button>
 
-      {/* Body */}
       <AnimatePresence initial={false}>
         {isOpen && (
           <motion.div
@@ -98,75 +95,67 @@ export default function HistoryPanel() {
             transition={{ duration: 0.2, ease: 'easeOut' }}
             className="overflow-hidden"
           >
-            <div className="px-2 pb-2">
-              <ul className="max-h-64 overflow-y-auto custom-scrollbar flex flex-col gap-2 pr-0.5">
-                {reversed.map(({ snapshot, originalIndex }) => {
-                  const meta = getActionMeta(snapshot.lastAction)
-                  const Icon = meta.Icon
-                  const isCurrent = originalIndex === historyIndex
-                  const isFuture = originalIndex > historyIndex
-                  const stepNumber = originalIndex + 1
+            <div className="flex flex-col gap-3 border-t border-border/70 pt-3">
+              <div className="rounded-xl border border-border/70 bg-muted/35 p-1.5">
+                <ul className="custom-scrollbar flex max-h-64 flex-col gap-1 overflow-x-hidden overflow-y-auto pr-0.5">
+                  {newestFirst.map(({ snapshot, originalIndex }) => {
+                    const meta = getActionMeta(snapshot.lastAction)
+                    const Icon = meta.Icon
+                    const isCurrent = originalIndex === historyIndex
+                    const isFuture = originalIndex > historyIndex
+                    const stepNumber = originalIndex + 1
 
-                  return (
-                    <li key={originalIndex}>
-                      <button
-                        type="button"
-                        onClick={() => jumpTo(originalIndex)}
-                        className={`group relative w-full flex items-center gap-2 rounded-md px-2 py-1.5 text-left transition-all ${
-                          isCurrent
-                            ? 'bg-primary/10 border-l-[3px] border-primary shadow-[inset_2px_0_8px_-2px_var(--primary)]'
-                            : 'border-l-2 border-transparent hover:bg-accent/40'
-                        } ${isFuture ? 'opacity-40' : 'opacity-100'}`}
-                        aria-current={isCurrent ? 'step' : undefined}
-                        title={isCurrent ? 'Current state' : isFuture ? 'Future state — click to redo to here' : 'Click to restore'}
-                      >
-                        <Icon
-                          className={`size-3.5 shrink-0 ${
+                    return (
+                      <li key={originalIndex}>
+                        <button
+                          type="button"
+                          onClick={() => jumpTo(originalIndex)}
+                          className={`group flex min-h-11 w-full items-center gap-3 rounded-lg border px-3 py-2 text-left transition-all ${
                             isCurrent
-                              ? 'text-primary'
-                              : 'text-muted-foreground/60 group-hover:text-foreground'
-                          }`}
-                        />
-                        <span
-                          className={`flex-1 truncate text-sm font-medium ${
-                            isCurrent ? 'text-foreground' : 'text-muted-foreground'
-                          }`}
+                              ? 'border-primary/35 bg-primary text-primary-foreground shadow-sm'
+                              : 'border-transparent bg-card/70 hover:border-primary/20 hover:bg-primary/5'
+                          } ${isFuture && !isCurrent ? 'opacity-55' : ''}`}
+                          aria-current={isCurrent ? 'step' : undefined}
+                          title={isCurrent ? 'Current version' : 'Restore this version'}
                         >
-                          {meta.label}
-                        </span>
-                        <span className="shrink-0 text-xs font-mono tabular-nums text-muted-foreground/40">
-                          #{stepNumber}
-                        </span>
-                      </button>
-                    </li>
-                  )
-                })}
-              </ul>
+                          <span className={`flex size-7 shrink-0 items-center justify-center rounded-md ${isCurrent ? 'bg-white/15' : 'bg-primary/10 text-primary'}`}>
+                            {isCurrent ? <CheckCircle2 className="size-3.5" /> : <Icon className="size-3.5" />}
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm font-semibold">{meta.label}</span>
+                            <span className={`block text-xs ${isCurrent ? 'text-primary-foreground/75' : 'text-muted-foreground'}`}>
+                              {isCurrent ? 'Current version' : isFuture ? 'Available to redo' : 'Click to restore'}
+                            </span>
+                          </span>
+                          <span className={`shrink-0 text-xs font-bold tabular-nums ${isCurrent ? 'text-primary-foreground/80' : 'text-muted-foreground/75'}`}>
+                            #{stepNumber}
+                          </span>
+                        </button>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </div>
 
-              {/* Footer: clear history */}
-              <div className="mt-2 flex items-center justify-between border-t pt-2">
-                <span className="text-xs text-muted-foreground/40">
-                  {historyIndex + 1} / {history.length}
+              <div className="flex items-center justify-between gap-3 px-1">
+                <span className="text-xs font-medium text-muted-foreground">
+                  Showing version {historyIndex + 1} of {history.length}
                 </span>
                 <button
                   type="button"
                   onClick={reset}
                   disabled={history.length <= 1}
-                  className={`flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium transition-colors ${
-                    history.length <= 1
-                      ? 'text-muted-foreground/30 cursor-not-allowed'
-                      : 'text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10'
-                  }`}
-                  title="Clear all history and reset editor"
+                  className="inline-flex min-h-8 shrink-0 items-center gap-1.5 rounded-md px-2 text-xs font-semibold text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-40"
+                  title="Start over with a new image"
                 >
-                  <Trash2 className="size-3" />
-                  Clear history
+                  <Trash2 className="size-3.5" />
+                  Start over
                 </button>
               </div>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
-    </motion.div>
+    </motion.section>
   )
 }

@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input'
  * Preset bar — quick-apply watermark templates.
  *
  * Renders two groups:
- *  1. Built-in presets (© 2025, DRAFT, CONFIDENTIAL, SAMPLE, DO NOT COPY, Gemini)
+ *  1. Built-in presets (© 2025, DRAFT, CONFIDENTIAL, SAMPLE, DO NOT COPY)
  *  2. User-saved custom presets (persisted to localStorage)
  *
  * Clicking a preset applies its text + style to the current watermarkConfig
@@ -74,7 +74,7 @@ export default function PresetBar() {
         <button
           type="button"
           onClick={() => setIsSaving((v) => !v)}
-          className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground/70 transition-colors hover:bg-accent hover:text-foreground"
+          className="flex min-h-7 items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold text-muted-foreground/70 transition-colors hover:bg-accent hover:text-foreground"
           title="Save current settings as a preset"
         >
           <Plus className="size-2.5" />
@@ -93,7 +93,7 @@ export default function PresetBar() {
               onClick={() => applyPreset(preset)}
               whileHover={{ scale: 1.04 }}
               whileTap={{ scale: 0.96 }}
-              className={`group relative flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-medium transition-all shadow-sm ${
+              className={`group relative flex min-h-8 items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold transition-all shadow-sm ${
                 active
                   ? 'bg-primary text-primary-foreground border-primary shadow-md'
                   : 'bg-card/80 text-muted-foreground border-border hover:border-primary/40 hover:text-foreground'
@@ -155,7 +155,7 @@ export default function PresetBar() {
                 size="sm"
                 onClick={handleSave}
                 disabled={!presetName.trim() || (!watermarkConfig.text && !watermarkConfig.logoFile)}
-                className="h-7 rounded-lg text-[10px] gap-1"
+                className="h-8 rounded-lg text-xs gap-1"
               >
                 <Plus className="size-2.5" />
                 Add

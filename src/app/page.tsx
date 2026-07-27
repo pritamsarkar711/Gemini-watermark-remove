@@ -1,8 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Eraser, Stamp } from 'lucide-react'
 import { useAppStore } from '@/lib/store'
 import Header from '@/components/watermark-remover/Header'
 import UploadArea from '@/components/watermark-remover/UploadArea'
@@ -31,8 +29,6 @@ export default function Home() {
     showComparison,
     comparisonMode,
   } = useAppStore()
-
-  const isEditor = step !== 'upload'
 
   return (
     <div className="min-h-screen flex flex-col bg-background overflow-x-hidden">

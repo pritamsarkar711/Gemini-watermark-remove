@@ -489,9 +489,9 @@ export default function ImagePreview() {
       const radius = (brushSize * scale) / 2
       const lineWidth = brushSize * scale
 
-      // Visible canvas: semi-transparent red (primary color)
-      dispCtx.fillStyle = 'rgba(255, 60, 60, 0.4)'
-      dispCtx.strokeStyle = 'rgba(255, 60, 60, 0.4)'
+      // Visible canvas: semi-transparent brand green.
+      dispCtx.fillStyle = 'rgba(40, 102, 72, 0.42)'
+      dispCtx.strokeStyle = 'rgba(40, 102, 72, 0.42)'
       dispCtx.lineWidth = lineWidth
       dispCtx.lineCap = 'round'
       dispCtx.lineJoin = 'round'

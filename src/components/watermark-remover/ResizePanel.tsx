@@ -185,7 +185,9 @@ export default function ResizePanel() {
   // Check if dimensions differ from original
   const hasResize =
     originalImage &&
-    (resizeConfig.width !== originalImage.width || resizeConfig.height !== originalImage.height)
+    (resizeConfig.width !== originalImage.width ||
+      resizeConfig.height !== originalImage.height ||
+      resizeConfig.targetFormat !== 'same')
 
   if (!originalImage) return null
 
@@ -205,9 +207,11 @@ export default function ResizePanel() {
         className="sidebar-panel-header flex items-center justify-between cursor-pointer"
         aria-expanded={isOpen}
       >
-        <div className="flex items-center gap-1.5">
-          <Maximize className="size-3.5 text-muted-foreground/60" />
-          <span className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider">Resize</span>
+        <div className="flex items-center gap-2">
+          <span className="flex size-7 items-center justify-center rounded-lg bg-primary/10 text-primary ring-1 ring-primary/15">
+            <Maximize className="size-3.5" />
+          </span>
+          <span className="text-sm font-bold text-foreground">Resize</span>
         </div>
         <div className="flex items-center gap-2">
           {hasResize && (
@@ -328,22 +332,25 @@ export default function ResizePanel() {
         </span>
       </div>
 
-      {/* Format selector */}
-      <div className="flex items-center gap-1.5">
-        <FileOutput className="size-3 text-muted-foreground/60" />
-        <span className="text-xs font-medium text-muted-foreground/60">Format</span>
-        <div className="flex gap-1 ml-auto flex-wrap max-w-full overflow-hidden">
+      {/* Format selector — grid prevents long format lists from overflowing on narrow screens. */}
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-2">
+          <FileOutput className="size-3.5 text-primary" />
+          <span className="text-sm font-semibold text-foreground">Output format</span>
+        </div>
+        <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4 lg:grid-cols-8">
           {FORMAT_OPTIONS.map((f) => (
             <button
               key={f.value}
               type="button"
               onClick={() => setResizeConfig({ targetFormat: f.value })}
-              className={`h-7 min-h-[36px] rounded-md text-xs font-medium transition-all px-2 sm:px-3 ${
+              className={`min-h-9 rounded-lg px-2 text-xs font-semibold transition-all ${
                 resizeConfig.targetFormat === f.value
                   ? 'bg-primary text-primary-foreground shadow-md'
-                  : 'bg-muted/50 text-muted-foreground/70 hover:bg-muted hover:text-foreground'
+                  : 'bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground'
               }`}
               title={f.desc}
+              aria-pressed={resizeConfig.targetFormat === f.value}
             >
               {f.label}
             </button>

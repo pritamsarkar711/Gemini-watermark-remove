@@ -2,13 +2,22 @@
 
 import { useCallback, useRef, useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Eraser, Stamp, Scan, Paintbrush, Loader2, RotateCw, FlipHorizontal, FlipVertical, ChevronDown, Wrench, CheckCircle2, AlertCircle } from 'lucide-react'
+import { Eraser, Stamp, Scan, Paintbrush, Loader2, RotateCw, FlipHorizontal, FlipVertical, ChevronDown, Wrench } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { useAppStore } from '@/lib/store'
 import { toast } from '@/hooks/use-toast'
 import WatermarkAdder from './WatermarkAdder'
+
+function showSuccessToast(action: 'remove' | 'add') {
+  toast({
+    title: action === 'remove' ? 'Watermark removed' : 'Watermark applied',
+    description: action === 'remove'
+      ? 'The watermark has been successfully removed from your image.'
+      : 'The watermark has been added to your image.',
+  })
+}
 
 export default function ControlPanel() {
   const {
@@ -118,13 +127,6 @@ export default function ControlPanel() {
     }
   }, [originalImage, mode, autoDetect, maskData, watermarkConfig, setIsProcessing, setProcessedImage, setShowComparison])
 
-  // Show success toast when processing completes
-  const showSuccessToast = useCallback((action: 'remove' | 'add') => {
-    toast({
-      title: action === 'remove' ? 'Watermark removed' : 'Watermark applied',
-      description: action === 'remove' ? 'The watermark has been successfully removed from your image.' : 'The watermark has been added to your image.',
-    })
-  }, [])
 
   // Expose handleProcess to the parent via a ref-less pattern: store it in a
   // module-level variable so the sticky CTA in page.tsx can call it.
@@ -212,7 +214,7 @@ export default function ControlPanel() {
       const x = (e.clientX - rect.left) * scaleX
       const y = (e.clientY - rect.top) * scaleY
 
-      ctx.fillStyle = 'rgba(255, 60, 60, 0.35)'
+      ctx.fillStyle = 'rgba(40, 102, 72, 0.38)'
       ctx.beginPath()
       ctx.arc(x, y, brushSize * scaleX / 2, 0, Math.PI * 2)
       ctx.fill()
@@ -256,15 +258,22 @@ export default function ControlPanel() {
       className="flex w-full max-w-full flex-col gap-3 sm:gap-4 overflow-hidden"
     >
       {/* Transform controls + Auto Enhance */}
-      <div className="sidebar-panel flex flex-col gap-2 rounded-xl border border-border/60 bg-card/80 p-3 sm:p-4 shadow-sm">
-        <button
-          type="button"
-          onClick={() => setIsTransformOpen((prev) => !prev)}
-          className="sidebar-panel-header flex items-center justify-between cursor-pointer"
-        >
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Transform</span>
-          {/* Auto Enhance button — integrated into Transform header */}
+      <div className="sidebar-panel flex flex-col gap-2 rounded-xl border border-border/60 bg-card/80 p-3 shadow-sm sm:p-4">
+        <div className="flex min-h-8 items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setIsTransformOpen((prev) => !prev)}
+            className="sidebar-panel-header flex min-w-0 flex-1 items-center justify-between gap-2 text-left"
+            aria-expanded={isTransformOpen}
+          >
+            <span className="text-sm font-bold text-foreground">Transform</span>
+            <ChevronDown
+              className={`size-4 shrink-0 text-muted-foreground transition-transform duration-200 ${
+                isTransformOpen ? 'rotate-180' : 'rotate-0'
+              }`}
+            />
+          </button>
+          {/* Auto Enhance is a sibling action, never nested inside the toggle button. */}
           <button
             type="button"
             onClick={async () => {
@@ -315,10 +324,10 @@ export default function ControlPanel() {
               }
             }}
             disabled={!originalImage || isAutoEnhancing}
-            className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-all shadow-sm ${
+            className={`inline-flex h-8 items-center gap-1 rounded-md px-2 text-xs font-semibold transition-all shadow-sm ${
               !originalImage || isAutoEnhancing
-                ? 'opacity-40 cursor-not-allowed text-muted-foreground'
-                : 'cursor-pointer bg-gradient-to-br from-primary/10 to-primary/5 hover:from-primary/20 hover:to-primary/10 hover:shadow-md text-primary border border-primary/30'
+                ? 'cursor-not-allowed text-muted-foreground opacity-40'
+                : 'cursor-pointer border border-primary/30 bg-gradient-to-br from-primary/10 to-primary/5 text-primary hover:from-primary/20 hover:to-primary/10 hover:shadow-md'
             }`}
             title="Auto enhance image"
             aria-label="Auto enhance image"
@@ -331,33 +340,15 @@ export default function ControlPanel() {
             Enhance
           </button>
         </div>
-          <div className="flex items-center gap-2">
-            {hasTransform && (
-              <span
-                role="button"
-                tabIndex={0}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setTransformConfig({ rotation: 0, flipH: false, flipV: false })
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.stopPropagation()
-                    setTransformConfig({ rotation: 0, flipH: false, flipV: false })
-                  }
-                }}
-                className="text-xs text-muted-foreground/60 hover:text-foreground transition-colors"
-              >
-                Reset
-              </span>
-            )}
-            <ChevronDown
-              className={`size-3 text-muted-foreground/60 transition-transform duration-200 ${
-                isTransformOpen ? 'rotate-180' : 'rotate-0'
-              }`}
-            />
-          </div>
-        </button>
+        {hasTransform && (
+          <button
+            type="button"
+            onClick={() => setTransformConfig({ rotation: 0, flipH: false, flipV: false })}
+            className="self-end rounded-md px-2 py-1 text-xs font-semibold text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            Reset transform
+          </button>
+        )}
         <AnimatePresence initial={false}>
           {isTransformOpen && (
             <motion.div
