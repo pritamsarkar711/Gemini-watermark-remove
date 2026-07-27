@@ -19,6 +19,21 @@ function formatType(type: string): string {
   return type.replace('image/', '').toUpperCase()
 }
 
+function getPrimaryRgba(alpha: number): string {
+  if (typeof window === 'undefined') return `rgba(40, 102, 72, ${alpha})`
+  const raw = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim()
+  const hex = raw.startsWith('#') ? raw.slice(1) : raw
+  const normalized = hex.length === 3
+    ? hex.split('').map((c) => c + c).join('')
+    : hex
+  if (!/^[0-9a-fA-F]{6}$/.test(normalized)) return `rgba(40, 102, 72, ${alpha})`
+  const n = Number.parseInt(normalized, 16)
+  const r = (n >> 16) & 255
+  const g = (n >> 8) & 255
+  const b = n & 255
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
+
 // ─── Crop overlay types ──────────────────────────────────────────────────────
 type DragMode =
   | 'move'
@@ -489,9 +504,10 @@ export default function ImagePreview() {
       const radius = (brushSize * scale) / 2
       const lineWidth = brushSize * scale
 
-      // Visible canvas: semi-transparent brand green.
-      dispCtx.fillStyle = 'rgba(40, 102, 72, 0.42)'
-      dispCtx.strokeStyle = 'rgba(40, 102, 72, 0.42)'
+      // Visible canvas: semi-transparent active brand color.
+      const brushColor = getPrimaryRgba(0.42)
+      dispCtx.fillStyle = brushColor
+      dispCtx.strokeStyle = brushColor
       dispCtx.lineWidth = lineWidth
       dispCtx.lineCap = 'round'
       dispCtx.lineJoin = 'round'
@@ -692,14 +708,19 @@ export default function ImagePreview() {
       transition={{ duration: 0.3 }}
       className="flex w-full flex-col gap-2 overflow-hidden"
     >
-      {/* Image info bar — responsive, no overflow */}
-      <div className="gradient-border-left flex flex-wrap items-center gap-2 rounded-lg border bg-card/80 px-3 py-1.5 shadow-sm transition-all duration-200 hover:bg-card hover:shadow-md overflow-hidden">
-        <ImageIcon className="size-3.5 text-primary/70 shrink-0" />
-        <span className="text-xs font-semibold truncate max-w-[120px] sm:max-w-none">{originalImage.name}</span>
-        <div className="flex items-center gap-1.5 ml-auto text-muted-foreground/60 shrink-0">
-          <span className="rounded bg-muted px-1 py-0.5 text-xs font-medium hidden sm:inline-block">{originalImage.width} × {originalImage.height}</span>
-          <span className="rounded bg-muted px-1 py-0.5 text-xs font-medium hidden sm:inline-block">{formatType(originalImage.type)}</span>
-          <span className="rounded bg-muted px-1 py-0.5 text-xs font-medium">{formatSize(originalImage.size)}</span>
+      {/* Image title bar — responsive, no harsh border shadow */}
+      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-primary/[0.12] bg-gradient-to-r from-primary/[0.055] via-card/85 to-card/70 px-3 py-2 ring-1 ring-primary/[0.045] backdrop-blur-sm overflow-hidden">
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-card text-primary ring-1 ring-primary/15">
+          <ImageIcon className="size-4" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-bold text-foreground" title={originalImage.name}>{originalImage.name}</span>
+          <span className="text-[11px] font-medium text-muted-foreground sm:hidden">{originalImage.width} × {originalImage.height} · {formatSize(originalImage.size)}</span>
+        </div>
+        <div className="ml-auto hidden items-center gap-1.5 text-muted-foreground sm:flex">
+          <span className="rounded-lg bg-card px-2 py-1 text-xs font-semibold ring-1 ring-border/60">{originalImage.width} × {originalImage.height}</span>
+          <span className="rounded-lg bg-card px-2 py-1 text-xs font-semibold ring-1 ring-border/60">{formatType(originalImage.type)}</span>
+          <span className="rounded-lg bg-card px-2 py-1 text-xs font-semibold ring-1 ring-border/60">{formatSize(originalImage.size)}</span>
         </div>
       </div>
 
@@ -866,7 +887,7 @@ export default function ImagePreview() {
               transition={{ duration: 0.3 }}
               className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-background/60 backdrop-blur-sm overflow-hidden"
             >
-              <div className="flex flex-col items-center gap-3 rounded-lg bg-card/90 border shadow-lg px-4 sm:px-8 py-4 sm:py-5 backdrop-blur-md w-[min(280px,90vw)] overflow-hidden">
+              <div className="flex flex-col items-center gap-4 rounded-xl bg-card/95 border shadow-lg shadow-primary/10 px-5 sm:px-8 py-5 sm:py-6 backdrop-blur-md w-[min(300px,90vw)] overflow-hidden">
                 <div className="relative size-10">
                   <div className="absolute inset-0 rounded-full border-2 border-muted-foreground/20" />
                   <motion.div
@@ -888,7 +909,7 @@ export default function ImagePreview() {
                     />
                   </div>
                   {/* Stage indicators */}
-                  <div className="flex items-center justify-between mt-1.5">
+                  <div className="flex items-center justify-between mt-2.5 gap-2">
                     {PROCESSING_STAGES.map((stage, idx) => (
                       <div
                         key={stage.label}

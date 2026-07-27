@@ -45,14 +45,22 @@ function SliderRow({
 }: SliderRowProps) {
   const isModified = value !== defaultValue
   return (
-    <div className="flex items-center justify-between gap-2">
+    <div className={`grid grid-cols-[minmax(5.75rem,0.9fr)_minmax(6rem,2fr)_4rem] items-center gap-2 rounded-lg border px-2.5 py-2 transition-all sm:grid-cols-[minmax(7rem,0.9fr)_minmax(9rem,2fr)_4.75rem] sm:gap-3 sm:px-3 ${
+      isModified
+        ? 'border-primary/25 bg-primary/[0.045]'
+        : 'border-border/55 bg-card/70'
+    }`}>
       <span
-        className={`flex items-center gap-2 text-xs font-medium ${
-          isModified ? 'text-primary' : 'text-muted-foreground/60'
+        className={`flex min-w-0 items-center gap-2 text-sm font-semibold ${
+          isModified ? 'text-foreground' : 'text-muted-foreground'
         }`}
       >
-        <Icon className="size-3" />
-        {label}
+        <span className={`flex size-7 shrink-0 items-center justify-center rounded-md ${
+          isModified ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/20' : 'bg-muted text-muted-foreground'
+        }`}>
+          <Icon className="size-3.5" />
+        </span>
+        <span className="truncate">{label}</span>
       </span>
       <Slider
         value={[value]}
@@ -60,11 +68,13 @@ function SliderRow({
         max={max}
         step={step}
         onValueChange={(v) => onChange(v[0])}
-        className="w-24"
+        className="w-full"
       />
       <span
-        className={`w-9 text-right text-xs tabular-nums ${
-          isModified ? 'text-primary font-semibold' : 'text-muted-foreground/50'
+        className={`rounded-md px-2 py-1 text-right text-xs font-bold tabular-nums ring-1 ${
+          isModified
+            ? 'bg-primary text-primary-foreground ring-primary/20'
+            : 'bg-muted/60 text-muted-foreground ring-border/50'
         }`}
       >
         {formatValue(value)}
@@ -214,10 +224,10 @@ export default function AdjustPanel() {
             transition={{ duration: 0.2, ease: 'easeOut' }}
             className="overflow-hidden"
           >
-            <div className="flex flex-col gap-2.5 pt-1">
+            <div className="flex flex-col gap-3 pt-2">
 
       {/* Slider adjustments */}
-      <div className="flex flex-col gap-2">
+      <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
         <SliderRow
           icon={Sun}
           label="Brightness"
@@ -287,37 +297,32 @@ export default function AdjustPanel() {
       </div>
 
       {/* Filter toggles */}
-      <div className="flex flex-col gap-1.5 border-t pt-2">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-medium text-muted-foreground/60">
-            Grayscale
-          </span>
-          <Switch
-            checked={adjustConfig.grayscale}
-            onCheckedChange={(v) => setAdjustConfig({ grayscale: v })}
-            className="toggle-switch scale-75"
-          />
-        </div>
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-medium text-muted-foreground/60">
-            Sepia
-          </span>
-          <Switch
-            checked={adjustConfig.sepia}
-            onCheckedChange={(v) => setAdjustConfig({ sepia: v })}
-            className="toggle-switch scale-75"
-          />
-        </div>
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-medium text-muted-foreground/60">
-            Invert
-          </span>
-          <Switch
-            checked={adjustConfig.invert}
-            onCheckedChange={(v) => setAdjustConfig({ invert: v })}
-            className="toggle-switch scale-75"
-          />
-        </div>
+      <div className="grid grid-cols-1 gap-2 border-t border-border/60 pt-3 sm:grid-cols-3">
+        {([
+          ['grayscale', 'Grayscale', adjustConfig.grayscale],
+          ['sepia', 'Sepia', adjustConfig.sepia],
+          ['invert', 'Invert', adjustConfig.invert],
+        ] as const).map(([key, label, checked]) => (
+          <div
+            key={key}
+            className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-2 ${
+              checked ? 'border-primary/25 bg-primary/[0.045]' : 'border-border/55 bg-card/70'
+            }`}
+          >
+            <span className={`text-sm font-semibold ${checked ? 'text-foreground' : 'text-muted-foreground'}`}>
+              {label}
+            </span>
+            <Switch
+              checked={checked}
+              onCheckedChange={(v) => {
+                if (key === 'grayscale') setAdjustConfig({ grayscale: v })
+                if (key === 'sepia') setAdjustConfig({ sepia: v })
+                if (key === 'invert') setAdjustConfig({ invert: v })
+              }}
+              className="toggle-switch scale-90"
+            />
+          </div>
+        ))}
       </div>
 
       {/* Apply button */}

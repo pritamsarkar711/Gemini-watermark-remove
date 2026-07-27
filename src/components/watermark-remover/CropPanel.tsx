@@ -48,15 +48,17 @@ export default function CropPanel() {
   // Initialize crop rect when image changes (keeps isCropOverlayActive as-is —
   // never auto-enables the overlay, per task requirements).
   useEffect(() => {
-    if (originalImage) {
-      setCropRect({
-        x: 0,
-        y: 0,
-        width: originalImage.width,
-        height: originalImage.height,
-      })
-      setSelectedRatio(null)
-    }
+    if (!originalImage) return
+
+    setCropRect({
+      x: 0,
+      y: 0,
+      width: originalImage.width,
+      height: originalImage.height,
+    })
+
+    const resetTimer = setTimeout(() => setSelectedRatio(null), 0)
+    return () => clearTimeout(resetTimer)
   }, [originalImage, setCropRect])
 
   // When the panel opens, default the overlay to ON. When it closes, turn the
@@ -254,7 +256,7 @@ export default function CropPanel() {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="flex flex-col gap-2.5 rounded-xl border border-border/60 bg-card/80 p-3 sm:p-4 shadow-sm transition-all duration-200 hover:bg-card hover:shadow-md max-w-full overflow-hidden"
+      className="sidebar-panel flex flex-col gap-2.5 rounded-xl border border-border/60 bg-card/80 p-3 sm:p-4 shadow-sm transition-all duration-200 hover:bg-card hover:shadow-md max-w-full overflow-hidden"
     >
       {/* Header (clickable toggle) */}
       <div
@@ -262,12 +264,14 @@ export default function CropPanel() {
         tabIndex={0}
         onClick={handleToggleOpen}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleToggleOpen() } }}
-        className="flex items-center justify-between cursor-pointer"
+        className="sidebar-panel-header flex items-center justify-between cursor-pointer"
         aria-expanded={isOpen}
       >
-        <div className="flex items-center gap-1.5">
-          <Crop className="size-3.5 text-muted-foreground/60" />
-          <span className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider">Crop</span>
+        <div className="flex items-center gap-2">
+          <span className="flex size-7 items-center justify-center rounded-lg bg-primary/10 text-primary ring-1 ring-primary/15">
+            <Crop className="size-3.5" />
+          </span>
+          <span className="text-sm font-bold text-foreground">Crop</span>
         </div>
         <div className="flex items-center gap-2">
           {/* Show overlay toggle (only meaningful when panel is open) */}
@@ -334,104 +338,90 @@ export default function CropPanel() {
             transition={{ duration: 0.2, ease: 'easeOut' }}
             className="overflow-hidden"
           >
-            <div className="flex flex-col gap-2.5 pt-1">
-      {/* Ratio presets */}
-      <div className="grid grid-cols-4 gap-1">
-        {CROP_RATIOS.map((r) => (
-          <button
-            key={r.label}
-            type="button"
-            onClick={() => handleRatioChange(r.ratio)}
-            className={`h-8 w-full rounded-md text-xs font-medium transition-all ${
-              selectedRatio === r.ratio
-                ? 'bg-primary text-primary-foreground shadow-md'
-                : 'bg-muted/50 text-muted-foreground/70 hover:bg-muted hover:text-foreground'
-            }`}
-          >
-            {r.label}
-          </button>
-        ))}
-      </div>
+            <div className="flex flex-col gap-3 pt-2">
+              {/* Ratio presets */}
+              <div className="flex flex-col gap-2 rounded-lg border border-border/60 bg-muted/25 p-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-foreground/80">Aspect ratio</span>
+                  <span className="text-[11px] font-medium text-muted-foreground">Choose a crop frame</span>
+                </div>
+                <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+                  {CROP_RATIOS.map((r) => (
+                    <button
+                      key={r.label}
+                      type="button"
+                      onClick={() => handleRatioChange(r.ratio)}
+                      className={`min-h-9 w-full rounded-lg border px-2 text-xs font-bold transition-all ${
+                        selectedRatio === r.ratio
+                          ? 'border-primary bg-primary text-primary-foreground shadow-md shadow-primary/20'
+                          : 'border-border/60 bg-card text-foreground/75 hover:border-primary/35 hover:bg-primary/5 hover:text-foreground'
+                      }`}
+                    >
+                      {r.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-      {/* Numeric inputs */}
-      <div className="flex flex-col gap-1.5">
-        <div className="flex items-center gap-2">
-          <span className="w-4 text-xs font-medium text-muted-foreground/60">
-            X
-          </span>
-          <input
-            type="number"
-            min={0}
-            max={originalImage.width - 1}
-            value={cropRect.x}
-            onChange={(e) => updateCropField('x', parseInt(e.target.value) || 0)}
-            className="w-[4rem] h-7 text-xs px-1.5 rounded-md border bg-background/50 text-center tabular-nums focus:outline-none focus:ring-1 focus:ring-primary/50"
-          />
-          <span className="w-4 text-xs font-medium text-muted-foreground/60">
-            Y
-          </span>
-          <input
-            type="number"
-            min={0}
-            max={originalImage.height - 1}
-            value={cropRect.y}
-            onChange={(e) => updateCropField('y', parseInt(e.target.value) || 0)}
-            className="w-[4rem] h-7 text-xs px-1.5 rounded-md border bg-background/50 text-center tabular-nums focus:outline-none focus:ring-1 focus:ring-primary/50"
-          />
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="w-4 text-xs font-medium text-muted-foreground/60">
-            W
-          </span>
-          <input
-            type="number"
-            min={1}
-            max={originalImage.width}
-            value={cropRect.width}
-            onChange={(e) => updateCropField('width', parseInt(e.target.value) || 1)}
-            className="w-[4rem] h-7 text-xs px-1.5 rounded-md border bg-background/50 text-center tabular-nums focus:outline-none focus:ring-1 focus:ring-primary/50"
-          />
-          <span className="w-4 text-xs font-medium text-muted-foreground/60">
-            H
-          </span>
-          <input
-            type="number"
-            min={1}
-            max={originalImage.height}
-            value={cropRect.height}
-            onChange={(e) => updateCropField('height', parseInt(e.target.value) || 1)}
-            className="w-[4rem] h-7 text-xs px-1.5 rounded-md border bg-background/50 text-center tabular-nums focus:outline-none focus:ring-1 focus:ring-primary/50"
-          />
-        </div>
-      </div>
+              {/* Numeric inputs */}
+              <div className="flex flex-col gap-2 rounded-lg border border-border/60 bg-muted/20 p-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-foreground/80">Crop bounds</span>
+                  <span className="text-[11px] font-medium text-muted-foreground">Pixels</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  {([
+                    ['x', 'X', 0, originalImage.width - 1],
+                    ['y', 'Y', 0, originalImage.height - 1],
+                    ['width', 'Width', 1, originalImage.width],
+                    ['height', 'Height', 1, originalImage.height],
+                  ] as const).map(([field, label, min, max]) => (
+                    <label key={field} className="flex min-w-0 flex-col gap-1">
+                      <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</span>
+                      <input
+                        type="number"
+                        min={min}
+                        max={max}
+                        value={cropRect[field]}
+                        onChange={(e) => updateCropField(field, parseInt(e.target.value) || min)}
+                        className="h-9 w-full rounded-lg border border-border/70 bg-card px-2 text-sm font-semibold tabular-nums text-foreground shadow-sm transition-all focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/25"
+                      />
+                    </label>
+                  ))}
+                </div>
+              </div>
 
-      {/* Preview dimensions */}
-      <div className="text-xs text-muted-foreground/60 tabular-nums">
-        {originalImage.width}x{originalImage.height} &rarr;{' '}
-        <span className={hasCrop ? 'text-primary font-semibold' : ''}>
-          {cropRect.width}x{cropRect.height}
-        </span>
-      </div>
+              {/* Preview dimensions */}
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-primary/15 bg-primary/[0.035] px-3 py-2 text-xs tabular-nums">
+                <span className="font-semibold text-muted-foreground">Output size</span>
+                <span className="font-bold text-foreground">
+                  {originalImage.width}×{originalImage.height}
+                  <span className="px-1.5 text-muted-foreground">→</span>
+                  <span className={hasCrop ? 'text-primary' : 'text-foreground'}>
+                    {cropRect.width}×{cropRect.height}
+                  </span>
+                </span>
+              </div>
 
-      {/* Apply button */}
-      <Button
-        size="sm"
-        onClick={handleApply}
-        disabled={isCropping || !hasCrop}
-        className="w-full gap-1.5 rounded-md h-8 text-xs font-medium shadow-sm"
-      >
-        {isCropping ? (
-          <>
-            <Loader2 className="size-3 animate-spin" />
-            Cropping
-          </>
-        ) : (
-          <>
-            <Crop className="size-3" />
-            Apply crop
-          </>
-        )}
-      </Button>
+              {/* Apply button */}
+              <Button
+                size="sm"
+                onClick={handleApply}
+                disabled={isCropping || !hasCrop}
+                className="w-full gap-1.5 rounded-lg h-9 text-xs font-bold shadow-sm hover:shadow-md hover:shadow-primary/20 transition-all"
+              >
+                {isCropping ? (
+                  <>
+                    <Loader2 className="size-3 animate-spin" />
+                    Cropping
+                  </>
+                ) : (
+                  <>
+                    <Crop className="size-3" />
+                    Apply crop
+                  </>
+                )}
+              </Button>
             </div>
           </motion.div>
         )}

@@ -80,43 +80,47 @@
 }
 
 .dark {
-  --background: #101b14;
-  --foreground: #f5faf6;
-  --card: #17251b;
-  --card-foreground: #f5faf6;
-  --popover: #17251b;
-  --popover-foreground: #f5faf6;
-  /* Keep the requested primary colour identical in dark mode too. */
-  --primary: #286648;
+  --background: #110f18;
+  --foreground: #fbf7ff;
+  --card: #181321;
+  --card-foreground: #fbf7ff;
+  --popover: #181321;
+  --popover-foreground: #fbf7ff;
+  /* Dark mode intentionally shifts the brand accent to a clearer purple-pink. */
+  --primary: #c084fc;
   --primary-foreground: #ffffff;
-  --secondary: #223526;
-  --secondary-foreground: #f5faf6;
-  --muted: #243728;
-  --muted-foreground: #b7c8bb;
-  --accent: #2b4130;
-  --accent-foreground: #f5faf6;
+  --secondary: #251d31;
+  --secondary-foreground: #fbf7ff;
+  --muted: #2a2236;
+  --muted-foreground: #cfc2dc;
+  --accent: #332440;
+  --accent-foreground: #fbf7ff;
   --destructive: #ffb4ab;
   --border: rgb(255 255 255 / 14%);
   --input: rgb(255 255 255 / 18%);
-  --ring: #286648;
-  --chart-1: #62a67c;
-  --chart-2: #8fcaa5;
-  --chart-3: #b7dfc3;
-  --chart-4: #d7eddc;
-  --chart-5: #4e8d6a;
-  --sidebar: #17251b;
-  --sidebar-foreground: #f5faf6;
-  --sidebar-primary: #286648;
+  --ring: #c084fc;
+  --chart-1: #c084fc;
+  --chart-2: #e879f9;
+  --chart-3: #a78bfa;
+  --chart-4: #f0abfc;
+  --chart-5: #7c3aed;
+  --sidebar: #181321;
+  --sidebar-foreground: #fbf7ff;
+  --sidebar-primary: #c084fc;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #243728;
-  --sidebar-accent-foreground: #f5faf6;
+  --sidebar-accent: #2a2236;
+  --sidebar-accent-foreground: #fbf7ff;
   --sidebar-border: rgb(255 255 255 / 14%);
-  --sidebar-ring: #286648;
+  --sidebar-ring: #c084fc;
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    /* Keep every Tailwind shadow/ring chromatically aligned with the active brand color.
+       This removes the old reddish-looking selection/hover glow across the UI. */
+    --tw-shadow-color: color-mix(in srgb, var(--primary) 20%, transparent);
+    --tw-ring-color: color-mix(in srgb, var(--ring) 52%, transparent);
   }
   html {
     overflow-x: hidden;

@@ -1,7 +1,7 @@
 'use client'
 
 import { motion, AnimatePresence } from 'framer-motion'
-import { Eraser, Sun, Moon, Plus } from 'lucide-react'
+import { Sparkles, Sun, Moon, Plus } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { useSyncExternalStore } from 'react'
 import { Button } from '@/components/ui/button'
@@ -35,8 +35,8 @@ export default function Header() {
       <div className="relative mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
         {/* Left: Logo + Title */}
         <div className="flex items-center gap-2.5">
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary shadow-sm shadow-primary/20">
-            <Eraser className="size-[1.125rem] text-primary-foreground" />
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary/20 via-primary/10 to-transparent ring-1 ring-primary/25 shadow-sm shadow-primary/20">
+            <Sparkles className="size-[1.1rem] text-primary" />
           </div>
           <div className="flex items-center gap-1 leading-none">
             <span className="gradient-text text-xl font-extrabold tracking-tight brand-shadow">Gemini Watermark</span>

@@ -10,6 +10,21 @@ import { useAppStore } from '@/lib/store'
 import { toast } from '@/hooks/use-toast'
 import WatermarkAdder from './WatermarkAdder'
 
+function getPrimaryRgba(alpha: number): string {
+  if (typeof window === 'undefined') return `rgba(40, 102, 72, ${alpha})`
+  const raw = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim()
+  const hex = raw.startsWith('#') ? raw.slice(1) : raw
+  const normalized = hex.length === 3
+    ? hex.split('').map((c) => c + c).join('')
+    : hex
+  if (!/^[0-9a-fA-F]{6}$/.test(normalized)) return `rgba(40, 102, 72, ${alpha})`
+  const n = Number.parseInt(normalized, 16)
+  const r = (n >> 16) & 255
+  const g = (n >> 8) & 255
+  const b = n & 255
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
+
 function showSuccessToast(action: 'remove' | 'add') {
   toast({
     title: action === 'remove' ? 'Watermark removed' : 'Watermark applied',
@@ -214,7 +229,7 @@ export default function ControlPanel() {
       const x = (e.clientX - rect.left) * scaleX
       const y = (e.clientY - rect.top) * scaleY
 
-      ctx.fillStyle = 'rgba(40, 102, 72, 0.38)'
+      ctx.fillStyle = getPrimaryRgba(0.38)
       ctx.beginPath()
       ctx.arc(x, y, brushSize * scaleX / 2, 0, Math.PI * 2)
       ctx.fill()
@@ -424,12 +439,12 @@ export default function ControlPanel() {
         onValueChange={(v) => setMode(v as 'remove' | 'add')}
         className="w-full"
       >
-        <TabsList className="w-full h-8 rounded-lg">
-          <TabsTrigger value="remove" className="flex-1 gap-1 h-8 text-sm rounded-md transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm data-[state=active]:font-semibold bg-muted/40 hover:bg-accent/60">
+        <TabsList className="h-11 w-full rounded-xl border border-primary/15 bg-muted/65 p-1 shadow-inner shadow-primary/10">
+          <TabsTrigger value="remove" className="h-9 flex-1 gap-1.5 rounded-lg border border-transparent text-sm font-bold transition-all data-[state=inactive]:bg-card/70 data-[state=inactive]:text-foreground/75 data-[state=inactive]:shadow-sm data-[state=inactive]:hover:border-primary/25 data-[state=inactive]:hover:bg-card data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/20">
             <Eraser className="size-3.5" />
             Remove
           </TabsTrigger>
-          <TabsTrigger value="add" className="flex-1 gap-1 h-8 text-sm rounded-md transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm data-[state=active]:font-semibold bg-muted/40 hover:bg-accent/60">
+          <TabsTrigger value="add" className="h-9 flex-1 gap-1.5 rounded-lg border border-transparent text-sm font-bold transition-all data-[state=inactive]:bg-card/70 data-[state=inactive]:text-foreground/75 data-[state=inactive]:shadow-sm data-[state=inactive]:hover:border-primary/25 data-[state=inactive]:hover:bg-card data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/20">
             <Stamp className="size-3.5" />
             Add
           </TabsTrigger>

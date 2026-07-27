@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Type, Upload, ImageIcon, RotateCw, Grid3x3, ChevronDown } from 'lucide-react'
+import { Type, Upload, ImageIcon, RotateCw, Grid3x3, ChevronDown, Eye } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -255,15 +255,14 @@ export default function WatermarkAdder() {
       <div className="flex flex-col gap-2 rounded-xl border border-border/60 bg-card/80 p-3 shadow-sm max-w-full overflow-x-hidden sm:p-4">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <ImageIcon className="size-4 text-primary" />
-            <span className="text-sm font-bold text-foreground">Live preview</span>
-          </div>
-          <div className="flex items-center gap-1 rounded-full bg-black/50 px-1.5 py-0.5 backdrop-blur-sm">
-            <span className="relative flex size-1.5">
-              <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary/70" />
-              <span className="relative inline-flex size-1.5 rounded-full bg-primary" />
+            <span className="flex size-7 items-center justify-center rounded-lg bg-primary/10 text-primary ring-1 ring-primary/15">
+              <Eye className="size-3.5" />
             </span>
-            <span className="text-xs font-bold uppercase tracking-wider text-white">Live</span>
+            <span className="text-sm font-bold text-foreground">Live Preview</span>
+          </div>
+          <div className="flex items-center gap-1.5 rounded-full bg-primary/[0.12] px-2 py-1 text-primary ring-1 ring-primary/20 backdrop-blur-sm">
+            <Eye className="size-3" aria-hidden="true" />
+            <span className="text-xs font-bold uppercase tracking-wider">Live</span>
           </div>
         </div>
         <div className="relative overflow-hidden rounded-lg border bg-muted/20 shadow-inner" style={{ maxHeight: '360px' }}>
