@@ -1942,3 +1942,318 @@ VLM also noted missing features: a brush/selection tool visible on the main prev
 6. **Mobile touch improvements**: Better touch event handling for the comparison slider and crop overlay on mobile devices — currently works but could be smoother.
 
 7. **Sound/haptic feedback**: Add subtle audio or vibration feedback on key actions (process complete, error, etc.) for better accessibility and engagement.
+
+---
+
+Task ID: 1
+Agent: fix-agent
+Task: Fix nested button console errors + rename Zeminai → Gemini Watermark
+
+## Work Completed
+
+### Part 1: Fix Nested `<button>` Console Errors
+
+Changed outer panel toggle `<button>` elements to `<div>` elements with proper accessibility attributes in three files:
+
+1. **CropPanel.tsx** — The outer `<button>` contained inner `<button>` elements (overlay toggle + reset). Changed outer `<button>` → `<div>` with `role="button"`, `tabIndex={0}`, `onKeyDown` handler for Enter/Space, and matching closing tag.
+
+2. **AdjustPanel.tsx** — The outer `<button>` contained an inner reset `<button>`. Applied same fix: outer `<button>` → `<div>` with `role="button"`, `tabIndex={0}`, `onKeyDown`, and closing tag.
+
+3. **ResizePanel.tsx** — The outer `<button>` contained an inner reset `<button>`. Applied same fix.
+
+4. **HistoryPanel.tsx** — Verified: header contains only `<span>` badge and `<motion.div>` chevron — no nested `<button>` issue. No change needed.
+
+Note: ControlPanel.tsx Transform section already uses `<span role="button">` for Reset instead of `<button>`, so it's not affected by the console error.
+
+### Part 2: Rename Zeminai → Gemini Watermark
+
+Updated ALL references across the project:
+
+| File | Change |
+|---|---|
+| Header.tsx | "Zeminai" → "Gemini" in brand text |
+| Footer.tsx | "Zeminai" → "Gemini" in brand text |
+| UploadArea.tsx | "Zeminai" → "Gemini Watermark" in h1, "Watermark remover" → "Remover" subtitle |
+| layout.tsx | Title "Zeminai - Watermark & Logo Remover" → "Gemini Watermark Remover" |
+| ControlPanel.tsx | `__zeminaiProcess` → `__geminiProcess` (2 occurrences) |
+| StickyCTA.tsx | `__zeminaiProcess` → `__geminiProcess` (comment + code, 2 occurrences) |
+| ImagePreview.tsx | `__zeminaiProcess` → `__geminiProcess` (2 occurrences) |
+| store.ts | `"© 2025 Zeminai"` → `"© 2025 Gemini"`, preset id/label/text `"zeminai"` → `"gemini"`, persist name `"zeminai-preferences"` → `"gemini-preferences"` |
+| image-processing.ts | Comment "Zeminai" → "Gemini Watermark", font family `ZeminaiSans` → `GeminiSans` (2 occurrences) |
+| PresetBar.tsx | Comment "Zeminai" → "Gemini" |
+
+Verified: No remaining "zeminai" references in `/src` directory (grep search returned 0 matches).
+
+### Verification
+- `bun run lint` passed with zero errors
+- Dev server compiles successfully (no build errors in dev.log)
+
+---
+Task ID: 3-13
+Agent: frontend-styling-expert
+Task: Comprehensive UI redesign for Gemini Watermark Remover
+
+## Summary of Changes
+
+This was a systematic UI overhaul across 20+ component files. All changes pass lint with 0 errors, and the dev server returns HTTP 200.
+
+### 1. globals.css
+- Changed `--radius: 0.75rem` to `--radius: 0.5rem` (more moderate border radius)
+- Changed `.toggle-switch[data-state="checked"]` from green `oklch(0.55 0.13 152)` to `var(--primary)` — one primary color throughout
+- Updated `.transform-label` font-size from 10px to 12px
+- Updated `.format-hint` font-size from 9px to 11px
+
+### 2. UploadArea.tsx
+- Replaced `Sparkles` icon with `Eraser` for hero icon (import updated)
+- Replaced `rounded-2xl` → `rounded-lg` on hero container, animated bg, upload zone, gradient bg, dot-grid overlay, upload icon container
+- Removed "Powered by AI" badge with Sparkles entirely
+- Increased trust badge text from `text-xs` → `text-sm`
+- Changed step card container from `rounded-xl` → `rounded-lg`, gap from `gap-1.5` → `gap-2`
+- Step descriptions from `text-[10px]` → `text-xs`
+- Format labels from `text-[10px]` → `text-xs`
+- "or click to browse" from `text-[11px]` → `text-sm`
+- Sample section heading from `text-[10px]` → `text-xs`
+- Sample labels from `text-[10px]` → `text-xs`
+
+### 3. Header.tsx
+- Changed logo container from `rounded-lg` → `rounded-md`
+
+### 4. ControlPanel.tsx
+- Replaced `Sparkles` import with `Wrench` (for Auto Enhance button)
+- Increased Transform header from `text-[10px]` → `text-xs`
+- Reset label from `text-[9px]` → `text-xs`
+- Transform buttons from `rounded-lg` → `rounded-md`
+- Auto Enhance button from `rounded-lg` → `rounded-md`
+- Apply transform button from `text-[10px]` → `text-xs`, `rounded-lg` → `rounded-md`
+- Transform button columns from `gap-0.5` → `gap-2`
+- Transform row from `gap-1.5` → `gap-2`
+- Tab labels from `h-7 text-xs` → `h-8 text-sm`
+- Auto detect label from `text-xs` → `text-sm`
+- Brush label from `text-xs` → `text-sm`
+- Brush size display from `text-[10px]` → `text-xs`
+- Inline brush hint from `text-[11px]` → `text-sm`
+- Clear mask button from `rounded-lg` → `rounded-md`
+- Panel padding from `p-2.5` → `p-3`
+- Panel gap from `gap-2` → `gap-4`
+
+### 5. CropPanel.tsx
+- Header label from `text-[10px]` → `text-xs`
+- Overlay/Reset buttons from `text-[9px]` → `text-xs`
+- Ratio preset buttons from `size-7` → `h-8 w-full`, `text-[9px]` → `text-xs`
+- Input labels from `text-[10px]` → `text-xs`
+- Input fields from `w-[3.5rem] h-6 text-[10px] rounded-lg` → `w-[4rem] h-7 text-xs rounded-md`
+- Preview dimensions from `text-[10px]` → `text-xs`
+- Apply button from `rounded-lg` → `rounded-md`
+
+### 6. ResizePanel.tsx
+- Added BMP, TIFF, GIF format options (store.ts type updated too)
+- Header from `text-[10px]` → `text-xs`
+- Reset from `text-[9px]` → `text-xs`
+- W/H labels from `text-[10px]` → `text-xs`
+- Input fields from `w-[4rem] h-6 text-[10px] rounded-lg` → `w-[5rem] h-7 text-xs rounded-md`
+- Mode buttons from `size-7 text-[9px]` → `h-8 w-full text-xs`
+- Preset buttons from `text-[9px]` → `text-xs`
+- Dimension preview from `text-[10px]` → `text-xs`
+- Format label from `text-[10px]` → `text-xs`
+- Format buttons from `h-6 px-2 text-[9px]` → `h-7 px-3 text-xs`
+- Apply button from `rounded-lg` → `rounded-md`
+
+### 7. AdjustPanel.tsx
+- Replaced `Sparkles` import with `SlidersHorizontal` + `Focus`
+- Header icon from `Sparkles` → `SlidersHorizontal`
+- Header label from `text-[10px]` → `text-xs`
+- Reset from `text-[9px]` → `text-xs`
+- Slider row labels from `text-[10px]` → `text-xs`
+- Slider width from `w-20` → `w-24`
+- Sharpen icon from `Sparkles` → `Focus`
+- Filter toggle labels from `text-[10px]` → `text-xs`
+- Apply button icon from `Sparkles` → `SlidersHorizontal`
+- Apply button from `rounded-lg` → `rounded-md`
+
+### 8. QualityOptimizer.tsx
+- Preset chips from `h-6 text-[10px]` → `h-7 text-xs`
+- Format label from `text-[10px]` → `text-xs`
+- Select trigger from `w-[4.5rem] h-6 text-[10px] rounded-lg` → `w-[6rem] h-7 text-xs rounded-md`
+- Format hint from `text-[9px]` → `text-[11px]`
+- Quality label from `text-[10px]` → `text-xs`
+- Quality value from `text-[10px]` → `text-xs`
+- Max width/height labels from `text-[10px]` → `text-xs`
+- Input fields from `w-[3.5rem] h-6 text-[10px] rounded-lg` → `w-[4rem] h-7 text-xs rounded-md`
+- Estimated size row from `text-[10px]` → `text-xs`
+- Savings comparison rows from `text-[10px]` → `text-xs`
+
+### 9. DownloadPanel.tsx
+- Filename container from `p-2.5` → `p-3`, `rounded-lg` → `rounded-md`
+- Filename input from `h-6 text-xs` → `h-7 text-sm`
+- Optimize/Copy buttons from `h-7 text-xs rounded-lg` → `h-8 text-sm rounded-md`
+- Comparison row from `text-[10px]` → `text-xs`
+- Estimate hint from `text-[10px]` → `text-xs`
+- Download badge from `text-[10px]` → `text-xs`
+- Download button from `rounded-lg` → `rounded-md`
+
+### 10. HistoryPanel.tsx
+- Header label from `text-[10px]` → `text-xs`
+- Action count badge from `text-[9px]` → `text-xs`
+- Action labels from `text-[11px]` → `text-sm`
+- Step numbers from `text-[9px]` → `text-xs`
+- Position indicator from `text-[9px]` → `text-xs`
+- Clear button from `text-[10px]` → `text-xs`
+- History list gap from `gap-0.5` → `gap-2`
+
+### 11. ImageInfoPanel.tsx
+- Replaced `Sparkles` import with `CheckCircle2`
+- Outer container from `rounded-xl` → `rounded-lg`
+- Before section label from `text-[10px]` → `text-xs`
+- Before section grid text from `text-[10px]` → `text-xs`, gap from `gap-y-1.5` → `gap-y-2`
+- After section icon from `Sparkles` → `CheckCircle2`
+- After section label from `text-[10px]` → `text-xs`
+- After section grid from `text-[10px]` → `text-xs`
+- Comparison section from `text-[10px]` → `text-xs`
+- Size comparison from `text-[10px]` → `text-xs`
+- Percentage scale from `text-[9px]` → `text-xs`
+- Before/After padding from `p-2.5` → `p-3`
+
+### 12. MobileDrawer.tsx
+- Floating button from `rounded-xl` → `rounded-lg`
+- DrawerDescription from `text-[10px]` → `text-xs`
+
+### 13. StickyCTA.tsx
+- Outer container from `rounded-xl` → `rounded-lg`
+- Inner button from `rounded-lg` → `rounded-md`
+- Fixed syntax error (double closing brace)
+
+### 14. Footer.tsx
+- Logo container from `rounded` → `rounded-md`
+- Separator text from `text-[10px]` → `text-xs`
+- Subtitle from `text-[10px]` → `text-xs`
+- Keyboard shortcuts from `text-[9px]` → `text-xs`
+- Keyboard shortcut labels from `text-[10px]` → `text-xs`
+- Credits from `text-[10px]` → `text-xs`
+- Version badge from `rounded-full text-[10px]` → `rounded-md text-xs`
+- Keyboard shortcut kbd from `rounded` → `rounded-md`
+
+### 15. page.tsx (main layout)
+- Removed `Sparkles` from import
+- Undo/redo buttons from `text-[11px]` → `text-sm`
+- Sidebar width from `280px` → `320px`
+
+### 16. ComparisonSlider.tsx
+- Container from `rounded-xl` → `rounded-lg`
+- Compare badge from `text-[10px]` → `text-xs`
+- Detection badge from `text-[10px]` → `text-xs`
+- Processing overlay from `rounded-xl` → `rounded-lg`
+- Stage labels from `text-[9px]` → `text-xs`
+- Stage description from `text-[10px]` → `text-xs`
+- Diff stats badge from `text-[10px]` → `text-xs`
+- Before/After labels from `text-[10px]` → `text-xs`
+- Bottom info Original/Result from `text-[10px]` → `text-xs`
+- Keyboard shortcuts from `text-[9px]` → `text-xs`
+
+### 17. SideBySideView.tsx
+- Container from `rounded-xl` → `rounded-lg`
+- Before/After labels from `text-[10px]` → `text-xs`, `rounded-lg` → `rounded-md`
+- Bottom info from `text-[10px]` → `text-xs`
+
+### 18. OverlayView.tsx
+- Container from `rounded-xl` → `rounded-lg`
+- Opacity badge from `text-[10px]` → `text-xs`
+- Processing overlay from `rounded-xl` → `rounded-lg`
+- Slider labels from `text-[10px]` → `text-xs`
+
+### 19. ComparisonViewModeSwitcher.tsx
+- Gap from `gap-0.5` → `gap-2`
+- Mode labels from `text-[10px]` → `text-xs`
+
+### 20. BatchPanel.tsx
+- Header label from `text-[10px]` → `text-xs`
+- Count badge from `text-[9px]` → `text-xs`
+- Clear button from `text-[9px]` → `text-xs`
+- Queue item labels from `text-[11px]` → `text-sm`
+- Stats bar from `text-[9px]` → `text-xs`
+- Add images button from `h-7 text-xs rounded-lg` → `h-8 text-sm rounded-md`
+- Process button from `rounded-lg` → `rounded-md`
+- Download button from `rounded-lg` → `rounded-md`
+- Empty state from `text-[10px]` → `text-xs`
+
+### 21. WatermarkAdder.tsx
+- Live badge from `text-[9px]` → `text-[11px]`
+- Empty state from `text-[10px]` → `text-xs`
+- Shadow label from `text-[9px]` → `text-xs`
+- Size label from `text-[10px]` → `text-xs`
+- Opacity label from `text-[10px]` → `text-xs`
+- Rotation label from `text-[10px]` → `text-xs`
+- Tile pattern label from `text-[10px]` → `text-xs`
+- Position label from `text-[10px]` → `text-xs`
+- Logo badge from `text-[9px]` → `text-xs`
+- Logo name from `text-[11px]` → `text-sm`
+- Upload logo from `text-[10px]` → `text-xs`
+- Sliders from `w-20` → `w-24`
+- Position buttons from `size-7 text-[10px]` → `h-8 w-full text-xs`
+- Remove logo button from `h-6 text-[10px] rounded-lg` → `h-7 text-xs rounded-md`
+- Text input from `rounded-lg` → `rounded-md`
+
+### 22. ImagePreview.tsx
+- Empty state from `rounded-xl` → `rounded-lg`
+- Hint text from `text-[10px]` → `text-xs`
+- Info bar from `text-[11px]` → `text-sm`
+- Image container from `rounded-xl` → `rounded-lg`
+- Crop dimension badge from `text-[10px]` → `text-xs`, `rounded` → `rounded-md`
+- Brush hint from `text-[10px]` → `text-xs`
+- Processing overlay from `rounded-xl` → `rounded-lg`
+- Stage labels from `text-[9px]` → `text-xs`
+- Stage description from `text-[10px]` → `text-xs`
+- Drop overlay from `rounded-xl` → `rounded-lg`
+- Drop hint from `text-[10px]` → `text-xs`
+- Zoom percentage from `text-[10px]` → `text-xs`
+- Brush bar labels from `text-[10px]` → `text-xs`
+- Brush size from `text-[11px]` → `text-sm`
+- Manual brush hint from `text-[10px]` → `text-xs`
+
+### 23. store.ts
+- Extended `ResizeConfig.targetFormat` type to include `'bmp' | 'tiff' | 'gif'`
+
+## Design Rules Applied
+- ✅ One primary color throughout (toggle switch now uses `var(--primary)`)
+- ✅ Moderate border radius (`--radius: 0.5rem`, all `rounded-xl/2xl` → `rounded-lg`, small elements → `rounded-md`)
+- ✅ Font sizes increased (`text-[9px]` → `text-[11px]`/`text-xs`, `text-[10px]` → `text-xs`, `text-[11px]` → `text-sm`)
+- ✅ All `Sparkles` icons replaced (hero → `Eraser`, header → `SlidersHorizontal`, Sharpen → `Focus`, apply → `SlidersHorizontal`, auto enhance → `Wrench`, After → `CheckCircle2`, Powered by AI badge removed)
+- ✅ Consistent spacing (gap minimum `gap-2`, panels `p-3`)
+- ✅ Sidebar width increased from 280px → 320px
+
+## Verification
+- `bun run lint`: 0 errors, 0 warnings
+- Dev server: HTTP 200
+- No runtime crashes
+
+---
+Task ID: final-audit
+Agent: main-agent
+Task: Full audit, fix console errors, comprehensive UI redesign, rename, deployment readiness, GitHub push
+
+Work Log:
+- Identified two console errors: nested <button> elements in CropPanel, AdjustPanel, ResizePanel (React throws "button cannot be descendant of button" error twice)
+- Fixed by changing outer panel toggle buttons to <div> elements with role="button", tabIndex, and onKeyDown handlers
+- Renamed all "Zeminai" references to "Gemini Watermark" across 9+ files (Header, Footer, UploadArea, layout.tsx, ControlPanel, StickyCTA, ImagePreview, store.ts, image-processing.ts)
+- Replaced Sparkles/magic wand icon with non-AI alternatives: Eraser (upload hero), SlidersHorizontal (adjustments), Wrench (auto enhance), Focus (sharpen), CheckCircle2 (image info after section)
+- Removed "Powered by AI" badge from upload page
+- Fixed excessive border-radius: --radius reduced from 0.75rem to 0.5rem, all rounded-xl/2xl → rounded-lg, small elements rounded-lg → rounded-md
+- Increased font sizes throughout: text-[10px] → text-xs, text-[9px] → text-[11px], text-[11px] → text-sm
+- Used one primary color: toggle-switch now uses var(--primary) instead of green
+- Fixed Resize section: mode buttons changed from tiny size-7 squares to full-width rectangular h-8 buttons
+- Added BMP, TIFF, GIF format options in ResizePanel and resize API route
+- Fixed sidebar width: increased from 280px to 320px for better readability
+- Fixed Format section: wider format buttons with more spacing
+- Fixed History/Badge/Transform/Uploaded sections with consistent text sizes and spacing
+- Fixed ImageInfoPanel: replaced Sparkles, increased text sizes, improved layout
+- Made Vercel/Netlify deployment-ready: removed output:standalone, removed ignoreBuildErrors, simplified build script
+- Pushed to GitHub: feature/comprehensive-redesign branch → merged to main
+- Repository: https://github.com/pritamsarkar711/Gemini-watermark-remove
+
+Stage Summary:
+- All console errors fixed (0 errors in browser)
+- All design issues addressed (radius, fonts, colors, spacing, layout)
+- Project renamed to Gemini Watermark throughout
+- Sparkles icon replaced everywhere
+- Deployment-ready for Vercel/Netlify
+- Code pushed and merged to GitHub main branch
+- 105 files changed, comprehensive redesign completed
