@@ -65,16 +65,6 @@ function getSizeReductionColor(reductionPct: number): { label: string; className
   return { label: 'No reduction', className: 'text-muted-foreground', barColor: 'bg-muted-foreground/30' }
 }
 
-/**
- * Pick text color class for the detection-confidence row based on the
- * 0-99 score — uses primary color consistently.
- */
-function getDetectionConfidenceTextColor(confidence: number): string {
-  if (confidence >= 85) return 'text-primary'
-  if (confidence >= 60) return 'text-primary/70'
-  return 'text-primary/50'
-}
-
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function ImageInfoPanel() {
@@ -166,7 +156,8 @@ export default function ImageInfoPanel() {
   }, [originalImage?.dataUrl, processedImage?.dataUrl])
 
   useEffect(() => {
-    computeDiff()
+    const computeTimer = setTimeout(() => computeDiff(), 0)
+    return () => clearTimeout(computeTimer)
   }, [computeDiff])
 
   // ─── Derived values ────────────────────────────────────────────────────────
@@ -274,7 +265,7 @@ export default function ImageInfoPanel() {
                   && processedImage.detectionConfidence > 0 && (
                   <>
                     <span className="text-muted-foreground font-medium">Detection confidence</span>
-                    <span className={`tabular-nums font-semibold ${getDetectionConfidenceTextColor(processedImage.detectionConfidence)}`}>
+                    <span className="justify-self-start rounded-md bg-primary px-2 py-0.5 tabular-nums font-bold text-white shadow-sm shadow-primary/20">
                       {processedImage.detectionConfidence}%
                     </span>
                   </>

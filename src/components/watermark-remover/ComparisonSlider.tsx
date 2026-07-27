@@ -36,16 +36,6 @@ function formatPixelCount(n: number): string {
   return `${(n / 1_000_000).toFixed(1)}M`
 }
 
-/**
- * Pick the color classes for the detection-confidence badge based on the
- * 0-99 score. Uses primary color with opacity variants.
- */
-function getDetectionConfidenceColor(confidence: number): { text: string; dot: string } {
-  if (confidence >= 85) return { text: 'text-primary', dot: 'bg-primary' }
-  if (confidence >= 60) return { text: 'text-primary/70', dot: 'bg-primary/70' }
-  return { text: 'text-primary/50', dot: 'bg-primary/50' }
-}
-
 export default function ComparisonSlider() {
   const { originalImage, processedImage, sliderPosition, setSliderPosition, isProcessing } = useAppStore()
   const containerRef = useRef<HTMLDivElement>(null)
@@ -161,20 +151,21 @@ export default function ComparisonSlider() {
     const procUrl = processedImage?.dataUrl
 
     if (!origUrl || !procUrl) {
-      setDiffStats(null)
-      return
+      const resetTimer = setTimeout(() => setDiffStats(null), 0)
+      return () => clearTimeout(resetTimer)
     }
 
     let cancelled = false
     const token = ++diffTokenRef.current
-    setDiffLoading(true)
+    const computeTimer = setTimeout(() => {
+      setDiffLoading(true)
 
-    void (async () => {
-      try {
-        const [origImg, procImg] = await Promise.all([
-          loadImage(origUrl),
-          loadImage(procUrl),
-        ])
+      void (async () => {
+        try {
+          const [origImg, procImg] = await Promise.all([
+            loadImage(origUrl),
+            loadImage(procUrl),
+          ])
 
         // Use the smaller dimensions so both images fit on a shared canvas.
         // For the typical watermark-removal flow, both have identical sizes.
@@ -239,10 +230,12 @@ export default function ComparisonSlider() {
           setDiffLoading(false)
         }
       }
-    })()
+      })()
+    }, 0)
 
     return () => {
       cancelled = true
+      clearTimeout(computeTimer)
     }
   }, [originalImage?.dataUrl, processedImage?.dataUrl])
 
@@ -255,10 +248,6 @@ export default function ComparisonSlider() {
     typeof detectionConfidence === 'number'
     && detectionConfidence > 0
     && !isProcessing
-  const detectionColor = detectionConfidence != null
-    ? getDetectionConfidenceColor(detectionConfidence)
-    : { text: '', dot: '' }
-
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.98 }}
@@ -308,11 +297,11 @@ export default function ComparisonSlider() {
         {showDetectionBadge && detectionConfidence != null && (
           <div className="pointer-events-none absolute top-9 left-2.5 z-20">
             <span className="inline-flex items-center gap-1.5 rounded-md bg-black/75 backdrop-blur-md px-2 py-1 text-xs font-semibold text-white shadow-md tabular-nums ring-1 ring-white/10">
-              <Target className={`size-2.5 ${detectionColor.text}`} />
-              <span className="text-white/80">Detection:</span>
-              <span className={detectionColor.text}>{detectionConfidence}%</span>
-              <span className="text-white/60">confidence</span>
-              <span className={`size-1.5 rounded-full ${detectionColor.dot}`} />
+              <Target className="size-2.5 text-white" />
+              <span className="text-white/85">Detection:</span>
+              <span className="text-white">{detectionConfidence}%</span>
+              <span className="text-white/85">confidence</span>
+              <span className="size-1.5 rounded-full bg-white" />
             </span>
           </div>
         )}
@@ -327,7 +316,7 @@ export default function ComparisonSlider() {
             transition={{ duration: 0.3 }}
             className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-background/60 backdrop-blur-sm"
           >
-            <div className="flex flex-col items-center gap-3 rounded-lg bg-card/90 border shadow-lg px-6 py-4 backdrop-blur-md">
+            <div className="flex w-[min(300px,90vw)] flex-col items-center gap-4 rounded-xl bg-card/95 border shadow-lg shadow-primary/10 px-6 py-5 backdrop-blur-md">
               <div className="relative size-10">
                 <div className="absolute inset-0 rounded-full border-2 border-muted-foreground/20" />
                 <motion.div
@@ -349,7 +338,7 @@ export default function ComparisonSlider() {
                   />
                 </div>
                 {/* Stage indicators */}
-                <div className="flex items-center justify-between mt-1.5">
+                <div className="flex items-center justify-between mt-2.5 gap-2">
                   {PROCESSING_STAGES.map((stage, idx) => (
                     <div
                       key={stage.label}
@@ -391,9 +380,9 @@ export default function ComparisonSlider() {
               </>
             ) : diffStats ? (
               <>
-                <GitCompareArrows className="size-2.5 text-primary" />
-                <span className="text-primary">{diffStats.diffPercentage}%</span>
-                <span className="text-white/70">modified</span>
+                <GitCompareArrows className="size-2.5 text-white" />
+                <span className="text-white">{diffStats.diffPercentage}%</span>
+                <span className="text-white">modified</span>
                 <span className="text-white/40">·</span>
                 <span className="text-white/80">{formatPixelCount(diffStats.changedPixels)} px</span>
               </>
