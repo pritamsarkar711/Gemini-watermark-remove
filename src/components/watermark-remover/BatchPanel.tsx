@@ -198,7 +198,7 @@ export default function BatchPanel() {
             transition={{ duration: 0.2, ease: 'easeOut' }}
             className="overflow-hidden"
           >
-            <div className="flex flex-col gap-2.5 px-2 sm:px-2.5 pb-2 sm:pb-2.5 max-w-full overflow-hidden">
+            <div className="flex flex-col gap-2.5 px-2 sm:px-3 pb-3 sm:pb-3 max-w-full overflow-hidden">
               {/* Add files button */}
               <Button
                 variant="outline"
@@ -224,18 +224,18 @@ export default function BatchPanel() {
 
               {/* Queue list */}
               {items.length > 0 && (
-                <div className="max-h-48 overflow-y-auto custom-scrollbar flex flex-col gap-1 max-w-full overflow-hidden">
+                <div className="max-h-48 overflow-y-auto custom-scrollbar flex flex-col gap-1.5 max-w-full overflow-hidden rounded-lg border border-border/40 bg-card/40 p-1">
                   {items.map((item, idx) => (
                     <div
                       key={item.id}
-                      className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-all ${
+                      className={`flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-all shadow-sm ${
                         idx === currentIdx
-                          ? 'bg-primary/10 border-l-2 border-primary shadow-sm'
+                          ? 'bg-gradient-to-r from-primary/15 to-primary/5 border border-primary/20 shadow-sm'
                           : item.status === 'done'
-                          ? 'bg-primary/5 border-l-2 border-primary/30'
+                          ? 'bg-gradient-to-r from-primary/8 to-card border border-primary/15'
                           : item.status === 'error'
-                          ? 'bg-destructive/5 border-l-2 border-destructive/30'
-                          : 'bg-muted/30 hover:bg-muted/50'
+                          ? 'bg-gradient-to-r from-destructive/8 to-card border border-destructive/15'
+                          : 'bg-card/60 hover:bg-card border border-transparent hover:border-border/40'
                       }`}
                     >
                       {/* Status icon */}

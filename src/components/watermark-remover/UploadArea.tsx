@@ -163,7 +163,7 @@ export default function UploadArea() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: 'easeOut' }}
-      className="flex w-full max-w-md flex-col items-center gap-5"
+      className="flex w-full max-w-xl flex-col items-center gap-5"
     >
       {/* Hero section */}
       <motion.div
@@ -323,7 +323,7 @@ export default function UploadArea() {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.6 }}
-        className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full max-w-md"
+        className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full max-w-xl"
       >
         {[
           { step: 1, icon: Upload, title: 'Upload', desc: 'Drop your image' },
@@ -359,7 +359,7 @@ export default function UploadArea() {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.8 }}
-        className="flex w-full max-w-md flex-col items-center gap-3"
+        className="flex w-full max-w-xl flex-col items-center gap-3"
       >
         <span className="flex w-full items-center gap-3 text-xs font-bold uppercase tracking-wider text-muted-foreground
           before:content-[''] before:h-px before:flex-1 before:bg-gradient-to-r before:from-transparent before:to-border/80

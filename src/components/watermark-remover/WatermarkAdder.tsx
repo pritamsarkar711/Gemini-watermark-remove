@@ -292,7 +292,7 @@ export default function WatermarkAdder() {
           value={watermarkConfig.text}
           onChange={(e) => setWatermarkConfig({ text: e.target.value })}
           placeholder="Enter watermark text"
-          className="h-7 text-xs rounded-md"
+          className="h-9 text-sm rounded-lg px-3 border-border/60 focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all shadow-sm"
         />
 
         {/* Color presets */}
@@ -301,22 +301,25 @@ export default function WatermarkAdder() {
             <button
               key={color}
               onClick={() => setWatermarkConfig({ color })}
-              className={`size-5 sm:size-4 rounded-md border transition-all shadow-sm min-h-[28px] min-w-[28px] ${
-                watermarkConfig.color === color ? 'ring-2 ring-primary ring-offset-1 ring-offset-card scale-110' : 'hover:scale-105'
+              aria-label={`Set color ${color}`}
+              className={`size-6 rounded-full border-2 transition-all shadow-md hover:shadow-lg hover:scale-110 ${
+                watermarkConfig.color === color ? 'ring-2 ring-primary ring-offset-2 ring-offset-card border-white scale-110' : 'border-white/30 hover:border-white/80'
               }`}
               style={{ backgroundColor: color }}
             />
           ))}
-          <div className="flex items-center gap-1.5 ml-1">
+          <div className="flex items-center gap-1.5 ml-auto pl-1">
+            <span className="text-[10px] font-medium text-muted-foreground/40 hidden sm:inline">Custom:</span>
             <div
-              className="size-4 rounded-md border shadow-sm"
+              className="w-6 h-6 rounded-full border-2 border-white/30 shadow-md ring-2 ring-offset-1 ring-offset-card"
               style={{ backgroundColor: watermarkConfig.color }}
             />
             <input
               type="color"
               value={watermarkConfig.color}
               onChange={(e) => setWatermarkConfig({ color: e.target.value })}
-              className="min-h-[36px] min-w-[36px] w-7 h-7 rounded-md border cursor-pointer shadow-sm"
+              aria-label="Custom color picker"
+              className="w-7 h-7 rounded-full border-2 border-white/40 cursor-pointer shadow-md overflow-hidden"
             />
           </div>
         </div>

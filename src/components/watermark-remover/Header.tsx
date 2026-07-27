@@ -32,7 +32,7 @@ export default function Header() {
       {/* Bottom border with gradient effect */}
       <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
 
-      <div className="relative mx-auto flex h-14 max-w-4xl items-center justify-between px-4 sm:px-6">
+      <div className="relative mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
         {/* Left: Logo + Title */}
         <div className="flex items-center gap-2.5">
           <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary shadow-sm">

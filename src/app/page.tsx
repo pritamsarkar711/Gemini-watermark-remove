@@ -39,7 +39,7 @@ export default function Home() {
       <Header />
 
       <main className="flex-1 w-full max-w-full overflow-x-hidden">
-        <div className="mx-auto max-w-4xl px-4 sm:px-6 py-4 sm:py-6">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 py-4 sm:py-6">
           <AnimatePresence mode="wait">
             {step === 'upload' && (
               <motion.div
