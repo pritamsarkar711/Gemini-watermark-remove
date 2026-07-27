@@ -209,7 +209,7 @@ export default function QualityOptimizer() {
             <button
               key={preset.label}
               onClick={() => setQualityConfig(preset.config)}
-              className={`h-7 text-xs rounded-md px-2.5 border transition-colors ${
+              className={`h-8 text-xs rounded-md px-3 border transition-colors ${
                 active
                   ? 'bg-primary/10 border-primary/30 text-primary font-medium ring-1 ring-primary/20'
                   : 'bg-muted/60 text-muted-foreground hover:bg-accent border-transparent'

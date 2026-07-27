@@ -197,7 +197,7 @@ export default function UploadArea() {
         </div>
         <div className="flex flex-col items-center gap-1">
           <h1 className="gradient-text text-4xl font-extrabold tracking-tight">Gemini Watermark</h1>
-          <p className="text-sm font-semibold text-foreground/80">Remover</p>
+          <p className="text-lg font-bold text-foreground/80">Remover</p>
         </div>
       </motion.div>
 
@@ -310,7 +310,7 @@ export default function UploadArea() {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.3, delay: 0.5 + i * 0.1 }}
             whileHover={{ y: -2 }}
-            className="flex items-center justify-center gap-1.5 rounded-full border border-border/60 bg-card/80 px-2.5 py-2 shadow-sm hover:shadow-md hover:border-primary/30 hover:bg-primary/5 transition-all"
+            className="flex items-center justify-center gap-1.5 rounded-full border border-border/60 bg-card/80 px-3 py-2.5 shadow-sm hover:shadow-md hover:border-primary/30 hover:bg-primary/5 transition-all min-h-[44px]"
           >
             <item.icon className="size-3.5 text-primary" />
             <span className="text-sm font-semibold text-foreground/80">{item.label}</span>
@@ -323,7 +323,7 @@ export default function UploadArea() {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.6 }}
-        className="grid grid-cols-3 gap-3 w-full max-w-md"
+        className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full max-w-md"
       >
         {[
           { step: 1, icon: Upload, title: 'Upload', desc: 'Drop your image' },
@@ -336,13 +336,13 @@ export default function UploadArea() {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.3, delay: 0.7 + item.step * 0.1 }}
             whileHover={{ y: -3, transition: { duration: 0.2 } }}
-            className="flex flex-col items-center gap-2 rounded-lg border border-border/60 bg-card/70 p-3 shadow-sm hover:shadow-lg hover:bg-card hover:border-primary/40 transition-all group relative overflow-hidden"
+            className="flex flex-col items-center gap-2 rounded-lg border border-border/60 bg-card/70 p-3 sm:p-3 shadow-sm hover:shadow-lg hover:bg-card hover:border-primary/40 transition-all group relative overflow-hidden"
           >
             {/* Subtle gradient overlay on hover */}
             <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
-            <span className="step-badge absolute -top-2.5 -left-2.5 z-10">{item.step}</span>
-            <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10 ring-1 ring-primary/15 group-hover:bg-primary/20 group-hover:ring-primary/40 group-hover:scale-110 transition-all">
-              <item.icon className="size-4 text-primary group-hover:scale-110 transition-transform" />
+            <span className="step-badge absolute top-2 left-2 z-10">{item.step}</span>
+            <div className="flex size-10 items-center justify-center rounded-lg bg-primary/20 ring-1 ring-primary/25 group-hover:bg-primary/25 group-hover:ring-primary/40 group-hover:scale-110 transition-all">
+              <item.icon className="size-5 text-primary group-hover:scale-110 transition-transform" />
             </div>
             <span className="text-xs font-bold text-foreground/90 group-hover:text-foreground transition-colors">{item.title}</span>
             <span className="text-xs font-medium text-muted-foreground">{item.desc}</span>

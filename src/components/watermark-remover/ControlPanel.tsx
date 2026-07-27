@@ -432,11 +432,11 @@ export default function ControlPanel() {
         className="w-full"
       >
         <TabsList className="w-full h-8 rounded-lg">
-          <TabsTrigger value="remove" className="flex-1 gap-1 h-8 text-sm rounded-md transition-all hover:bg-accent/60 data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:shadow-sm data-[state=active]:hover:bg-primary/15 data-[state=active]:border-b-2 data-[state=active]:border-primary">
+          <TabsTrigger value="remove" className="flex-1 gap-1 h-8 text-sm rounded-md transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm data-[state=active]:font-semibold bg-muted/40 hover:bg-accent/60">
             <Eraser className="size-3.5" />
             Remove
           </TabsTrigger>
-          <TabsTrigger value="add" className="flex-1 gap-1 h-8 text-sm rounded-md transition-all hover:bg-accent/60 data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:shadow-sm data-[state=active]:hover:bg-primary/15 data-[state=active]:border-b-2 data-[state=active]:border-primary">
+          <TabsTrigger value="add" className="flex-1 gap-1 h-8 text-sm rounded-md transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm data-[state=active]:font-semibold bg-muted/40 hover:bg-accent/60">
             <Stamp className="size-3.5" />
             Add
           </TabsTrigger>

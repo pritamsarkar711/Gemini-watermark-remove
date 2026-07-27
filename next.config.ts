@@ -6,6 +6,12 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   // Hide the Next.js dev tools floating button (production builds never show it)
   devIndicators: false,
+  // Exclude examples and mini-services from Turbopack compilation
+  turbopack: {
+    resolveAlias: {
+      'socket.io-client': { browser: '' },
+    },
+  },
   images: {
     // Allow external image domains if needed
     remotePatterns: [],

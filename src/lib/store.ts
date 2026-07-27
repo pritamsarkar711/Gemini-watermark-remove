@@ -263,10 +263,10 @@ const defaultWatermarkConfig: WatermarkConfig = {
 };
 
 const defaultQualityConfig: QualityConfig = {
-  quality: 90,
-  format: "png",
-  maxWidth: 4096,
-  maxHeight: 4096,
+  quality: 80,
+  format: "webp",
+  maxWidth: 1920,
+  maxHeight: 1080,
 };
 
 const defaultTransformConfig: TransformConfig = {

@@ -116,6 +116,9 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    overflow-x: hidden;
+  }
   body {
     @apply bg-background text-foreground font-sans;
     overflow-x: hidden;
@@ -159,8 +162,8 @@
   position: absolute;
   top: 50%;
   transform: translate(-50%, -50%);
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   background: white;
   z-index: 11;
@@ -169,6 +172,7 @@
   align-items: center;
   justify-content: center;
   box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+  border: 2px solid color-mix(in oklch, var(--primary) 40%, white);
 }
 
 /* Upload area animation */
