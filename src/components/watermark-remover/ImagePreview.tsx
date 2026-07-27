@@ -31,6 +31,19 @@ type DragMode =
   | 'resize-sw'
   | 'resize-w'
 
+type HandleDir = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w'
+
+const HANDLE_TO_DRAG: Record<HandleDir, DragMode> = {
+  nw: 'resize-nw',
+  n: 'resize-n',
+  ne: 'resize-ne',
+  e: 'resize-e',
+  se: 'resize-se',
+  s: 'resize-s',
+  sw: 'resize-sw',
+  w: 'resize-w',
+}
+
 interface CropRect {
   x: number
   y: number
@@ -762,9 +775,9 @@ export default function ImagePreview() {
                 </div>
 
                 {/* 8 resize handles — 44px touch target on mobile, smaller on desktop */}
-                {(['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'] as unknown as DragMode[]).map(
+                {(['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'] as HandleDir[]).map(
                   (h) => {
-                    const posCls: Record<string, string> = {
+                    const posCls: Record<HandleDir, string> = {
                       nw: 'left-0 top-0',
                       n: 'left-1/2 top-0 -translate-x-1/2',
                       ne: 'right-0 top-0',
@@ -774,16 +787,17 @@ export default function ImagePreview() {
                       sw: 'left-0 bottom-0',
                       w: 'left-0 top-1/2 -translate-y-1/2',
                     }
+                    const dragMode = HANDLE_TO_DRAG[h]
                     return (
                       <div
                         key={h}
                         role="button"
                         aria-label={`Resize ${h}`}
                         tabIndex={0}
-                        onMouseDown={makeHandlePointerDown(h)}
-                        onTouchStart={makeHandlePointerDown(h)}
+                        onMouseDown={makeHandlePointerDown(dragMode)}
+                        onTouchStart={makeHandlePointerDown(dragMode)}
                         // Visual handle is small (size-3), but padded to 44px touch target on mobile
-                        className={`absolute ${HANDLE_CURSORS[h]} ${posCls[h]} pointer-events-auto`}
+                        className={`absolute ${HANDLE_CURSORS[dragMode]} ${posCls[h]} pointer-events-auto`}
                         style={{ touchAction: 'none' }}
                       >
                         {/* Visible handle dot */}

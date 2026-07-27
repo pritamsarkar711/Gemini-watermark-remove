@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
     let pipeline = sharp(imageBuffer, { failOn: "none" });
 
     // Apply modulate (brightness, saturation, hue)
-    const modulateOpts: sharp.Modulate = {};
+    const modulateOpts: { brightness?: number; saturation?: number; hue?: number } = {};
     if (brightness !== 1) modulateOpts.brightness = brightness;
     if (saturation !== 1) modulateOpts.saturation = saturation;
     if (hue !== 0) modulateOpts.hue = hue;
