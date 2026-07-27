@@ -2,7 +2,7 @@
 
 import { useCallback, useRef, useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Eraser, Stamp, Scan, Paintbrush, Loader2, RotateCw, FlipHorizontal, FlipVertical, ChevronDown, Sparkles, CheckCircle2, AlertCircle } from 'lucide-react'
+import { Eraser, Stamp, Scan, Paintbrush, Loader2, RotateCw, FlipHorizontal, FlipVertical, ChevronDown, Wrench, CheckCircle2, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
@@ -132,9 +132,9 @@ export default function ControlPanel() {
   // under a known key. This avoids prop drilling and context complexity.
   useEffect(() => {
     if (typeof window === 'undefined') return
-    ;(window as unknown as { __zeminaiProcess?: () => void }).__zeminaiProcess = handleProcess
+    ;(window as unknown as { __geminiProcess?: () => void }).__geminiProcess = handleProcess
     return () => {
-      delete (window as unknown as { __zeminaiProcess?: () => void }).__zeminaiProcess
+      delete (window as unknown as { __geminiProcess?: () => void }).__geminiProcess
     }
   }, [handleProcess])
 
@@ -256,13 +256,13 @@ export default function ControlPanel() {
       className="flex w-full flex-col gap-4"
     >
       {/* Transform controls */}
-      <div className="sidebar-panel flex flex-col gap-2 rounded-lg p-2.5 shadow-sm">
+      <div className="sidebar-panel flex flex-col gap-2 rounded-lg p-3 shadow-sm">
         <button
           type="button"
           onClick={() => setIsTransformOpen((prev) => !prev)}
           className="sidebar-panel-header flex items-center justify-between cursor-pointer"
         >
-          <span className="text-[10px] font-semibold text-muted-foreground/70 uppercase tracking-wider">Transform</span>
+          <span className="text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider">Transform</span>
           <div className="flex items-center gap-2">
             {hasTransform && (
               <span
@@ -278,7 +278,7 @@ export default function ControlPanel() {
                     setTransformConfig({ rotation: 0, flipH: false, flipV: false })
                   }
                 }}
-                className="text-[9px] text-muted-foreground/60 hover:text-foreground transition-colors"
+                className="text-xs text-muted-foreground/60 hover:text-foreground transition-colors"
               >
                 Reset
               </span>
@@ -300,12 +300,12 @@ export default function ControlPanel() {
               transition={{ duration: 0.2, ease: 'easeInOut' }}
               className="overflow-hidden"
             >
-              <div className="flex items-end gap-1.5">
-                <div className="flex flex-col items-center gap-0.5">
+              <div className="flex items-end gap-2">
+                <div className="flex flex-col items-center gap-2">
                   <Button
                     variant="outline"
                     size="icon"
-                    className={`size-7 rounded-lg ${isTransforming ? 'opacity-50' : ''}`}
+                    className={`size-7 rounded-md ${isTransforming ? 'opacity-50' : ''}`}
                     onClick={() => setTransformConfig({ rotation: (transformConfig.rotation + 90) % 360 })}
                     disabled={isTransforming}
                     title="Rotate 90°"
@@ -315,11 +315,11 @@ export default function ControlPanel() {
                   </Button>
                   <span className={`transform-label ${transformConfig.rotation !== 0 ? 'transform-label-active' : ''}`}>Rotate</span>
                 </div>
-                <div className="flex flex-col items-center gap-0.5">
+                <div className="flex flex-col items-center gap-2">
                   <Button
                     variant="outline"
                     size="icon"
-                    className={`size-7 rounded-lg ${transformConfig.flipH ? 'bg-primary/10 border-primary/40 ring-1 ring-primary/20' : ''} ${isTransforming ? 'opacity-50' : ''}`}
+                    className={`size-7 rounded-md ${transformConfig.flipH ? 'bg-primary/10 border-primary/40 ring-1 ring-primary/20' : ''} ${isTransforming ? 'opacity-50' : ''}`}
                     onClick={() => setTransformConfig({ flipH: !transformConfig.flipH })}
                     disabled={isTransforming}
                     title="Flip horizontal"
@@ -329,11 +329,11 @@ export default function ControlPanel() {
                   </Button>
                   <span className={`transform-label ${transformConfig.flipH ? 'transform-label-active' : ''}`}>Flip H</span>
                 </div>
-                <div className="flex flex-col items-center gap-0.5">
+                <div className="flex flex-col items-center gap-2">
                   <Button
                     variant="outline"
                     size="icon"
-                    className={`size-7 rounded-lg ${transformConfig.flipV ? 'bg-primary/10 border-primary/40 ring-1 ring-primary/20' : ''} ${isTransforming ? 'opacity-50' : ''}`}
+                    className={`size-7 rounded-md ${transformConfig.flipV ? 'bg-primary/10 border-primary/40 ring-1 ring-primary/20' : ''} ${isTransforming ? 'opacity-50' : ''}`}
                     onClick={() => setTransformConfig({ flipV: !transformConfig.flipV })}
                     disabled={isTransforming}
                     title="Flip vertical"
@@ -348,7 +348,7 @@ export default function ControlPanel() {
                     size="sm"
                     onClick={handleTransform}
                     disabled={isTransforming}
-                    className="ml-auto h-7 rounded-lg text-[10px] gap-1 shadow-sm"
+                    className="ml-auto h-7 rounded-md text-xs gap-1 shadow-sm"
                   >
                     {isTransforming ? <Loader2 className="size-2.5 animate-spin" /> : null}
                     Apply
@@ -411,7 +411,7 @@ export default function ControlPanel() {
           }
         }}
         disabled={!originalImage || isAutoEnhancing}
-        className={`size-7 rounded-lg border flex items-center justify-center transition-all shadow-sm ${
+        className={`size-7 rounded-md border flex items-center justify-center transition-all shadow-sm ${
           !originalImage || isAutoEnhancing
             ? 'opacity-40 cursor-not-allowed'
             : 'cursor-pointer bg-gradient-to-br from-primary/10 to-primary/5 hover:from-primary/20 hover:to-primary/10 hover:shadow-md hover:-translate-y-0.5 border-primary/30'
@@ -422,7 +422,7 @@ export default function ControlPanel() {
         {isAutoEnhancing ? (
           <Loader2 className="size-3 animate-spin text-primary" />
         ) : (
-          <Sparkles className="size-3 text-primary" />
+          <Wrench className="size-3 text-primary" />
         )}
       </button>
 
@@ -432,21 +432,21 @@ export default function ControlPanel() {
         className="w-full"
       >
         <TabsList className="w-full h-8 rounded-lg">
-          <TabsTrigger value="remove" className="flex-1 gap-1 h-7 text-xs rounded-md transition-all hover:bg-accent/60 data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:shadow-sm data-[state=active]:hover:bg-primary/15 data-[state=active]:border-b-2 data-[state=active]:border-primary">
-            <Eraser className="size-3" />
+          <TabsTrigger value="remove" className="flex-1 gap-1 h-8 text-sm rounded-md transition-all hover:bg-accent/60 data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:shadow-sm data-[state=active]:hover:bg-primary/15 data-[state=active]:border-b-2 data-[state=active]:border-primary">
+            <Eraser className="size-3.5" />
             Remove
           </TabsTrigger>
-          <TabsTrigger value="add" className="flex-1 gap-1 h-7 text-xs rounded-md transition-all hover:bg-accent/60 data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:shadow-sm data-[state=active]:hover:bg-primary/15 data-[state=active]:border-b-2 data-[state=active]:border-primary">
-            <Stamp className="size-3" />
+          <TabsTrigger value="add" className="flex-1 gap-1 h-8 text-sm rounded-md transition-all hover:bg-accent/60 data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:shadow-sm data-[state=active]:hover:bg-primary/15 data-[state=active]:border-b-2 data-[state=active]:border-primary">
+            <Stamp className="size-3.5" />
             Add
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="remove" className="mt-3 flex flex-col gap-3 data-[state=active]:animate-in data-[state=active]:fade-in data-[state=active]:slide-in-from-left-1 data-[state=inactive]:animate-out data-[state=inactive]:fade-out">
-          <div className="sidebar-panel flex items-center justify-between rounded-lg p-2.5 shadow-sm gap-3">
+          <div className="sidebar-panel flex items-center justify-between rounded-lg p-3 shadow-sm gap-3">
             <div className="flex items-center gap-2">
               <Scan className="size-3.5 text-muted-foreground/70" />
-              <span className="text-xs font-medium">Auto detect</span>
+              <span className="text-sm font-medium">Auto detect</span>
             </div>
             <Switch checked={autoDetect} onCheckedChange={setAutoDetect} className="toggle-switch scale-90" />
           </div>
@@ -459,12 +459,12 @@ export default function ControlPanel() {
               className="flex flex-col gap-2"
             >
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-2">
                   <Paintbrush className="size-3.5 text-muted-foreground/70" />
-                  <span className="text-xs font-medium">Brush</span>
+                  <span className="text-sm font-medium">Brush</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] text-muted-foreground/50">{brushSize}px</span>
+                  <span className="text-xs text-muted-foreground/50">{brushSize}px</span>
                   <input
                     type="range"
                     min="5"
@@ -491,7 +491,7 @@ export default function ControlPanel() {
                 variant="outline"
                 size="sm"
                 onClick={clearMask}
-                className="self-start h-7 text-xs rounded-lg"
+                className="self-start h-7 text-xs rounded-md"
               >
                 Clear mask
               </Button>
@@ -507,7 +507,7 @@ export default function ControlPanel() {
               className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 p-2.5"
             >
               <Paintbrush className="size-3.5 text-primary" />
-              <span className="text-[11px] font-medium text-foreground/80">
+              <span className="text-sm font-medium text-foreground/80">
                 Paint over the watermark on the image, then click Apply.
               </span>
             </motion.div>

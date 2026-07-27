@@ -1,5 +1,3 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
 # dependencies
 node_modules
 /.pnp
@@ -36,7 +34,6 @@ yarn-error.log*
 # vercel
 .vercel
 
-
 # typescript
 *.tsbuildinfo
 next-env.d.ts
@@ -46,9 +43,51 @@ local-*
 *.log
 dev.log
 dev.out.log
-test
-prompt
-
 server.log
+
 # Skills directory
 /skills/
+
+# QA screenshots and test images
+/download/
+/qa-*.png
+/test-image.png
+/initial-screenshot.png
+/mobile-final.png
+/mobile-screenshot.png
+/final-ui.png
+/polished-ui.png
+/research_*.json
+/results_*.json
+
+# Agent context files
+/agent-ctx/
+
+# Tool results
+/tool-results/
+
+# Z-AI dev scripts
+/.zscripts/
+
+# Caddyfile (deployment-specific)
+/Caddyfile
+
+# Database (not needed for deployment)
+/db/
+
+# Examples folder (internal)
+/examples/
+
+# Tests folder
+/tests/
+
+# Mini services (internal)
+/mini-services/
+
+# Worklog (internal)
+/worklog.md
+
+# PostCSS config (generated)
+/postcss.config.mjs
+
+# Sample images in public (keep for user experience)

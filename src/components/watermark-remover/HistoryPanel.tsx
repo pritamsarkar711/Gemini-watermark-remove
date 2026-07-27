@@ -70,11 +70,11 @@ export default function HistoryPanel() {
       >
         <div className="flex items-center gap-1.5">
           <HistoryIcon className="size-3.5 text-muted-foreground/60" />
-          <span className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider">
+          <span className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider">
             History
           </span>
           {actionCount > 0 && (
-            <span className="ml-0.5 rounded-full bg-muted px-1.5 py-0.5 text-[9px] font-medium text-muted-foreground/70">
+            <span className="ml-0.5 rounded-full bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground/70">
               {actionCount} {actionCount === 1 ? 'action' : 'actions'}
             </span>
           )}
@@ -100,7 +100,7 @@ export default function HistoryPanel() {
             className="overflow-hidden"
           >
             <div className="px-2 pb-2">
-              <ul className="max-h-64 overflow-y-auto custom-scrollbar flex flex-col gap-0.5 pr-0.5">
+              <ul className="max-h-64 overflow-y-auto custom-scrollbar flex flex-col gap-2 pr-0.5">
                 {reversed.map(({ snapshot, originalIndex }) => {
                   const meta = getActionMeta(snapshot.lastAction)
                   const Icon = meta.Icon
@@ -129,13 +129,13 @@ export default function HistoryPanel() {
                           }`}
                         />
                         <span
-                          className={`flex-1 truncate text-[11px] font-medium ${
+                          className={`flex-1 truncate text-sm font-medium ${
                             isCurrent ? 'text-foreground' : 'text-muted-foreground'
                           }`}
                         >
                           {meta.label}
                         </span>
-                        <span className="shrink-0 text-[9px] font-mono tabular-nums text-muted-foreground/40">
+                        <span className="shrink-0 text-xs font-mono tabular-nums text-muted-foreground/40">
                           #{stepNumber}
                         </span>
                       </button>
@@ -146,14 +146,14 @@ export default function HistoryPanel() {
 
               {/* Footer: clear history */}
               <div className="mt-2 flex items-center justify-between border-t pt-2">
-                <span className="text-[9px] text-muted-foreground/40">
+                <span className="text-xs text-muted-foreground/40">
                   {historyIndex + 1} / {history.length}
                 </span>
                 <button
                   type="button"
                   onClick={reset}
                   disabled={history.length <= 1}
-                  className={`flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium transition-colors ${
+                  className={`flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium transition-colors ${
                     history.length <= 1
                       ? 'text-muted-foreground/30 cursor-not-allowed'
                       : 'text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10'

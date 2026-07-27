@@ -15,7 +15,7 @@ export default function SideBySideView() {
       transition={{ duration: 0.3 }}
       className="flex w-full flex-col gap-1.5"
     >
-      <div className="flex flex-col md:flex-row gap-0 md:gap-0 w-full overflow-hidden rounded-xl border bg-muted/20 shadow-sm transition-all duration-300 hover:shadow-lg hover:ring-1 hover:ring-inset hover:ring-primary/20 hover:border-primary/30">
+      <div className="flex flex-col md:flex-row gap-0 md:gap-0 w-full overflow-hidden rounded-lg border bg-muted/20 shadow-sm transition-all duration-300 hover:shadow-lg hover:ring-1 hover:ring-inset hover:ring-primary/20 hover:border-primary/30">
         {/* Original (Before) image */}
         <div className="relative flex-1 w-full md:w-1/2 overflow-hidden" style={{ minHeight: '240px', maxHeight: '55vh' }}>
           <img
@@ -25,7 +25,7 @@ export default function SideBySideView() {
             draggable={false}
           />
           {/* Before label */}
-          <div className="pointer-events-none absolute top-2.5 left-2.5 rounded-lg bg-black/70 px-2 py-1 text-[10px] font-semibold text-white backdrop-blur-sm shadow-sm ring-1 ring-white/10">
+          <div className="pointer-events-none absolute top-2.5 left-2.5 rounded-md bg-black/70 px-2 py-1 text-xs font-semibold text-white backdrop-blur-sm shadow-sm ring-1 ring-white/10">
             Before
           </div>
           {/* Processing overlay for left side */}
@@ -57,7 +57,7 @@ export default function SideBySideView() {
             draggable={false}
           />
           {/* After label */}
-          <div className="pointer-events-none absolute top-2.5 right-2.5 rounded-lg bg-primary/70 px-2 py-1 text-[10px] font-semibold text-white backdrop-blur-sm shadow-sm ring-1 ring-white/10">
+          <div className="pointer-events-none absolute top-2.5 right-2.5 rounded-md bg-primary/70 px-2 py-1 text-xs font-semibold text-white backdrop-blur-sm shadow-sm ring-1 ring-white/10">
             After
           </div>
         </div>
@@ -65,11 +65,11 @@ export default function SideBySideView() {
 
       {/* Bottom info */}
       <div className="flex items-center justify-between px-2 py-1.5 rounded-lg border bg-card/60">
-        <span className="text-[10px] font-medium text-muted-foreground">Original</span>
-        <div className="flex items-center gap-1 text-[10px] text-muted-foreground/70">
+        <span className="text-xs font-medium text-muted-foreground">Original</span>
+        <div className="flex items-center gap-1 text-xs text-muted-foreground/70">
           <span>Side-by-side comparison</span>
         </div>
-        <span className="text-[10px] font-medium text-muted-foreground">Result</span>
+        <span className="text-xs font-medium text-muted-foreground">Result</span>
       </div>
     </motion.div>
   )

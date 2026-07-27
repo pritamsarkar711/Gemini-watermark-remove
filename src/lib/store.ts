@@ -131,7 +131,7 @@ export interface ResizeConfig {
   height: number;
   mode: 'fit' | 'fill' | 'stretch' | 'exact';
   lockAspectRatio: boolean;
-  targetFormat: 'same' | 'png' | 'jpeg' | 'webp' | 'avif';
+  targetFormat: 'same' | 'png' | 'jpeg' | 'webp' | 'avif' | 'bmp' | 'tiff' | 'gif';
 }
 
 /**
@@ -305,7 +305,7 @@ export const BUILT_IN_PRESETS: WatermarkPreset[] = [
   {
     id: "copyright",
     label: "© 2025",
-    text: "© 2025 Zeminai",
+    text: "© 2025 Gemini",
     fontSize: 28,
     color: "#ffffff",
     opacity: 80,
@@ -358,9 +358,9 @@ export const BUILT_IN_PRESETS: WatermarkPreset[] = [
     repeat: true,
   },
   {
-    id: "zeminai",
-    label: "Zeminai",
-    text: "Zeminai",
+    id: "gemini",
+    label: "Gemini",
+    text: "Gemini",
     fontSize: 24,
     color: "#ffffff",
     opacity: 60,
@@ -798,7 +798,7 @@ export const useAppStore = create<AppState>()(
     }),
     }),
     {
-      name: "zeminai-preferences",
+      name: "gemini-preferences",
       storage: createJSONStorage(() => localStorage),
       // Only persist user preferences — never persist images, history, or
       // transient processing state (those would blow past the ~5MB localStorage

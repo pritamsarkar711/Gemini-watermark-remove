@@ -254,7 +254,7 @@ export default function WatermarkAdder() {
               <span className="absolute inline-flex size-full animate-ping rounded-full bg-green-400/70" />
               <span className="relative inline-flex size-1.5 rounded-full bg-green-400" />
             </span>
-            <span className="text-[9px] font-medium uppercase tracking-wider text-white">Live</span>
+            <span className="text-[11px] font-medium uppercase tracking-wider text-white">Live</span>
           </div>
         </div>
         <div className="relative overflow-hidden rounded-md border bg-muted/20 shadow-inner" style={{ maxHeight: '200px' }}>
@@ -264,7 +264,7 @@ export default function WatermarkAdder() {
             <div className="flex aspect-[2/1] w-full items-center justify-center">
               <div className="flex flex-col items-center gap-1.5 text-muted-foreground/50">
                 <ImageIcon className="size-5" />
-                <span className="text-[10px]">Upload an image first</span>
+                <span className="text-xs">Upload an image first</span>
               </div>
             </div>
           )}
@@ -279,7 +279,7 @@ export default function WatermarkAdder() {
             <Label className="text-xs font-semibold">Text watermark</Label>
           </div>
           <div className="flex items-center gap-1">
-            <span className="text-[9px] text-muted-foreground/60">Shadow</span>
+            <span className="text-xs text-muted-foreground/60">Shadow</span>
             <Switch
               checked={watermarkConfig.shadow}
               onCheckedChange={(v) => setWatermarkConfig({ shadow: v })}
@@ -292,7 +292,7 @@ export default function WatermarkAdder() {
           value={watermarkConfig.text}
           onChange={(e) => setWatermarkConfig({ text: e.target.value })}
           placeholder="Enter watermark text"
-          className="h-7 text-xs rounded-lg"
+          className="h-7 text-xs rounded-md"
         />
 
         {/* Color presets */}
@@ -322,33 +322,33 @@ export default function WatermarkAdder() {
         </div>
 
         <div className="flex items-center justify-between gap-2">
-          <span className="text-[10px] text-muted-foreground/50">Size</span>
+          <span className="text-xs text-muted-foreground/50">Size</span>
           <Slider
             value={[watermarkConfig.fontSize]}
             min={8}
             max={72}
             step={1}
             onValueChange={(v) => setWatermarkConfig({ fontSize: v[0] })}
-            className="w-20"
+            className="w-24"
           />
-          <span className="text-[10px] tabular-nums text-muted-foreground/50 w-5 text-right">{watermarkConfig.fontSize}</span>
+          <span className="text-xs tabular-nums text-muted-foreground/50 w-7 text-right">{watermarkConfig.fontSize}</span>
         </div>
 
         <div className="flex items-center justify-between gap-2">
-          <span className="text-[10px] text-muted-foreground/50">Opacity</span>
+          <span className="text-xs text-muted-foreground/50">Opacity</span>
           <Slider
             value={[watermarkConfig.opacity]}
             min={5}
             max={100}
             step={1}
             onValueChange={(v) => setWatermarkConfig({ opacity: v[0] })}
-            className="w-20"
+            className="w-24"
           />
-          <span className="text-[10px] tabular-nums text-muted-foreground/50 w-7 text-right">{watermarkConfig.opacity}%</span>
+          <span className="text-xs tabular-nums text-muted-foreground/50 w-7 text-right">{watermarkConfig.opacity}%</span>
         </div>
 
         <div className="flex items-center justify-between gap-2">
-          <span className="text-[10px] text-muted-foreground/50 flex items-center gap-1">
+          <span className="text-xs text-muted-foreground/50 flex items-center gap-2">
             <RotateCw className="size-2.5" />
             Rotate
           </span>
@@ -358,16 +358,16 @@ export default function WatermarkAdder() {
             max={90}
             step={5}
             onValueChange={(v) => setWatermarkConfig({ rotation: v[0] })}
-            className="w-20"
+            className="w-24"
           />
-          <span className="text-[10px] tabular-nums text-muted-foreground/50 w-7 text-right">{watermarkConfig.rotation}°</span>
+          <span className="text-xs tabular-nums text-muted-foreground/50 w-7 text-right">{watermarkConfig.rotation}°</span>
         </div>
 
         {/* Repeat toggle */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5">
             <Grid3x3 className="size-3 text-muted-foreground/60" />
-            <span className="text-[10px] text-muted-foreground/50">Tile pattern</span>
+            <span className="text-xs text-muted-foreground/50">Tile pattern</span>
           </div>
           <Switch
             checked={watermarkConfig.repeat}
@@ -378,13 +378,13 @@ export default function WatermarkAdder() {
 
         {!watermarkConfig.repeat && (
           <div className="flex flex-col gap-1.5">
-            <span className="text-[10px] text-muted-foreground/50 font-medium">Position</span>
+            <span className="text-xs text-muted-foreground/50 font-medium">Position</span>
             <div className="grid grid-cols-3 gap-1">
               {POSITIONS.map((pos) => (
                 <button
                   key={pos}
                   onClick={() => setWatermarkConfig({ position: pos })}
-                  className={`flex size-7 items-center justify-center rounded-md text-[10px] transition-all shadow-sm ${
+                  className={`flex h-8 w-full items-center justify-center rounded-md text-xs transition-all shadow-sm ${
                     watermarkConfig.position === pos
                       ? 'bg-primary text-primary-foreground shadow-md'
                       : 'bg-muted/60 text-muted-foreground hover:bg-accent'
@@ -410,7 +410,7 @@ export default function WatermarkAdder() {
             <ImageIcon className="size-3.5 text-muted-foreground/60" />
             <Label className="text-xs font-semibold">Logo watermark</Label>
             {watermarkConfig.logoFile && (
-              <span className="ml-1 rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] font-medium text-primary">
+              <span className="ml-1 rounded-full bg-primary/15 px-1.5 py-0.5 text-xs font-medium text-primary">
                 {watermarkConfig.logoFile.name.length > 12
                   ? watermarkConfig.logoFile.name.slice(0, 10) + '…'
                   : watermarkConfig.logoFile.name}
@@ -440,12 +440,12 @@ export default function WatermarkAdder() {
                   {watermarkConfig.logoFile ? (
                     <div className="flex items-center gap-2">
                       <ImageIcon className="size-3 text-primary/70" />
-                      <span className="text-[11px] font-medium text-foreground/70">{watermarkConfig.logoFile.name}</span>
+                      <span className="text-sm font-medium text-foreground/70">{watermarkConfig.logoFile.name}</span>
                     </div>
                   ) : (
                     <div className="flex flex-col items-center gap-1.5">
                       <Upload className="size-3.5 text-muted-foreground/60" />
-                      <span className="text-[10px] text-muted-foreground/60">Upload logo</span>
+                      <span className="text-xs text-muted-foreground/60">Upload logo</span>
                     </div>
                   )}
                 </div>
@@ -461,39 +461,39 @@ export default function WatermarkAdder() {
                 {watermarkConfig.logoFile && (
                   <div className="flex flex-col gap-2">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-[10px] text-muted-foreground/50">Opacity</span>
+                      <span className="text-xs text-muted-foreground/50">Opacity</span>
                       <Slider
                         value={[watermarkConfig.logoOpacity]}
                         min={5}
                         max={100}
                         step={1}
                         onValueChange={(v) => setWatermarkConfig({ logoOpacity: v[0] })}
-                        className="w-20"
+                        className="w-24"
                       />
-                      <span className="text-[10px] tabular-nums text-muted-foreground/50 w-5 text-right">{watermarkConfig.logoOpacity}%</span>
+                      <span className="text-xs tabular-nums text-muted-foreground/50 w-5 text-right">{watermarkConfig.logoOpacity}%</span>
                     </div>
 
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-[10px] text-muted-foreground/50">Size</span>
+                      <span className="text-xs text-muted-foreground/50">Size</span>
                       <Slider
                         value={[watermarkConfig.logoSize]}
                         min={20}
                         max={300}
                         step={5}
                         onValueChange={(v) => setWatermarkConfig({ logoSize: v[0] })}
-                        className="w-20"
+                        className="w-24"
                       />
-                      <span className="text-[10px] tabular-nums text-muted-foreground/50 w-6 text-right">{watermarkConfig.logoSize}</span>
+                      <span className="text-xs tabular-nums text-muted-foreground/50 w-6 text-right">{watermarkConfig.logoSize}</span>
                     </div>
 
                     <div className="flex flex-col gap-1.5">
-                      <span className="text-[10px] text-muted-foreground/50 font-medium">Position</span>
+                      <span className="text-xs text-muted-foreground/50 font-medium">Position</span>
                       <div className="grid grid-cols-3 gap-1">
                         {POSITIONS.map((pos) => (
                           <button
                             key={pos}
                             onClick={() => setWatermarkConfig({ logoPosition: pos })}
-                            className={`flex size-7 items-center justify-center rounded-md text-[10px] transition-all shadow-sm ${
+                            className={`flex h-8 w-full items-center justify-center rounded-md text-xs transition-all shadow-sm ${
                               watermarkConfig.logoPosition === pos
                                 ? 'bg-primary text-primary-foreground shadow-md'
                                 : 'bg-muted/60 text-muted-foreground hover:bg-accent'
@@ -509,7 +509,7 @@ export default function WatermarkAdder() {
                       variant="outline"
                       size="sm"
                       onClick={() => setWatermarkConfig({ logoFile: null })}
-                      className="self-start h-6 text-[10px] rounded-lg"
+                      className="self-start h-7 text-xs rounded-md"
                     >
                       Remove logo
                     </Button>

@@ -7,11 +7,12 @@ import {
   Contrast,
   Palette,
   Circle,
-  Sparkles,
+  SlidersHorizontal,
   Loader2,
   RotateCcw,
   Droplet,
   ChevronDown,
+  Focus,
 } from 'lucide-react'
 import { Slider } from '@/components/ui/slider'
 import { Button } from '@/components/ui/button'
@@ -46,7 +47,7 @@ function SliderRow({
   return (
     <div className="flex items-center justify-between gap-2">
       <span
-        className={`flex items-center gap-1 text-[10px] font-medium ${
+        className={`flex items-center gap-2 text-xs font-medium ${
           isModified ? 'text-primary' : 'text-muted-foreground/60'
         }`}
       >
@@ -59,10 +60,10 @@ function SliderRow({
         max={max}
         step={step}
         onValueChange={(v) => onChange(v[0])}
-        className="w-20"
+        className="w-24"
       />
       <span
-        className={`w-9 text-right text-[10px] tabular-nums ${
+        className={`w-9 text-right text-xs tabular-nums ${
           isModified ? 'text-primary font-semibold' : 'text-muted-foreground/50'
         }`}
       >
@@ -167,15 +168,17 @@ export default function AdjustPanel() {
       transition={{ duration: 0.3 }}
       className="sidebar-panel flex flex-col gap-2.5 rounded-lg p-3 shadow-sm transition-all duration-200 hover:bg-card hover:shadow-md hover:border-border"
     >
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => setIsOpen((v) => !v)}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setIsOpen((v) => !v) } }}
         className="sidebar-panel-header flex items-center justify-between cursor-pointer"
         aria-expanded={isOpen}
       >
         <div className="flex items-center gap-1.5">
-          <Sparkles className="size-3.5 text-muted-foreground/60" />
-          <span className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider">Adjustments</span>
+          <SlidersHorizontal className="size-3.5 text-muted-foreground/60" />
+          <span className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider">Adjustments</span>
         </div>
         <div className="flex items-center gap-2">
           {hasAdjustments && (
@@ -183,7 +186,7 @@ export default function AdjustPanel() {
               type="button"
               onClick={(e) => { e.stopPropagation(); handleReset() }}
               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === 'Space') { e.stopPropagation(); handleReset() } }}
-              className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] text-muted-foreground/60 hover:text-foreground hover:bg-accent/60 transition-colors"
+              className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs text-muted-foreground/60 hover:text-foreground hover:bg-accent/60 transition-colors"
             >
               <RotateCcw className="size-2.5" />
               Reset
@@ -197,7 +200,7 @@ export default function AdjustPanel() {
             <ChevronDown className="size-3.5" />
           </motion.div>
         </div>
-      </button>
+      </div>
 
       {/* Collapsible content */}
       <AnimatePresence initial={false}>
@@ -269,7 +272,7 @@ export default function AdjustPanel() {
           onChange={(v) => setAdjustConfig({ blur: v })}
         />
         <SliderRow
-          icon={Sparkles}
+          icon={Focus}
           label="Sharpen"
           value={adjustConfig.sharpen}
           min={0}
@@ -284,7 +287,7 @@ export default function AdjustPanel() {
       {/* Filter toggles */}
       <div className="flex flex-col gap-1.5 border-t pt-2">
         <div className="flex items-center justify-between">
-          <span className="text-[10px] font-medium text-muted-foreground/60">
+          <span className="text-xs font-medium text-muted-foreground/60">
             Grayscale
           </span>
           <Switch
@@ -294,7 +297,7 @@ export default function AdjustPanel() {
           />
         </div>
         <div className="flex items-center justify-between">
-          <span className="text-[10px] font-medium text-muted-foreground/60">
+          <span className="text-xs font-medium text-muted-foreground/60">
             Sepia
           </span>
           <Switch
@@ -304,7 +307,7 @@ export default function AdjustPanel() {
           />
         </div>
         <div className="flex items-center justify-between">
-          <span className="text-[10px] font-medium text-muted-foreground/60">
+          <span className="text-xs font-medium text-muted-foreground/60">
             Invert
           </span>
           <Switch
@@ -320,7 +323,7 @@ export default function AdjustPanel() {
         size="sm"
         onClick={handleApply}
         disabled={isAdjusting || !hasAdjustments}
-        className="w-full gap-1.5 rounded-lg h-8 text-xs font-medium shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all"
+        className="w-full gap-1.5 rounded-md h-8 text-xs font-medium shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all"
       >
         {isAdjusting ? (
           <>
@@ -329,7 +332,7 @@ export default function AdjustPanel() {
           </>
         ) : (
           <>
-            <Sparkles className="size-3" />
+            <SlidersHorizontal className="size-3" />
             Apply adjustments
           </>
         )}

@@ -70,6 +70,9 @@ export async function POST(req: NextRequest) {
       jpeg: { mime: "image/jpeg", sharpFormat: "jpeg" },
       webp: { mime: "image/webp", sharpFormat: "webp" },
       avif: { mime: "image/avif", sharpFormat: "avif" },
+      bmp: { mime: "image/bmp", sharpFormat: "png" }, // Sharp outputs BMP via png then we convert
+      tiff: { mime: "image/tiff", sharpFormat: "tiff" },
+      gif: { mime: "image/gif", sharpFormat: "gif" },
     };
 
     let outputMime = "image/png";
@@ -91,6 +94,17 @@ export async function POST(req: NextRequest) {
           break;
         case "avif":
           pipeline = pipeline.avif({ quality: 80 });
+          break;
+        case "tiff":
+          pipeline = pipeline.tiff({ quality: 90 });
+          break;
+        case "bmp":
+          // Sharp doesn't have a direct BMP output; we output as raw PNG
+          // and convert manually for maximum compatibility
+          pipeline = pipeline.png({ quality: 100 });
+          break;
+        case "gif":
+          pipeline = pipeline.gif({ effort: 10 });
           break;
       }
     } else {

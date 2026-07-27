@@ -268,7 +268,7 @@ export default function ComparisonSlider() {
     >
       <div
         ref={containerRef}
-        className="comparison-slider group relative w-full overflow-hidden rounded-xl border bg-muted/20 shadow-sm transition-all duration-300 hover:shadow-lg hover:ring-1 hover:ring-inset hover:ring-primary/20 hover:border-primary/30"
+        className="comparison-slider group relative w-full overflow-hidden rounded-lg border bg-muted/20 shadow-sm transition-all duration-300 hover:shadow-lg hover:ring-1 hover:ring-inset hover:ring-primary/20 hover:border-primary/30"
         style={{ minHeight: '240px', maxHeight: '55vh' }}
         onMouseDown={handleMouseDown}
         onTouchStart={handleTouchStart}
@@ -296,7 +296,7 @@ export default function ComparisonSlider() {
 
         {/* Compare badge - top center */}
         <div className="pointer-events-none absolute top-2.5 left-1/2 z-20 -translate-x-1/2">
-          <span className="pulse-subtle inline-flex items-center gap-1 rounded-full border border-white/20 bg-black/70 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm shadow-sm">
+          <span className="pulse-subtle inline-flex items-center gap-1 rounded-full border border-white/20 bg-black/70 px-2 py-0.5 text-xs font-semibold text-white backdrop-blur-sm shadow-sm">
             <Maximize2 className="size-2.5" />
             Compare
           </span>
@@ -307,7 +307,7 @@ export default function ComparisonSlider() {
             are not currently processing. Color-coded by score. */}
         {showDetectionBadge && detectionConfidence != null && (
           <div className="pointer-events-none absolute top-9 left-2.5 z-20">
-            <span className="inline-flex items-center gap-1.5 rounded-md bg-black/75 backdrop-blur-md px-2 py-1 text-[10px] font-semibold text-white shadow-md tabular-nums ring-1 ring-white/10">
+            <span className="inline-flex items-center gap-1.5 rounded-md bg-black/75 backdrop-blur-md px-2 py-1 text-xs font-semibold text-white shadow-md tabular-nums ring-1 ring-white/10">
               <Target className={`size-2.5 ${detectionColor.text}`} />
               <span className="text-white/80">Detection:</span>
               <span className={detectionColor.text}>{detectionConfidence}%</span>
@@ -327,7 +327,7 @@ export default function ComparisonSlider() {
             transition={{ duration: 0.3 }}
             className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-background/60 backdrop-blur-sm"
           >
-            <div className="flex flex-col items-center gap-3 rounded-xl bg-card/90 border shadow-lg px-6 py-4 backdrop-blur-md">
+            <div className="flex flex-col items-center gap-3 rounded-lg bg-card/90 border shadow-lg px-6 py-4 backdrop-blur-md">
               <div className="relative size-10">
                 <div className="absolute inset-0 rounded-full border-2 border-muted-foreground/20" />
                 <motion.div
@@ -353,7 +353,7 @@ export default function ComparisonSlider() {
                   {PROCESSING_STAGES.map((stage, idx) => (
                     <div
                       key={stage.label}
-                      className={`flex items-center gap-1 text-[9px] font-medium transition-all duration-300 ${
+                      className={`flex items-center gap-1 text-xs font-medium transition-all duration-300 ${
                         idx <= processingStage
                           ? 'text-primary'
                           : 'text-muted-foreground/40'
@@ -372,7 +372,7 @@ export default function ComparisonSlider() {
                   ))}
                 </div>
                 {/* Stage description */}
-                <div className="text-[10px] text-muted-foreground/70 mt-1 text-center">
+                <div className="text-xs text-muted-foreground/70 mt-1 text-center">
                   {PROCESSING_STAGES[processingStage].description}
                 </div>
               </div>
@@ -383,7 +383,7 @@ export default function ComparisonSlider() {
 
       {/* Pixel diff stats badge - bottom-right (was top-right, moved to bottom to avoid floating) */}
         <div className="pointer-events-none absolute bottom-2 right-2 z-20">
-          <span className="inline-flex items-center gap-1.5 rounded-md border border-white/15 bg-black/75 backdrop-blur-md px-2 py-1 text-[10px] font-semibold text-white shadow-md tabular-nums">
+          <span className="inline-flex items-center gap-1.5 rounded-md border border-white/15 bg-black/75 backdrop-blur-md px-2 py-1 text-xs font-semibold text-white shadow-md tabular-nums">
             {diffLoading ? (
               <>
                 <Loader2 className="size-2.5 animate-spin" />
@@ -452,7 +452,7 @@ export default function ComparisonSlider() {
               initial={{ opacity: 0, x: -5 }}
               animate={{ opacity: 0.95, x: 0 }}
               exit={{ opacity: 0, x: -5 }}
-              className="pointer-events-none absolute top-2.5 left-2.5 z-20 inline-flex items-center gap-1 rounded-md bg-black/75 px-2 py-1 text-[10px] font-bold text-white backdrop-blur-md shadow-md ring-1 ring-white/10"
+              className="pointer-events-none absolute top-2.5 left-2.5 z-20 inline-flex items-center gap-1 rounded-md bg-black/75 px-2 py-1 text-xs font-bold text-white backdrop-blur-md shadow-md ring-1 ring-white/10"
             >
               <span className="size-1.5 rounded-full bg-white/80" />
               Before
@@ -466,7 +466,7 @@ export default function ComparisonSlider() {
               initial={{ opacity: 0, x: 5 }}
               animate={{ opacity: 0.95, x: 0 }}
               exit={{ opacity: 0, x: 5 }}
-              className="pointer-events-none absolute top-2.5 right-2.5 z-20 inline-flex items-center gap-1 rounded-md bg-primary px-2 py-1 text-[10px] font-bold text-white shadow-md ring-1 ring-white/20"
+              className="pointer-events-none absolute top-2.5 right-2.5 z-20 inline-flex items-center gap-1 rounded-md bg-primary px-2 py-1 text-xs font-bold text-white shadow-md ring-1 ring-white/20"
             >
               After
               <span className="size-1.5 rounded-full bg-white/90" />
@@ -479,15 +479,15 @@ export default function ComparisonSlider() {
       <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg border bg-card/80 backdrop-blur-sm shadow-sm">
         <div className="flex items-center gap-1.5">
           <span className="size-1.5 rounded-full bg-foreground/60" />
-          <span className="text-[10px] font-semibold text-foreground/80">Original</span>
+          <span className="text-xs font-semibold text-foreground/80">Original</span>
         </div>
-        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-          <kbd className="rounded bg-muted px-1 py-0.5 text-[9px] font-medium text-muted-foreground">←</kbd>
-          <kbd className="rounded bg-muted px-1 py-0.5 text-[9px] font-medium text-muted-foreground">→</kbd>
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <kbd className="rounded-md bg-muted px-1 py-0.5 text-xs font-medium text-muted-foreground">←</kbd>
+          <kbd className="rounded-md bg-muted px-1 py-0.5 text-xs font-medium text-muted-foreground">→</kbd>
           <span className="hidden sm:inline">or drag</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="text-[10px] font-semibold text-primary">Result</span>
+          <span className="text-xs font-semibold text-primary">Result</span>
           <span className="size-1.5 rounded-full bg-primary" />
         </div>
       </div>

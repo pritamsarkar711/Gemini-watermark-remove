@@ -257,15 +257,17 @@ export default function CropPanel() {
       className="flex flex-col gap-2.5 rounded-lg border bg-card/80 p-3 shadow-sm transition-all duration-200 hover:bg-card hover:shadow-md hover:border-border"
     >
       {/* Header (clickable toggle) */}
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={0}
         onClick={handleToggleOpen}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleToggleOpen() } }}
         className="flex items-center justify-between cursor-pointer"
         aria-expanded={isOpen}
       >
         <div className="flex items-center gap-1.5">
           <Crop className="size-3.5 text-muted-foreground/60" />
-          <span className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider">Crop</span>
+          <span className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider">Crop</span>
         </div>
         <div className="flex items-center gap-2">
           {/* Show overlay toggle (only meaningful when panel is open) */}
@@ -282,7 +284,7 @@ export default function CropPanel() {
                   e.stopPropagation()
                   setCropOverlayActive(!isCropOverlayActive)
                 }}
-                className="flex items-center gap-1 text-[9px] text-muted-foreground/60 hover:text-foreground transition-colors"
+                className="flex items-center gap-1 text-xs text-muted-foreground/60 hover:text-foreground transition-colors"
                 aria-label={isCropOverlayActive ? 'Hide overlay' : 'Show overlay'}
               >
                 {isCropOverlayActive ? (
@@ -320,7 +322,7 @@ export default function CropPanel() {
             <ChevronDown className="size-3.5" />
           </motion.div>
         </div>
-      </button>
+      </div>
 
       {/* Collapsible content */}
       <AnimatePresence initial={false}>
@@ -340,7 +342,7 @@ export default function CropPanel() {
             key={r.label}
             type="button"
             onClick={() => handleRatioChange(r.ratio)}
-            className={`size-7 rounded-md text-[9px] font-medium transition-all ${
+            className={`h-8 w-full rounded-md text-xs font-medium transition-all ${
               selectedRatio === r.ratio
                 ? 'bg-primary text-primary-foreground shadow-md'
                 : 'bg-muted/50 text-muted-foreground/70 hover:bg-muted hover:text-foreground'
@@ -354,7 +356,7 @@ export default function CropPanel() {
       {/* Numeric inputs */}
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center gap-2">
-          <span className="w-4 text-[10px] font-medium text-muted-foreground/60">
+          <span className="w-4 text-xs font-medium text-muted-foreground/60">
             X
           </span>
           <input
@@ -363,9 +365,9 @@ export default function CropPanel() {
             max={originalImage.width - 1}
             value={cropRect.x}
             onChange={(e) => updateCropField('x', parseInt(e.target.value) || 0)}
-            className="w-[3.5rem] h-6 text-[10px] px-1.5 rounded-lg border bg-background/50 text-center tabular-nums focus:outline-none focus:ring-1 focus:ring-primary/50"
+            className="w-[4rem] h-7 text-xs px-1.5 rounded-md border bg-background/50 text-center tabular-nums focus:outline-none focus:ring-1 focus:ring-primary/50"
           />
-          <span className="w-4 text-[10px] font-medium text-muted-foreground/60">
+          <span className="w-4 text-xs font-medium text-muted-foreground/60">
             Y
           </span>
           <input
@@ -374,11 +376,11 @@ export default function CropPanel() {
             max={originalImage.height - 1}
             value={cropRect.y}
             onChange={(e) => updateCropField('y', parseInt(e.target.value) || 0)}
-            className="w-[3.5rem] h-6 text-[10px] px-1.5 rounded-lg border bg-background/50 text-center tabular-nums focus:outline-none focus:ring-1 focus:ring-primary/50"
+            className="w-[4rem] h-7 text-xs px-1.5 rounded-md border bg-background/50 text-center tabular-nums focus:outline-none focus:ring-1 focus:ring-primary/50"
           />
         </div>
         <div className="flex items-center gap-2">
-          <span className="w-4 text-[10px] font-medium text-muted-foreground/60">
+          <span className="w-4 text-xs font-medium text-muted-foreground/60">
             W
           </span>
           <input
@@ -387,9 +389,9 @@ export default function CropPanel() {
             max={originalImage.width}
             value={cropRect.width}
             onChange={(e) => updateCropField('width', parseInt(e.target.value) || 1)}
-            className="w-[3.5rem] h-6 text-[10px] px-1.5 rounded-lg border bg-background/50 text-center tabular-nums focus:outline-none focus:ring-1 focus:ring-primary/50"
+            className="w-[4rem] h-7 text-xs px-1.5 rounded-md border bg-background/50 text-center tabular-nums focus:outline-none focus:ring-1 focus:ring-primary/50"
           />
-          <span className="w-4 text-[10px] font-medium text-muted-foreground/60">
+          <span className="w-4 text-xs font-medium text-muted-foreground/60">
             H
           </span>
           <input
@@ -398,13 +400,13 @@ export default function CropPanel() {
             max={originalImage.height}
             value={cropRect.height}
             onChange={(e) => updateCropField('height', parseInt(e.target.value) || 1)}
-            className="w-[3.5rem] h-6 text-[10px] px-1.5 rounded-lg border bg-background/50 text-center tabular-nums focus:outline-none focus:ring-1 focus:ring-primary/50"
+            className="w-[4rem] h-7 text-xs px-1.5 rounded-md border bg-background/50 text-center tabular-nums focus:outline-none focus:ring-1 focus:ring-primary/50"
           />
         </div>
       </div>
 
       {/* Preview dimensions */}
-      <div className="text-[10px] text-muted-foreground/60 tabular-nums">
+      <div className="text-xs text-muted-foreground/60 tabular-nums">
         {originalImage.width}x{originalImage.height} &rarr;{' '}
         <span className={hasCrop ? 'text-primary font-semibold' : ''}>
           {cropRect.width}x{cropRect.height}
@@ -416,7 +418,7 @@ export default function CropPanel() {
         size="sm"
         onClick={handleApply}
         disabled={isCropping || !hasCrop}
-        className="w-full gap-1.5 rounded-lg h-8 text-xs font-medium shadow-sm"
+        className="w-full gap-1.5 rounded-md h-8 text-xs font-medium shadow-sm"
       >
         {isCropping ? (
           <>

@@ -44,7 +44,7 @@
 }
 
 :root {
-  --radius: 0.75rem;
+  --radius: 0.5rem;
   --background: oklch(0.985 0.002 247);
   --foreground: oklch(0.145 0.005 247);
   --card: oklch(0.995 0 0);
@@ -286,7 +286,7 @@
 
 /* Transform label - larger and more readable */
 .transform-label {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 500;
   color: color-mix(in oklch, var(--foreground) 55%, transparent);
   letter-spacing: 0.01em;
@@ -301,7 +301,7 @@
    Using a desaturated primary-adjacent hue that reads as "on" without the alarm
    of pure red. Falls back to primary if custom prop unset. */
 .toggle-switch[data-state="checked"] {
-  background-color: oklch(0.55 0.13 152);
+  background-color: var(--primary);
 }
 .toggle-switch[data-state="unchecked"] {
   background-color: color-mix(in oklch, var(--muted-foreground) 35%, transparent);
@@ -524,7 +524,7 @@
 
 /* ─── Format description hint ────────────────────────────────────────────── */
 .format-hint {
-  font-size: 9px;
+  font-size: 11px;
   color: color-mix(in oklch, var(--muted-foreground) 50%, transparent);
   font-style: italic;
   letter-spacing: 0.02em;

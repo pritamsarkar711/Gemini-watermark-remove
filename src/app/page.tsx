@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Eraser, Stamp, Scan, Download, Sparkles, Undo2, Redo2 } from 'lucide-react'
+import { Eraser, Stamp, Scan, Download, Undo2, Redo2 } from 'lucide-react'
 import { useAppStore } from '@/lib/store'
 import Header from '@/components/watermark-remover/Header'
 import UploadArea from '@/components/watermark-remover/UploadArea'
@@ -239,7 +239,7 @@ export default function Home() {
                       <button
                         onClick={undo}
                         disabled={!canUndo}
-                        className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-semibold transition-all ${
+                        className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-sm font-semibold transition-all ${
                           canUndo
                             ? 'bg-muted/60 text-foreground hover:bg-accent hover:shadow-sm'
                             : 'text-muted-foreground/40 cursor-not-allowed'
@@ -253,7 +253,7 @@ export default function Home() {
                       <button
                         onClick={redo}
                         disabled={!canRedo}
-                        className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-semibold transition-all ${
+                        className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-sm font-semibold transition-all ${
                           canRedo
                             ? 'bg-muted/60 text-foreground hover:bg-accent hover:shadow-sm'
                             : 'text-muted-foreground/40 cursor-not-allowed'
@@ -267,7 +267,7 @@ export default function Home() {
                   )}
                 </AnimatePresence>
 
-                <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-4">
+                <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4">
                   {/* Image area */}
                   <div className="flex flex-col gap-2">
                     {showComparison && processedImage && (

@@ -23,6 +23,9 @@ const FORMAT_OPTIONS: { label: string; value: TargetFormat; desc: string }[] = [
   { label: 'JPEG', value: 'jpeg', desc: 'Compressed' },
   { label: 'WebP', value: 'webp', desc: 'Modern' },
   { label: 'AVIF', value: 'avif', desc: 'Next-gen' },
+  { label: 'BMP', value: 'bmp', desc: 'Uncompressed' },
+  { label: 'TIFF', value: 'tiff', desc: 'High quality' },
+  { label: 'GIF', value: 'gif', desc: 'Animated' },
 ]
 
 interface SizePreset {
@@ -194,15 +197,17 @@ export default function ResizePanel() {
       className="sidebar-panel flex flex-col gap-2.5 rounded-lg p-3 shadow-sm transition-all duration-200 hover:bg-card hover:shadow-md hover:border-border"
     >
       {/* Header (clickable toggle) */}
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => setIsOpen((v) => !v)}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setIsOpen((v) => !v) } }}
         className="sidebar-panel-header flex items-center justify-between cursor-pointer"
         aria-expanded={isOpen}
       >
         <div className="flex items-center gap-1.5">
           <Maximize className="size-3.5 text-muted-foreground/60" />
-          <span className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider">Resize</span>
+          <span className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider">Resize</span>
         </div>
         <div className="flex items-center gap-2">
           {hasResize && (
@@ -210,7 +215,7 @@ export default function ResizePanel() {
               type="button"
               onClick={(e) => { e.stopPropagation(); handleReset() }}
               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === 'Space') { e.stopPropagation(); handleReset() } }}
-              className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] text-muted-foreground/60 hover:text-foreground hover:bg-accent/60 transition-colors"
+              className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs text-muted-foreground/60 hover:text-foreground hover:bg-accent/60 transition-colors"
             >
               <RotateCcw className="size-2.5" />
               Reset
@@ -224,7 +229,7 @@ export default function ResizePanel() {
             <ChevronDown className="size-3.5" />
           </motion.div>
         </div>
-      </button>
+      </div>
 
       {/* Collapsible content */}
       <AnimatePresence initial={false}>
@@ -240,14 +245,14 @@ export default function ResizePanel() {
 
       {/* Aspect ratio lock + dimension inputs */}
       <div className="flex items-center gap-2">
-        <span className="w-5 text-[10px] font-medium text-muted-foreground/60">W</span>
+        <span className="w-5 text-xs font-medium text-muted-foreground/60">W</span>
         <input
           type="number"
           min={16}
           max={8192}
           value={resizeConfig.width}
           onChange={(e) => handleWidthChange(parseInt(e.target.value) || 16)}
-          className="w-[4rem] h-6 text-[10px] px-1.5 rounded-lg border bg-background/50 text-center tabular-nums focus:outline-none focus:ring-1 focus:ring-primary/50"
+          className="w-[5rem] h-7 text-xs px-1.5 rounded-md border bg-background/50 text-center tabular-nums focus:outline-none focus:ring-1 focus:ring-primary/50"
         />
         <button
           type="button"
@@ -266,14 +271,14 @@ export default function ResizePanel() {
             <Unlock className="size-3" />
           )}
         </button>
-        <span className="w-5 text-[10px] font-medium text-muted-foreground/60">H</span>
+        <span className="w-5 text-xs font-medium text-muted-foreground/60">H</span>
         <input
           type="number"
           min={16}
           max={8192}
           value={resizeConfig.height}
           onChange={(e) => handleHeightChange(parseInt(e.target.value) || 16)}
-          className="w-[4rem] h-6 text-[10px] px-1.5 rounded-lg border bg-background/50 text-center tabular-nums focus:outline-none focus:ring-1 focus:ring-primary/50"
+          className="w-[5rem] h-7 text-xs px-1.5 rounded-md border bg-background/50 text-center tabular-nums focus:outline-none focus:ring-1 focus:ring-primary/50"
         />
       </div>
 
@@ -284,7 +289,7 @@ export default function ResizePanel() {
             key={m.value}
             type="button"
             onClick={() => setResizeConfig({ mode: m.value })}
-            className={`size-7 rounded-md text-[9px] font-medium transition-all ${
+            className={`h-8 w-full rounded-md text-xs font-medium transition-all ${
               resizeConfig.mode === m.value
                 ? 'bg-primary text-primary-foreground shadow-md'
                 : 'bg-muted/50 text-muted-foreground/70 hover:bg-muted hover:text-foreground'
@@ -303,7 +308,7 @@ export default function ResizePanel() {
             key={preset.label}
             type="button"
             onClick={() => handlePresetSelect(preset)}
-            className={`h-7 rounded-md text-[9px] font-medium transition-all ${
+            className={`h-7 rounded-md text-xs font-medium transition-all ${
               (preset.width === 0 && resizeConfig.width === originalImage.width && resizeConfig.height === originalImage.height) ||
               (preset.width > 0 && resizeConfig.width === preset.width && resizeConfig.height === preset.height)
                 ? 'bg-primary/15 text-primary shadow-sm border-primary/30 border'
@@ -316,7 +321,7 @@ export default function ResizePanel() {
       </div>
 
       {/* Dimension preview */}
-      <div className="text-[10px] text-muted-foreground/60 tabular-nums">
+      <div className="text-xs text-muted-foreground/60 tabular-nums">
         {originalImage.width}×{originalImage.height} &rarr;{' '}
         <span className={hasResize ? 'text-primary font-semibold' : ''}>
           {resizeConfig.width}×{resizeConfig.height}
@@ -326,14 +331,14 @@ export default function ResizePanel() {
       {/* Format selector */}
       <div className="flex items-center gap-1.5">
         <FileOutput className="size-3 text-muted-foreground/60" />
-        <span className="text-[10px] font-medium text-muted-foreground/60">Format</span>
+        <span className="text-xs font-medium text-muted-foreground/60">Format</span>
         <div className="flex gap-1 ml-auto">
           {FORMAT_OPTIONS.map((f) => (
             <button
               key={f.value}
               type="button"
               onClick={() => setResizeConfig({ targetFormat: f.value })}
-              className={`h-6 rounded-md text-[9px] font-medium transition-all px-2 ${
+              className={`h-7 rounded-md text-xs font-medium transition-all px-3 ${
                 resizeConfig.targetFormat === f.value
                   ? 'bg-primary text-primary-foreground shadow-md'
                   : 'bg-muted/50 text-muted-foreground/70 hover:bg-muted hover:text-foreground'
@@ -351,7 +356,7 @@ export default function ResizePanel() {
         size="sm"
         onClick={handleApply}
         disabled={isResizing || !hasResize}
-        className="w-full gap-1.5 rounded-lg h-8 text-xs font-medium shadow-sm"
+        className="w-full gap-1.5 rounded-md h-8 text-xs font-medium shadow-sm"
       >
         {isResizing ? (
           <>

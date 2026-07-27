@@ -215,7 +215,7 @@ export default function QualityOptimizer() {
             <button
               key={preset.label}
               onClick={() => setQualityConfig(preset.config)}
-              className={`h-6 text-[10px] rounded-md px-2 border transition-colors ${
+              className={`h-7 text-xs rounded-md px-2 border transition-colors ${
                 active
                   ? 'bg-primary/10 border-primary/30 text-primary font-medium ring-1 ring-primary/20'
                   : 'bg-muted/60 text-muted-foreground hover:bg-accent border-transparent'
@@ -229,13 +229,13 @@ export default function QualityOptimizer() {
 
       {/* Format selector with description */}
       <div className="flex items-center justify-between gap-3">
-        <span className="text-[10px] text-muted-foreground/50 font-medium">Format</span>
+        <span className="text-xs text-muted-foreground/50 font-medium">Format</span>
         <div className="flex flex-col items-end gap-0.5">
           <Select
             value={qualityConfig.format}
             onValueChange={(v) => setQualityConfig({ format: v as QualityConfig['format'] })}
           >
-            <SelectTrigger className="w-[4.5rem] h-6 text-[10px] rounded-lg">
+            <SelectTrigger className="w-[6rem] h-7 text-xs rounded-md">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -245,7 +245,7 @@ export default function QualityOptimizer() {
               <SelectItem value="avif">AVIF</SelectItem>
             </SelectContent>
           </Select>
-          <span className="text-[9px] text-muted-foreground/40 italic">
+          <span className="text-[11px] text-muted-foreground/40 italic">
             {formatDescriptions[qualityConfig.format]}
           </span>
         </div>
@@ -255,7 +255,7 @@ export default function QualityOptimizer() {
       {showQualitySlider && (
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center justify-between gap-3">
-            <span className="text-[10px] text-muted-foreground/50 font-medium">Quality</span>
+            <span className="text-xs text-muted-foreground/50 font-medium">Quality</span>
             <Slider
               value={[qualityConfig.quality]}
               min={10}
@@ -264,7 +264,7 @@ export default function QualityOptimizer() {
               onValueChange={(v) => setQualityConfig({ quality: v[0] })}
               className="w-20"
             />
-            <span className="text-[10px] tabular-nums text-muted-foreground/50 w-5 text-right">{qualityConfig.quality}</span>
+            <span className="text-xs tabular-nums text-muted-foreground/50 w-5 text-right">{qualityConfig.quality}</span>
           </div>
           {/* Visual quality bar — gradient from red (low) to green (high) */}
           <div className="relative h-1.5 w-full rounded-full overflow-hidden bg-muted/50">
@@ -281,27 +281,27 @@ export default function QualityOptimizer() {
 
       {/* Max dimensions */}
       <div className="flex items-center justify-between gap-3">
-        <span className="text-[10px] text-muted-foreground/50 font-medium">Max width</span>
+        <span className="text-xs text-muted-foreground/50 font-medium">Max width</span>
         <Input
           type="number"
           value={qualityConfig.maxWidth}
           onChange={(e) => setQualityConfig({ maxWidth: Number(e.target.value) || 4096 })}
-          className="w-[3.5rem] h-6 text-[10px] px-1.5 rounded-lg"
+          className="w-[4rem] h-7 text-xs px-1.5 rounded-md"
         />
       </div>
 
       <div className="flex items-center justify-between gap-3">
-        <span className="text-[10px] text-muted-foreground/50 font-medium">Max height</span>
+        <span className="text-xs text-muted-foreground/50 font-medium">Max height</span>
         <Input
           type="number"
           value={qualityConfig.maxHeight}
           onChange={(e) => setQualityConfig({ maxHeight: Number(e.target.value) || 4096 })}
-          className="w-[3.5rem] h-6 text-[10px] px-1.5 rounded-lg"
+          className="w-[4rem] h-7 text-xs px-1.5 rounded-md"
         />
       </div>
 
       {/* Estimated output size row */}
-      <div className="flex items-center justify-between gap-2 rounded-md bg-muted/30 px-2 py-1.5 text-[10px]">
+      <div className="flex items-center justify-between gap-2 rounded-md bg-muted/30 px-2 py-1.5 text-xs">
         <span className="font-medium text-muted-foreground/70">Estimated size</span>
 
         <div className="flex items-center gap-1.5 tabular-nums">
@@ -346,7 +346,7 @@ export default function QualityOptimizer() {
       {/* Savings comparison row with visual progress bar */}
       {estimate && baselineSize > 0 && savingsDirection === 'down' && savingsPct !== null && (
         <div className="flex flex-col gap-1 rounded-md bg-green-500/5 border border-green-500/10 px-2 py-2">
-          <div className="flex items-center justify-between text-[10px]">
+          <div className="flex items-center justify-between text-xs">
             <span className="text-green-600/80 dark:text-green-400/80 font-medium">
               Savings vs original
             </span>
@@ -376,7 +376,7 @@ export default function QualityOptimizer() {
       {/* Expansion warning row */}
       {estimate && baselineSize > 0 && savingsDirection === 'up' && savingsPct !== null && (
         <div className="flex flex-col gap-1 rounded-md bg-amber-500/5 border border-amber-500/10 px-2 py-2">
-          <div className="flex items-center justify-between text-[10px]">
+          <div className="flex items-center justify-between text-xs">
             <span className="text-amber-600/80 dark:text-amber-400/80 font-medium">
               Larger than original
             </span>

@@ -21,7 +21,7 @@ export default function OverlayView() {
     >
       {/* Image container */}
       <div
-        className="relative w-full overflow-hidden rounded-xl border bg-muted/20 shadow-sm transition-all duration-300 hover:shadow-lg hover:ring-1 hover:ring-inset hover:ring-primary/20 hover:border-primary/30"
+        className="relative w-full overflow-hidden rounded-lg border bg-muted/20 shadow-sm transition-all duration-300 hover:shadow-lg hover:ring-1 hover:ring-inset hover:ring-primary/20 hover:border-primary/30"
         style={{ minHeight: '240px', maxHeight: '55vh' }}
       >
         {/* Processed (after) image - base layer */}
@@ -45,7 +45,7 @@ export default function OverlayView() {
 
         {/* Opacity percentage badge */}
         <div className="pointer-events-none absolute top-2.5 left-2.5 z-20">
-          <span className="inline-flex items-center gap-1 rounded-full bg-black/60 backdrop-blur-sm px-2 py-0.5 text-[10px] font-semibold text-white shadow-sm">
+          <span className="inline-flex items-center gap-1 rounded-full bg-black/60 backdrop-blur-sm px-2 py-0.5 text-xs font-semibold text-white shadow-sm">
             <Eye className="size-2.5" />
             {overlayOpacity}% original overlay
           </span>
@@ -60,7 +60,7 @@ export default function OverlayView() {
             transition={{ duration: 0.3 }}
             className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-background/60 backdrop-blur-sm"
           >
-            <div className="flex flex-col items-center gap-2 rounded-xl bg-card/90 border shadow-lg px-5 py-3 backdrop-blur-md">
+            <div className="flex flex-col items-center gap-2 rounded-lg bg-card/90 border shadow-lg px-5 py-3 backdrop-blur-md">
               <div className="relative size-8">
                 <div className="absolute inset-0 rounded-full border-2 border-muted-foreground/20" />
                 <motion.div
@@ -77,7 +77,7 @@ export default function OverlayView() {
 
       {/* Opacity slider */}
       <div className="flex items-center gap-3 px-2 py-1.5 rounded-lg border bg-card/60">
-        <span className="text-[10px] font-medium text-muted-foreground whitespace-nowrap">0%</span>
+        <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">0%</span>
         <Slider
           value={[overlayOpacity]}
           onValueChange={(v) => setOverlayOpacity(v[0])}
@@ -86,8 +86,8 @@ export default function OverlayView() {
           step={1}
           className="flex-1"
         />
-        <span className="text-[10px] font-medium text-muted-foreground whitespace-nowrap">100%</span>
-        <span className="text-[10px] font-semibold text-primary tabular-nums">{overlayOpacity}%</span>
+        <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">100%</span>
+        <span className="text-xs font-semibold text-primary tabular-nums">{overlayOpacity}%</span>
       </div>
     </motion.div>
   )

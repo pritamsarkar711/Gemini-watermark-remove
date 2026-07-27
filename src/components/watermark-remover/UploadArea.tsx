@@ -2,7 +2,7 @@
 
 import { useCallback, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Upload, X, Sparkles, Shield, Zap, Eye, Lock, Scan, Paintbrush, Image as ImageIcon } from 'lucide-react'
+import { Upload, X, Eraser, Shield, Zap, Eye, Lock, Scan, Paintbrush, Image as ImageIcon } from 'lucide-react'
 import { useAppStore, type ImageInfo } from '@/lib/store'
 
 const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
@@ -173,13 +173,13 @@ export default function UploadArea() {
         className="flex flex-col items-center gap-3"
       >
         <div className="relative">
-          <div className="flex size-20 items-center justify-center rounded-2xl bg-primary/10 ring-2 ring-primary/10 animated-border">
-            <Sparkles className="size-9 text-primary" />
+          <div className="flex size-20 items-center justify-center rounded-lg bg-primary/10 ring-2 ring-primary/10 animated-border">
+            <Eraser className="size-9 text-primary" />
           </div>
           <motion.div
             animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.6, 0.3] }}
             transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-            className="absolute inset-0 rounded-2xl bg-primary/5"
+            className="absolute inset-0 rounded-lg bg-primary/5"
           />
           {/* Magic sparkle floating particles */}
           {[0, 1, 2, 3].map((i) => (
@@ -196,12 +196,8 @@ export default function UploadArea() {
           ))}
         </div>
         <div className="flex flex-col items-center gap-1">
-          <h1 className="gradient-text text-4xl font-extrabold tracking-tight">Zeminai</h1>
-          <p className="text-sm font-semibold text-foreground/80">Watermark remover</p>
-          <span className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/10 px-2.5 py-0.5 text-[10px] font-semibold text-primary shadow-sm">
-            <Sparkles className="size-2.5" />
-            Powered by AI
-          </span>
+          <h1 className="gradient-text text-4xl font-extrabold tracking-tight">Gemini Watermark</h1>
+          <p className="text-sm font-semibold text-foreground/80">Remover</p>
         </div>
       </motion.div>
 
@@ -218,7 +214,7 @@ export default function UploadArea() {
           onClick={() => !isReading && inputRef.current?.click()}
           className={`
             group relative flex cursor-pointer flex-col items-center justify-center
-            rounded-2xl border-2 border-dashed border-primary/30 transition-all duration-300
+            rounded-lg border-2 border-dashed border-primary/30 transition-all duration-300
             w-full aspect-[4/3] shadow-inner upload-inner-glow
             ${isDragging
               ? 'border-primary bg-primary/5 scale-[1.02] upload-area-active shadow-lg shadow-primary/10'
@@ -236,9 +232,9 @@ export default function UploadArea() {
           />
 
           {/* Subtle background gradient pattern */}
-          <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-primary/[0.03] via-transparent to-primary/[0.04] opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+          <div className="absolute inset-0 rounded-lg bg-gradient-to-br from-primary/[0.03] via-transparent to-primary/[0.04] opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
           {/* Dot grid pattern behind the upload zone */}
-          <div className="absolute inset-0 rounded-2xl dot-grid-bg opacity-30" />
+          <div className="absolute inset-0 rounded-lg dot-grid-bg opacity-30" />
 
           <AnimatePresence mode="wait">
             {isReading ? (
@@ -269,7 +265,7 @@ export default function UploadArea() {
                 className="flex flex-col items-center gap-3"
               >
                 <div className={`
-                  flex size-12 items-center justify-center rounded-xl transition-all duration-300
+                  flex size-12 items-center justify-center rounded-lg transition-all duration-300
                   ${isDragging
                     ? 'bg-primary/15 shadow-md shadow-primary/20'
                     : 'bg-muted/60 group-hover:bg-muted'
@@ -283,15 +279,15 @@ export default function UploadArea() {
                     {isDragging ? 'Release to upload' : 'Drop image'}
                   </span>
                   {!isDragging && (
-                    <span className="text-[11px] font-medium text-muted-foreground">
+                    <span className="text-sm font-medium text-muted-foreground">
                       or click to browse
                     </span>
                   )}
                   <div className="mt-1.5 flex flex-wrap items-center justify-center gap-1.5">
-                    <span className="rounded-md border border-primary/20 bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary">PNG</span>
-                    <span className="rounded-md border border-primary/20 bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary">JPEG</span>
-                    <span className="rounded-md border border-primary/20 bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary">WebP</span>
-                    <span className="text-[10px] font-medium text-muted-foreground">· up to 50MB</span>
+                    <span className="rounded-md border border-primary/20 bg-primary/10 px-1.5 py-0.5 text-xs font-bold text-primary">PNG</span>
+                    <span className="rounded-md border border-primary/20 bg-primary/10 px-1.5 py-0.5 text-xs font-bold text-primary">JPEG</span>
+                    <span className="rounded-md border border-primary/20 bg-primary/10 px-1.5 py-0.5 text-xs font-bold text-primary">WebP</span>
+                    <span className="text-xs font-medium text-muted-foreground">· up to 50MB</span>
                   </div>
                 </div>
               </motion.div>
@@ -317,7 +313,7 @@ export default function UploadArea() {
             className="flex items-center justify-center gap-1.5 rounded-full border border-border/60 bg-card/80 px-2.5 py-2 shadow-sm hover:shadow-md hover:border-primary/30 hover:bg-primary/5 transition-all"
           >
             <item.icon className="size-3.5 text-primary" />
-            <span className="text-xs font-semibold text-foreground/80">{item.label}</span>
+            <span className="text-sm font-semibold text-foreground/80">{item.label}</span>
           </motion.div>
         ))}
       </motion.div>
@@ -340,7 +336,7 @@ export default function UploadArea() {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.3, delay: 0.7 + item.step * 0.1 }}
             whileHover={{ y: -3, transition: { duration: 0.2 } }}
-            className="flex flex-col items-center gap-1.5 rounded-xl border border-border/60 bg-card/70 p-3 shadow-sm hover:shadow-lg hover:bg-card hover:border-primary/40 transition-all group relative overflow-hidden"
+            className="flex flex-col items-center gap-2 rounded-lg border border-border/60 bg-card/70 p-3 shadow-sm hover:shadow-lg hover:bg-card hover:border-primary/40 transition-all group relative overflow-hidden"
           >
             {/* Subtle gradient overlay on hover */}
             <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
@@ -349,7 +345,7 @@ export default function UploadArea() {
               <item.icon className="size-4 text-primary group-hover:scale-110 transition-transform" />
             </div>
             <span className="text-xs font-bold text-foreground/90 group-hover:text-foreground transition-colors">{item.title}</span>
-            <span className="text-[10px] font-medium text-muted-foreground">{item.desc}</span>
+            <span className="text-xs font-medium text-muted-foreground">{item.desc}</span>
             {/* Hidden arrow connector showing progression */}
             {idx < 2 && (
               <div className="hidden sm:block absolute -right-2.5 top-1/2 -translate-y-1/2 z-20 size-3 rounded-full bg-border/80 ring-2 ring-background" />
@@ -365,7 +361,7 @@ export default function UploadArea() {
         transition={{ duration: 0.4, delay: 0.8 }}
         className="flex w-full max-w-md flex-col items-center gap-3"
       >
-        <span className="flex w-full items-center gap-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground
+        <span className="flex w-full items-center gap-3 text-xs font-bold uppercase tracking-wider text-muted-foreground
           before:content-[''] before:h-px before:flex-1 before:bg-gradient-to-r before:from-transparent before:to-border/80
           after:content-[''] after:h-px after:flex-1 after:bg-gradient-to-l after:from-transparent after:to-border/80">
           or try with a sample
@@ -396,7 +392,7 @@ export default function UploadArea() {
                   <ImageIcon className="size-4 text-foreground/80 drop-shadow" />
                 </div>
               </div>
-              <span className="mt-1.5 text-center text-[10px] font-semibold text-foreground/80">{sample.label}</span>
+              <span className="mt-1.5 text-center text-xs font-semibold text-foreground/80">{sample.label}</span>
             </motion.button>
           ))}
         </div>

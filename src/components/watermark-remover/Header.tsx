@@ -35,12 +35,12 @@ export default function Header() {
           <motion.div
             animate={{ boxShadow: ['0 0 0px var(--primary)', '0 0 8px color-mix(in oklch, var(--primary) 30%, transparent)', '0 0 0px var(--primary)'] }}
             transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-            className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary shadow-sm"
+            className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary shadow-sm"
           >
             <Eraser className="size-4 text-primary-foreground" />
           </motion.div>
           <div className="flex items-center gap-1.5 leading-none">
-            <span className="gradient-text text-lg font-semibold tracking-tight brand-shadow">Zeminai</span>
+            <span className="gradient-text text-lg font-semibold tracking-tight brand-shadow">Gemini</span>
             {step !== 'upload' && (
               <motion.span
                 initial={{ scale: 0, opacity: 0 }}

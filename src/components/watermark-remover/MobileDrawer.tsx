@@ -46,7 +46,7 @@ export default function MobileDrawer() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, delay: 0.2 }}
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-4 left-4 z-30 flex items-center gap-2 rounded-xl bg-primary text-primary-foreground px-4 py-2.5 text-sm font-semibold shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 hover:-translate-y-0.5 transition-all lg:hidden"
+        className="fixed bottom-4 left-4 z-30 flex items-center gap-2 rounded-lg bg-primary text-primary-foreground px-4 py-2.5 text-sm font-semibold shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 hover:-translate-y-0.5 transition-all lg:hidden"
         aria-label="Open editing tools"
       >
         <SlidersHorizontal className="size-4" />
@@ -61,7 +61,7 @@ export default function MobileDrawer() {
               <SlidersHorizontal className="size-4 text-primary" />
               Editing Tools
             </DrawerTitle>
-            <DrawerDescription className="text-[10px]">
+            <DrawerDescription className="text-xs">
               Adjust watermark removal, add watermarks, crop, resize, and more.
             </DrawerDescription>
           </DrawerHeader>

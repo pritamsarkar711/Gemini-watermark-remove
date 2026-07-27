@@ -11,7 +11,7 @@ const workSans = Work_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Zeminai - Watermark & Logo Remover",
+  title: "Gemini Watermark Remover",
   description: "Remove watermarks and logos from images. High quality, seamless results.",
   icons: {
     icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",

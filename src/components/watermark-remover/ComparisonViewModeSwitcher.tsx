@@ -18,7 +18,7 @@ export default function ComparisonViewModeSwitcher() {
       initial={{ opacity: 0, y: -6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
-      className="flex items-center justify-center gap-0.5"
+      className="flex items-center justify-center gap-2"
     >
       <div className="inline-flex items-center rounded-full border bg-card/80 p-0.5 shadow-sm backdrop-blur-sm">
         {MODE_OPTIONS.map(({ mode, icon: Icon, label }) => {
@@ -27,7 +27,7 @@ export default function ComparisonViewModeSwitcher() {
             <button
               key={mode}
               onClick={() => setComparisonMode(mode)}
-              className={`relative flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-medium transition-all duration-200 ${
+              className={`relative flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium transition-all duration-200 ${
                 isActive
                   ? 'bg-primary text-primary-foreground shadow-sm'
                   : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'

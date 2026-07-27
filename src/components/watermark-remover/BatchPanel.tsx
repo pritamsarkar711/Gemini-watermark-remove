@@ -158,11 +158,11 @@ export default function BatchPanel() {
       >
         <div className="flex items-center gap-1.5">
           <Images className="size-3.5 text-muted-foreground/60" />
-          <span className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider">
+          <span className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wider">
             Batch
           </span>
           {total > 0 && (
-            <span className="ml-0.5 rounded-full bg-muted px-1.5 py-0.5 text-[9px] font-medium text-muted-foreground/70">
+            <span className="ml-0.5 rounded-full bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground/70">
               {total}
             </span>
           )}
@@ -172,7 +172,7 @@ export default function BatchPanel() {
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); clearAll() }}
-              className="flex items-center gap-1 text-[9px] text-muted-foreground/60 hover:text-destructive transition-colors"
+              className="flex items-center gap-1 text-xs text-muted-foreground/60 hover:text-destructive transition-colors"
             >
               <Trash2 className="size-2.5" />
               Clear
@@ -205,7 +205,7 @@ export default function BatchPanel() {
                 size="sm"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isBatchProcessing}
-                className="w-full gap-1.5 h-7 text-xs rounded-lg"
+                className="w-full gap-1.5 h-8 text-sm rounded-md"
               >
                 <Plus className="size-3" />
                 Add images
@@ -228,7 +228,7 @@ export default function BatchPanel() {
                   {items.map((item, idx) => (
                     <div
                       key={item.id}
-                      className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-[11px] transition-all ${
+                      className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-all ${
                         idx === currentIdx
                           ? 'bg-primary/10 border-l-2 border-primary shadow-sm'
                           : item.status === 'done'
@@ -275,7 +275,7 @@ export default function BatchPanel() {
 
               {/* Stats bar */}
               {total > 0 && (
-                <div className="flex items-center justify-between text-[9px] text-muted-foreground/60">
+                <div className="flex items-center justify-between text-xs text-muted-foreground/60">
                   <span>{pendingCount} pending · {doneCount} done · {errorCount} errors</span>
                   <span className="font-mono tabular-nums">{currentIdx >= 0 ? `${currentIdx + 1}/${total}` : ''}</span>
                 </div>
@@ -301,7 +301,7 @@ export default function BatchPanel() {
                       variant="outline"
                       size="sm"
                       onClick={downloadAll}
-                      className="gap-1.5 h-7 text-xs rounded-lg"
+                      className="gap-1.5 h-7 text-xs rounded-md"
                     >
                       <Download className="size-3" />
                       Download
@@ -314,7 +314,7 @@ export default function BatchPanel() {
               {items.length === 0 && (
                 <div className="flex flex-col items-center gap-1 py-3 text-muted-foreground/50">
                   <Images className="size-4" />
-                  <span className="text-[10px]">Add multiple images to process in batch</span>
+                  <span className="text-xs">Add multiple images to process in batch</span>
                 </div>
               )}
             </div>

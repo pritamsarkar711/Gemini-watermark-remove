@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input'
  * Preset bar — quick-apply watermark templates.
  *
  * Renders two groups:
- *  1. Built-in presets (© 2025, DRAFT, CONFIDENTIAL, SAMPLE, DO NOT COPY, Zeminai)
+ *  1. Built-in presets (© 2025, DRAFT, CONFIDENTIAL, SAMPLE, DO NOT COPY, Gemini)
  *  2. User-saved custom presets (persisted to localStorage)
  *
  * Clicking a preset applies its text + style to the current watermarkConfig

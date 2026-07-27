@@ -221,12 +221,12 @@ export default function DownloadPanel() {
       className="flex flex-col gap-2.5"
     >
       {/* Filename */}
-      <div className="flex items-center gap-2 rounded-lg border bg-card/80 p-2.5 shadow-sm">
+      <div className="flex items-center gap-2 rounded-md border bg-card/80 p-3 shadow-sm">
         <FileText className="size-3.5 text-muted-foreground/60" />
         <Input
           value={outputFileName}
           onChange={(e) => setOutputFileName(e.target.value)}
-          className="h-6 text-xs flex-1"
+          className="h-7 text-sm flex-1"
           placeholder="File name"
         />
       </div>
@@ -238,7 +238,7 @@ export default function DownloadPanel() {
           size="sm"
           onClick={handleOptimize}
           disabled={isOptimizing}
-          className="gap-1.5 h-7 text-xs rounded-lg"
+          className="gap-1.5 h-8 text-sm rounded-md"
         >
           {isOptimizing ? (
             <Loader2 className="size-3 animate-spin" />
@@ -252,7 +252,7 @@ export default function DownloadPanel() {
           variant="outline"
           size="sm"
           onClick={handleCopyToClipboard}
-          className="gap-1.5 h-7 text-xs rounded-lg"
+          className="gap-1.5 h-8 text-sm rounded-md"
         >
           {copied ? (
             <Check className="size-3 text-green-500" />
@@ -268,7 +268,7 @@ export default function DownloadPanel() {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="flex items-center justify-between gap-2 rounded-md bg-muted/30 px-2 py-1.5 text-[10px]"
+          className="flex items-center justify-between gap-2 rounded-md bg-muted/30 px-2 py-1.5 text-xs"
         >
           <span className="flex items-center gap-1.5 tabular-nums text-muted-foreground/70">
             <span>
@@ -300,7 +300,7 @@ export default function DownloadPanel() {
 
       {/* Pre-optimization hint row — shows estimate is calculating */}
       {!showComparisonRow && (isEstimating || badgeIsEstimate) && (
-        <div className="flex items-center gap-1.5 px-1 text-[10px] text-muted-foreground/50">
+        <div className="flex items-center gap-2 px-1 text-xs text-muted-foreground/50">
           {isEstimating ? (
             <>
               <Loader2 className="size-2.5 animate-spin" />
@@ -316,11 +316,11 @@ export default function DownloadPanel() {
       <Button
         size="default"
         onClick={handleDownload}
-        className="cta-button w-full gap-1.5 rounded-lg font-semibold h-11 text-sm shadow-md hover:shadow-lg hover:shadow-primary/25 hover:-translate-y-0.5 hover:ring-2 hover:ring-primary/20 transition-all"
+        className="cta-button w-full gap-1.5 rounded-md font-semibold h-11 text-sm shadow-md hover:shadow-lg hover:shadow-primary/25 hover:-translate-y-0.5 hover:ring-2 hover:ring-primary/20 transition-all"
       >
         <Download className="size-4" />
         Download
-        <span className="ml-1 inline-flex items-center gap-1 rounded-md bg-black/15 px-1.5 py-0.5 text-[10px] font-medium text-primary-foreground/90">
+        <span className="ml-1 inline-flex items-center gap-1 rounded-md bg-black/15 px-1.5 py-0.5 text-xs font-medium text-primary-foreground/90">
           {isEstimating && !badgeIsEstimate && optimizedSize === null ? (
             <Loader2 className="size-2.5 animate-spin" />
           ) : null}

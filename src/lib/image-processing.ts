@@ -4,7 +4,7 @@ import path from "path";
 import fs from "fs";
 
 /**
- * Core image processing module for Zeminai watermark removal
+ * Core image processing module for Gemini Watermark removal
  * Uses inpainting algorithms and sharp for high-quality results
  * Enhanced with proper text rendering via canvas, better detection,
  * and SVG-based Gemini sparkle template
@@ -1018,7 +1018,7 @@ function ensureFontsRegistered() {
     for (const p of fontPaths) {
       if (fs.existsSync(p)) {
         try {
-          registerFont(p, { family: 'ZeminaiSans', weight: 'normal' });
+          registerFont(p, { family: 'GeminiSans', weight: 'normal' });
         } catch (e) {
           // ignore font registration errors
         }
@@ -1107,7 +1107,7 @@ function drawTextWatermark(
   ctx.save();
 
   // Set font - use canvas's default font with proper sizing
-  const fontFamily = '"ZeminaiSans", "Arial", "Helvetica", sans-serif';
+  const fontFamily = '"GeminiSans", "Arial", "Helvetica", sans-serif';
   ctx.font = `${options.fontSize}px ${fontFamily}`;
   ctx.textBaseline = 'top';
 

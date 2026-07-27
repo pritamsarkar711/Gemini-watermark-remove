@@ -11,7 +11,7 @@ import { useAppStore } from '@/lib/store'
  * of how far the sidebar content is scrolled.
  *
  * The actual processing handler lives in ControlPanel (which has access to
- * the canvas mask + transform state). We expose it via `window.__zeminaiProcess`
+ * the canvas mask + transform state). We expose it via `window.__geminiProcess`
  * so this component can trigger it without prop drilling.
  *
  * Falls back to a no-op if the handler hasn't been registered yet (e.g.
@@ -26,7 +26,7 @@ export default function StickyCTA() {
   } = useAppStore()
 
   const handleProcess = useCallback(() => {
-    const fn = (window as unknown as { __zeminaiProcess?: () => void }).__zeminaiProcess
+    const fn = (window as unknown as { __geminiProcess?: () => void }).__geminiProcess
     if (fn) fn()
   }, [])
 
@@ -47,12 +47,12 @@ export default function StickyCTA() {
         transition={{ duration: 0.2 }}
         className="sticky-cta-wrapper -mx-1"
       >
-        <div className="rounded-xl border bg-card/95 p-2 shadow-lg backdrop-blur-md">
+        <div className="rounded-lg border bg-card/95 p-2 shadow-lg backdrop-blur-md">
           <button
             type="button"
             onClick={handleProcess}
             disabled={isDisabled}
-            className={`cta-button shimmer-glow flex w-full items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm font-semibold text-primary-foreground shadow-md transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/25 hover:ring-2 hover:ring-primary/20 disabled:translate-y-0 disabled:shadow-md disabled:ring-0 ${isDisabled ? 'opacity-70' : ''}`}
+            className={`cta-button shimmer-glow flex w-full items-center justify-center gap-2 rounded-md px-4 py-3 text-sm font-semibold text-primary-foreground shadow-md transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/25 hover:ring-2 hover:ring-primary/20 disabled:translate-y-0 disabled:shadow-md disabled:ring-0 ${isDisabled ? 'opacity-70' : ''}`}
             aria-label={label}
           >
             {isProcessing ? (

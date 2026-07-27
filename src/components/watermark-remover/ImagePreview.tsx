@@ -664,8 +664,8 @@ export default function ImagePreview() {
     prevAutoDetectRef.current = null
     // Trigger the global process handler exposed by ControlPanel
     if (typeof window !== 'undefined') {
-      const w = window as unknown as { __zeminaiProcess?: () => void }
-      w.__zeminaiProcess?.()
+      const w = window as unknown as { __geminiProcess?: () => void }
+      w.__geminiProcess?.()
     }
   }, [setMaskData, setInlineBrushActive])
 
@@ -686,13 +686,13 @@ export default function ImagePreview() {
         className="flex w-full flex-col gap-2"
       >
         <div
-          className="dot-grid-bg flex items-center justify-center rounded-xl border border-dashed bg-muted/20"
+          className="dot-grid-bg flex items-center justify-center rounded-lg border border-dashed bg-muted/20"
           style={{ minHeight: '240px', maxHeight: '55vh' }}
         >
           <div className="flex flex-col items-center gap-2 text-muted-foreground/50">
             <ImageIcon className="size-8" />
             <span className="text-xs font-medium">No image loaded</span>
-            <span className="text-[10px] text-muted-foreground/40">Drag and drop or use the upload area</span>
+            <span className="text-xs text-muted-foreground/40">Drag and drop or use the upload area</span>
           </div>
         </div>
       </motion.div>
@@ -728,7 +728,7 @@ export default function ImagePreview() {
       <div className="gradient-border-left flex items-center gap-2 rounded-lg border bg-card/80 px-3 py-1.5 shadow-sm transition-all duration-200 hover:bg-card hover:shadow-md">
         <ImageIcon className="size-3.5 text-primary/70" />
         <span className="text-xs font-semibold">{originalImage.name}</span>
-        <div className="flex items-center gap-2 ml-auto text-[11px] text-muted-foreground/60">
+        <div className="flex items-center gap-2 ml-auto text-sm text-muted-foreground/60">
           <span className="rounded bg-muted px-1.5 py-0.5 font-medium">{originalImage.width} x {originalImage.height}</span>
           <span className="rounded bg-muted px-1.5 py-0.5 font-medium">{formatType(originalImage.type)}</span>
           <span className="rounded bg-muted px-1.5 py-0.5 font-medium">{formatSize(originalImage.size)}</span>
@@ -737,7 +737,7 @@ export default function ImagePreview() {
 
       {/* Image container */}
       <div
-        className="relative overflow-hidden rounded-xl border bg-muted/20 shadow-sm transition-shadow duration-300 hover:shadow-md"
+        className="relative overflow-hidden rounded-lg border bg-muted/20 shadow-sm transition-shadow duration-300 hover:shadow-md"
         onWheel={handleWheel}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
@@ -810,7 +810,7 @@ export default function ImagePreview() {
                 {/* Dimension badge (top-left, just inside the rect so it stays
                     visible even when the rect fills the container — avoids
                     being clipped by the container's overflow-hidden). */}
-                <div className="pointer-events-none absolute left-1 top-1 z-10 rounded bg-primary px-1.5 py-0.5 text-[10px] font-semibold text-primary-foreground shadow-md">
+                <div className="pointer-events-none absolute left-1 top-1 z-10 rounded-md bg-primary px-1.5 py-0.5 text-xs font-semibold text-primary-foreground shadow-md">
                   {displayRect.width}×{displayRect.height}
                 </div>
 
@@ -884,7 +884,7 @@ export default function ImagePreview() {
 
         {/* Brush mode hint badge (top-left, above the canvas) */}
         {isBrushMode && (
-          <div className="pointer-events-none absolute left-2 top-2 z-20 rounded-md bg-black/70 px-2 py-1 text-[10px] font-medium text-white/90 shadow-md backdrop-blur-sm">
+          <div className="pointer-events-none absolute left-2 top-2 z-20 rounded-md bg-black/70 px-2 py-1 text-xs font-medium text-white/90 shadow-md backdrop-blur-sm">
             Paint over the watermark to remove
           </div>
         )}
@@ -899,7 +899,7 @@ export default function ImagePreview() {
               transition={{ duration: 0.3 }}
               className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-background/60 backdrop-blur-sm"
             >
-              <div className="flex flex-col items-center gap-3 rounded-xl bg-card/90 border shadow-lg px-6 py-4 backdrop-blur-md">
+              <div className="flex flex-col items-center gap-3 rounded-lg bg-card/90 border shadow-lg px-6 py-4 backdrop-blur-md">
                 <div className="relative size-10">
                   <div className="absolute inset-0 rounded-full border-2 border-muted-foreground/20" />
                   <motion.div
@@ -925,7 +925,7 @@ export default function ImagePreview() {
                     {PROCESSING_STAGES.map((stage, idx) => (
                       <div
                         key={stage.label}
-                        className={`flex items-center gap-1 text-[9px] font-medium transition-all duration-300 ${
+                        className={`flex items-center gap-1 text-xs font-medium transition-all duration-300 ${
                           idx <= processingStage
                             ? 'text-primary'
                             : 'text-muted-foreground/40'
@@ -943,7 +943,7 @@ export default function ImagePreview() {
                     ))}
                   </div>
                   {/* Stage description */}
-                  <div className="text-[10px] text-muted-foreground/70 mt-1 text-center">
+                  <div className="text-xs text-muted-foreground/70 mt-1 text-center">
                     {PROCESSING_STAGES[processingStage].description}
                   </div>
                 </div>
@@ -954,7 +954,7 @@ export default function ImagePreview() {
 
         {/* Hint badge: overlay is active but zoom > 1 (overlay hidden) */}
         {isCropOverlayActive && zoom > 1 && (
-          <div className="pointer-events-none absolute left-2 top-2 z-20 rounded-md bg-black/70 px-2 py-1 text-[10px] font-medium text-white/90 shadow-md backdrop-blur-sm">
+          <div className="pointer-events-none absolute left-2 top-2 z-20 rounded-md bg-black/70 px-2 py-1 text-xs font-medium text-white/90 shadow-md backdrop-blur-sm">
             Reset zoom to edit crop
           </div>
         )}
@@ -972,10 +972,10 @@ export default function ImagePreview() {
               transition={{ duration: 0.15 }}
               className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center bg-primary/15 backdrop-blur-sm"
             >
-              <div className="flex flex-col items-center gap-2 rounded-xl border-2 border-dashed border-primary bg-card/90 px-6 py-5 shadow-lg">
+              <div className="flex flex-col items-center gap-2 rounded-lg border-2 border-dashed border-primary bg-card/90 px-6 py-5 shadow-lg">
                 <UploadCloud className="size-7 text-primary" />
                 <span className="text-sm font-semibold text-foreground">Drop to replace</span>
-                <span className="text-[10px] text-muted-foreground/70">PNG JPEG WebP up to 50MB</span>
+                <span className="text-xs text-muted-foreground/70">PNG JPEG WebP up to 50MB</span>
               </div>
             </motion.div>
           )}
@@ -992,7 +992,7 @@ export default function ImagePreview() {
           >
             <ZoomOut className="size-3" />
           </Button>
-          <span className="min-w-[2.5rem] text-center text-[10px] font-medium text-white/60">
+          <span className="min-w-[2.5rem] text-center text-xs font-medium text-white/60">
             {Math.round(zoom * 100)}%
           </span>
           <Button
@@ -1025,11 +1025,11 @@ export default function ImagePreview() {
         isBrushMode ? (
           <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-card/80 px-2.5 py-1.5 shadow-sm backdrop-blur-sm">
             <Paintbrush className="size-3.5 shrink-0 text-primary/70" />
-            <span className="hidden text-[10px] text-muted-foreground/70 sm:inline">
+            <span className="hidden text-xs text-muted-foreground/70 sm:inline">
               Paint over the watermark to remove
             </span>
             <div className="ml-auto flex items-center gap-1.5">
-              <span className="tabular-nums text-[10px] font-medium text-muted-foreground/60">
+              <span className="tabular-nums text-xs font-medium text-muted-foreground/60">
                 {brushSize}px
               </span>
               <input
@@ -1046,7 +1046,7 @@ export default function ImagePreview() {
               variant="outline"
               size="sm"
               onClick={clearBrushCanvas}
-              className="h-7 gap-1 rounded-md px-2 text-[11px]"
+              className="h-7 gap-1 rounded-md px-2 text-sm"
               title="Clear mask"
               aria-label="Clear mask"
             >
@@ -1057,7 +1057,7 @@ export default function ImagePreview() {
               variant="default"
               size="sm"
               onClick={applyBrushMask}
-              className="h-7 gap-1 rounded-md px-2 text-[11px]"
+              className="h-7 gap-1 rounded-md px-2 text-sm"
               title="Apply mask and remove watermark"
               aria-label="Apply mask and remove watermark"
             >
@@ -1068,7 +1068,7 @@ export default function ImagePreview() {
               variant="ghost"
               size="sm"
               onClick={cancelBrushMode}
-              className="h-7 gap-1 rounded-md px-2 text-[11px]"
+              className="h-7 gap-1 rounded-md px-2 text-sm"
               title="Cancel brush mode"
               aria-label="Cancel brush mode"
             >
@@ -1089,7 +1089,7 @@ export default function ImagePreview() {
               <Paintbrush className="size-3.5" />
               Manual brush
             </Button>
-            <span className="hidden text-[10px] text-muted-foreground/50 sm:inline">
+            <span className="hidden text-xs text-muted-foreground/50 sm:inline">
               Paint over the watermark to remove it manually
             </span>
           </div>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ImageIcon, Sparkles, GitCompareArrows, ChevronDown } from 'lucide-react'
+import { ImageIcon, CheckCircle2, GitCompareArrows, ChevronDown } from 'lucide-react'
 import { useAppStore } from '@/lib/store'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -196,7 +196,7 @@ export default function ImageInfoPanel() {
   const sizeIndicator = getSizeReductionColor(sizeReductionPct)
 
   return (
-    <div className="sidebar-panel flex flex-col gap-3 rounded-xl p-3.5 shadow-sm transition-all duration-200 hover:bg-card hover:shadow-md hover:border-border">
+    <div className="sidebar-panel flex flex-col gap-3 rounded-lg p-3.5 shadow-sm transition-all duration-200 hover:bg-card hover:shadow-md hover:border-border">
       {/* Collapsible header */}
       <button
         onClick={() => setIsOpen(!isOpen)}
@@ -229,12 +229,12 @@ export default function ImageInfoPanel() {
             className="flex flex-col gap-3 overflow-hidden"
           >
             {/* ── Before section ─────────────────────────────────────────── */}
-            <div className="flex flex-col gap-2 rounded-lg bg-muted/30 p-2.5">
+            <div className="flex flex-col gap-2.5 rounded-lg bg-muted/30 p-3">
               <div className="flex items-center gap-1.5">
                 <ImageIcon className="size-3 text-muted-foreground" />
-                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Before</span>
+                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Before</span>
               </div>
-              <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-[10px] pl-1">
+              <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 text-xs pl-1">
                 <span className="text-muted-foreground font-medium">Dimensions</span>
                 <span className="text-foreground/80 tabular-nums font-semibold">{origW} × {origH}</span>
 
@@ -254,12 +254,12 @@ export default function ImageInfoPanel() {
             </div>
 
             {/* ── After section ──────────────────────────────────────────── */}
-            <div className="flex flex-col gap-2 rounded-lg bg-primary/5 p-2.5 ring-1 ring-primary/10">
+            <div className="flex flex-col gap-2 rounded-lg bg-primary/5 p-3 ring-1 ring-primary/10">
               <div className="flex items-center gap-1.5">
-                <Sparkles className="size-3 text-primary" />
-                <span className="text-[10px] font-bold text-primary uppercase tracking-wider">After</span>
+                <CheckCircle2 className="size-3 text-primary" />
+                <span className="text-xs font-bold text-primary uppercase tracking-wider">After</span>
               </div>
-              <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-[10px] pl-1">
+              <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 text-xs pl-1">
                 <span className="text-muted-foreground font-medium">Dimensions</span>
                 <span className="text-foreground tabular-nums font-semibold">{procW} × {procH}</span>
 
@@ -286,12 +286,12 @@ export default function ImageInfoPanel() {
             <div className="flex flex-col gap-2.5 border-t border-border/50 pt-3">
               <div className="flex items-center gap-1.5">
                 <GitCompareArrows className="size-3 text-primary" />
-                <span className="text-[10px] font-bold text-foreground uppercase tracking-wider">Comparison</span>
+                <span className="text-xs font-bold text-foreground uppercase tracking-wider">Comparison</span>
               </div>
 
               {/* Size comparison */}
               <div className="flex flex-col gap-2 pl-1">
-                <div className="flex items-center justify-between text-[10px]">
+                <div className="flex items-center justify-between text-xs">
                   <span className="font-semibold text-muted-foreground">Size</span>
                   <span className={`font-bold tabular-nums ${sizeIncrease ? 'text-red-500' : sizeIndicator.className}`}>
                     {formatFileSize(origSize)} → {formatFileSize(procSize)}
@@ -313,7 +313,7 @@ export default function ImageInfoPanel() {
                     transition={{ duration: 0.6, ease: 'easeOut' }}
                   />
                 </div>
-                <div className="flex items-center justify-between text-[9px]">
+                <div className="flex items-center justify-between text-xs">
                   <span className="text-muted-foreground font-medium">0%</span>
                   <span className={`${sizeIndicator.className} font-bold`}>
                     {sizeIndicator.label}
